@@ -1,0 +1,10 @@
+<RCC>
+    <qresource prefix="/">
+        <file>qml/Main.qml</file>
+    </qresource>
+    <qresource prefix="/icons">
+        <file alias="image.svg">icons/image.svg</file>
+        <file alias="video.svg">icons/video.svg</file>
+        <file alias="settings.svg">icons/settings.svg</file>
+    </qresource>
+</RCC>
