@@ -1,4 +1,4 @@
-// FlipsiColor — Style Learning via AiLUT-Transform
+// FlipsiColor — Stil-Lernen via AiLUT-Transform
 // Copyright (C) 2026 Fabian Kirchweger (TechFlipsi)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
@@ -8,52 +8,55 @@
 #include <QString>
 #include <QMap>
 
+// OpenCV Vorwärtsdeklaration
+namespace cv { class Mat; }
+
 namespace flipsicolor {
 
-struct TrainingPair {
-    // 256×256 thumbnails for efficient training
-    // original + user-edited version
-    QString originalPath;
-    QString editedPath;
-    QString sceneType;
+struct TrainingsPaar {
+    // 256×256 Vorschaubilder für effizientes Training
+    // Original + benutzerverarbeitete Version
+    QString originalPfad;
+    QString bearbeitetPfad;
+    QString szenenTyp;
 };
 
 class StyleLUT : public QObject
 {
     Q_OBJECT
-    Q_PROPERTY(int feedbackCount READ feedbackCount NOTIFY feedbackCountChanged)
-    Q_PROPERTY(int learningRound READ learningRound NOTIFY learningRoundChanged)
+    Q_PROPERTY(int feedbackAnzahl READ feedbackAnzahl NOTIFY feedbackAnzahlChanged)
+    Q_PROPERTY(int lernRunde READ lernRunde NOTIFY lernRundeChanged)
 
 public:
     explicit StyleLUT(QObject* parent = nullptr);
 
-    // Apply learned style to an image via AiLUT-Transform
-    cv::Mat applyStyle(const cv::Mat& image, const QString& sceneType, float strength) const;
+    // Gelernten Stil auf Bild anwenden via AiLUT-Transform
+    cv::Mat stilAnwenden(const cv::Mat& bild, const QString& szenenTyp, float staerke) const;
 
-    // Record feedback
-    void recordFeedback(const TrainingPair& pair, bool positive);
-    void recordEdit(const TrainingPair& pair); // Smart-Learn mode
+    // Feedback aufzeichnen
+    void feedbackAufzeichnen(const TrainingsPaar& paar, bool positiv);
+    void bearbeitungAufzeichnen(const TrainingsPaar& paar); // Smart-Learn-Modus
 
-    // Learning state
-    int feedbackCount() const { return m_feedbackCount; }
-    int learningRound() const { return m_feedbackCount < 60 ? 1 : (m_feedbackCount < 120 ? 2 : 0); }
-    bool isAutonomous() const { return m_feedbackCount >= 120; }
-    bool needsVariety() const { return m_feedbackCount >= 55 && m_feedbackCount <= 65; }
+    // Lern-Status
+    int feedbackAnzahl() const { return m_feedbackAnzahl; }
+    int lernRunde() const { return m_feedbackAnzahl < 60 ? 1 : (m_feedbackAnzahl < 120 ? 2 : 0); }
+    bool istSelbststaendig() const { return m_feedbackAnzahl >= 120; }
+    bool brauchtVielfalt() const { return m_feedbackAnzahl >= 55 && m_feedbackAnzahl <= 65; }
 
-    // Reset
-    void reset();
+    // Zurücksetzen
+    void zuruecksetzen();
 
 signals:
-    void feedbackCountChanged();
-    void learningRoundChanged();
-    void learningPhaseCompleted(int round);
+    void feedbackAnzahlChanged();
+    void lernRundeChanged();
+    void lernPhaseAbgeschlossen(int runde);
 
 private:
-    void retrainLUT(); // Trigger AiLUT-Transform retraining
-    void compactKnowledge(); // Auto-compact every 100 feedbacks
+    void lutNachtrainieren();    // AiLUT-Transform Neu-Training auslösen
+    void wissenVerdichten();     // Auto-Verdichtung alle 100 Feedbacks
 
-    int m_feedbackCount = 0;
-    QMap<QString, int> m_sceneTypeCounts; // Scene → feedback count
+    int m_feedbackAnzahl = 0;
+    QMap<QString, int> m_szenenTypZaehler; // Szene → Feedback-Anzahl
 };
 
 } // namespace flipsicolor

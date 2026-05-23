@@ -1,4 +1,4 @@
-// FlipsiColor — AI Model Manager
+// FlipsiColor — KI-Modellverwaltung
 // Copyright (C) 2026 Fabian Kirchweger (TechFlipsi)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
@@ -13,23 +13,23 @@ struct OrtSession;
 
 namespace flipsicolor {
 
-enum class ModelId {
-    NAFNet,           // Denoise (17MB, core)
-    RestormerLight,   // Deblur/Multi-task (24MB, core)
-    RealHATGAN,       // Upscale best quality (120MB, lazy)
-    RealESRGAN,       // Upscale fast (64MB, lazy)
-    CodeFormer,       // Face restoration (350MB, lazy)
-    AiLUTTransform,   // Color style learning (8MB, core)
-    EfficientNet,     // Scene classification (4.6MB, core)
+enum class ModellId {
+    NAFNet,           // Entrauschen (17MB, Core)
+    RestormerLight,   // Entschärfen/Multi-Task (24MB, Core)
+    RealHATGAN,       // Hochskalieren beste Qualität (120MB, Lazy)
+    RealESRGAN,       // Hochskalieren schnell (64MB, Lazy)
+    CodeFormer,       // Gesichtswiederherstellung (350MB, Lazy)
+    AiLUTTransform,   // Farbstil-Lernen (8MB, Core)
+    EfficientNet,     // Szenen-Klassifizierung (4,6MB, Core)
 };
 
-struct ModelInfo {
+struct ModellInfo {
     QString id;
     QString url;
     QString sha256;
-    qint64 sizeBytes;
-    bool required;
-    bool downloaded = false;
+    qint64 groesseBytes;
+    bool erforderlich;
+    bool heruntergeladen = false;
 };
 
 class ModelManager : public QObject
@@ -39,24 +39,24 @@ class ModelManager : public QObject
 public:
     explicit ModelManager(QObject* parent = nullptr);
 
-    void loadManifest();
-    bool ensureModel(ModelId id);
-    void* session(ModelId id); // Returns OrtSession* (void* to avoid ONNX header dep)
+    void manifestLaden();
+    bool modellSicherstellen(ModellId id);
+    void* session(ModellId id); // Gibt OrtSession* zurück (void* um ONNX-Header-Abhängigkeit zu vermeiden)
 
-    qint64 totalCoreSize() const;
-    qint64 totalOptionalSize() const;
+    qint64 coreGroesseGesamt() const;
+    qint64 optionalGroesseGesamt() const;
 
 signals:
-    void modelDownloadProgress(ModelId id, qint64 received, qint64 total);
-    void modelReady(ModelId id);
-    void downloadError(ModelId id, const QString& error);
+    void modellDownloadFortschritt(ModellId id, qint64 empfangen, qint64 gesamt);
+    void modellBereit(ModellId id);
+    void downloadFehler(ModellId id, const QString& fehler);
 
 private:
-    void downloadModel(ModelId id);
-    void loadModel(ModelId id);
+    void modellHerunterladen(ModellId id);
+    void modellLaden(ModellId id);
 
-    QMap<ModelId, ModelInfo> m_models;
-    QMap<ModelId, void*> m_sessions;
+    QMap<ModellId, ModellInfo> m_modelle;
+    QMap<ModellId, void*> m_sessions;
 };
 
 } // namespace flipsicolor

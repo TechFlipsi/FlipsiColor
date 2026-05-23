@@ -1,7 +1,7 @@
 cmake_minimum_required(VERSION 3.24)
 project(FlipsiColor
     VERSION 0.1.0
-    DESCRIPTION "AI-powered Image & Video Color Correction Desktop App"
+    DESCRIPTION "KI-gestützte Bild- & Videofarbkorrektur Desktop-App"
     LANGUAGES CXX
 )
 
@@ -10,16 +10,16 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
-# ── Options ──────────────────────────────────────────────────────────────────
-option(FLIPSICOLOR_BUILD_TESTS "Build tests" ON)
-option(FLIPSICOLOR_USE_VCPKG "Use vcpkg for dependencies" OFF)
-option(FLIPSICOLOR_STATIC_LINK "Statically link libraries" OFF)
+# ── Optionen ─────────────────────────────────────────────────────────────────
+option(FLIPSICOLOR_BUILD_TESTS "Tests bauen" ON)
+option(FLIPSICOLOR_USE_VCPKG "vcpkg für Abhängigkeiten verwenden" OFF)
+option(FLIPSICOLOR_STATIC_LINK "Bibliotheken statisch verknüpfen" OFF)
 
 # ── Qt ───────────────────────────────────────────────────────────────────────
 find_package(Qt6 REQUIRED COMPONENTS Core Gui Quick QuickControls2 Widgets)
 qt_standard_project_setup(REQUIRES 6.5)
 
-# ── Dependencies ─────────────────────────────────────────────────────────────
+# ── Abhängigkeiten ───────────────────────────────────────────────────────────
 find_package(OpenCV REQUIRED COMPONENTS core imgproc photo video)
 find_package(onnxruntime REQUIRED)
 find_package(LibRaw REQUIRED)
@@ -27,13 +27,13 @@ find_package(Lensfun REQUIRED)
 find_package(FFMPEG REQUIRED COMPONENTS avcodec avformat avutil swscale swresample)
 find_package(LCMS2 REQUIRED)
 
-# ── Sources ──────────────────────────────────────────────────────────────────
+# ── Quellen ──────────────────────────────────────────────────────────────────
 add_subdirectory(src)
 
-# ── Resources ────────────────────────────────────────────────────────────────
+# ── Ressourcen ──────────────────────────────────────────────────────────────
 qt_add_resources(RESOURCES resources/resources.qrc)
 
-# ── Executable ──────────────────────────────────────────────────────────────
+# ── Ausführbare Datei ──────────────────────────────────────────────────────
 qt_add_executable(flipsicolor
     main.cpp
     ${SOURCES}
@@ -61,13 +61,13 @@ target_link_libraries(flipsicolor PRIVATE
     lcms2
 )
 
-# ── Install ──────────────────────────────────────────────────────────────────
+# ── Installation ────────────────────────────────────────────────────────────
 install(TARGETS flipsicolor
     RUNTIME DESTINATION bin
     BUNDLE DESTINATION .
 )
 
-# ── Tests ────────────────────────────────────────────────────────────────────
+# ── Tests ───────────────────────────────────────────────────────────────────
 if(FLIPSICOLOR_BUILD_TESTS)
     enable_testing()
     add_subdirectory(tests)

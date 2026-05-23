@@ -1,4 +1,4 @@
-// FlipsiColor — AI-powered Image & Video Color Correction
+// FlipsiColor — KI-gestützte Bild- & Videofarbkorrektur
 // Copyright (C) 2026 Fabian Kirchweger (TechFlipsi)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
@@ -20,7 +20,7 @@ int main(int argc, char* argv[])
     QQuickStyle::setStyle("Fusion");
 
     flipsicolor::Application flipsiApp;
-    flipsiApp.initialize();
+    flipsiApp.initialisieren();
 
     QQmlApplicationEngine engine;
     const QUrl url(u"qrc:/qml/Main.qml"_qs);

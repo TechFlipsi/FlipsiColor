@@ -1,42 +1,44 @@
-# Contributing to FlipsiColor
+# Mitwirken an FlipsiColor
 
-Thank you for your interest in contributing! Here are the guidelines.
+Vielen Dank für dein Interesse an einer Mitwirkung! Hier sind die Richtlinien.
 
-## Setup
+[🇬🇧 English](CONTRIBUTING.en.md)
 
-1. Fork the repository
-2. Clone your fork: `git clone https://github.com/YOUR_USERNAME/FlipsiColor.git`
-3. Create a feature branch: `git checkout -b feature/my-feature`
-4. Build: `cmake -B build && cmake --build build`
+## Einrichtung
 
-## Code Style
+1. Forke das Repository
+2. Klone deinen Fork: `git clone https://github.com/YOUR_USERNAME/FlipsiColor.git`
+3. Erstelle einen Feature-Branch: `git checkout -b feature/mein-feature`
+4. Bauen: `cmake -B build && cmake --build build`
 
-- **C++20** — Use modern C++ features (concepts, ranges, structured bindings where appropriate)
-- **Naming**: `PascalCase` for classes/structs, `camelCase` for methods/functions, `snake_case` for variables, `UPPER_CASE` for constants
-- **Headers**: Use `#pragma once` as include guards
-- **Smart pointers**: Prefer `std::unique_ptr` / `std::shared_ptr` over raw `new`/`delete`
-- **Qt conventions**: Signals/slots with the new syntax (`&Class::method`)
+## Code-Stil
 
-## Commit Messages
+- **C++20** — Verwende moderne C++-Features (Concepts, Ranges, Structured Bindings wo sinnvoll)
+- **Namensgebung**: `PascalCase` für Klassen/Structs, `camelCase` für Methoden/Funktionen, `snake_case` für Variablen, `UPPER_CASE` für Konstanten
+- **Header**: Verwende `#pragma once` als Include-Guard
+- **Smart Pointer**: Bevorzuge `std::unique_ptr` / `std::shared_ptr` gegenüber rohem `new`/`delete`
+- **Qt-Konventionen**: Signals/Slots mit der neuen Syntax (`&Class::method`)
 
-Format: `type(scope): description`
+## Commit-Nachrichten
 
-Types: `feat`, `fix`, `docs`, `refactor`, `test`, `ci`, `chore`
+Format: `type(scope): Beschreibung`
 
-Examples:
-- `feat(ai): add CodeFormer face restoration with fidelity weight`
-- `fix(color): correct ProPhoto RGB to sRGB conversion clipping`
-- `docs(sdp): update model selection after benchmark verification`
+Typen: `feat`, `fix`, `docs`, `refactor`, `test`, `ci`, `chore`
+
+Beispiele:
+- `feat(ai): CodeFormer Gesichtswiederherstellung mit Fidelity-Weight hinzufügen`
+- `fix(color): Clipping bei ProPhoto-RGB-zu-sRGB-Konvertierung korrigieren`
+- `docs(sdp): Modellauswahl nach Benchmark-Überprüfung aktualisieren`
 
 ## Pull Requests
 
-1. Ensure the build passes: `cmake --build build --config Release`
-2. Run tests: `ctest --test-dir build`
-3. Keep PRs focused — one feature/fix per PR
-4. Describe what changed and why
+1. Stelle sicher, dass der Build erfolgreich ist: `cmake --build build --config Release`
+2. Führe die Tests aus: `ctest --test-dir build`
+3. Halte PRs fokussiert — ein Feature/Fix pro PR
+4. Beschreibe, was geändert wurde und warum
 
 ## Issues
 
-- Use GitHub Issues for bugs and feature requests
-- Include: OS, GPU, driver version, steps to reproduce
-- Check existing issues before opening a new one
+- Verwende GitHub Issues für Bugs und Feature-Requests
+- Gib an: Betriebssystem, GPU, Treiberversion, Schritte zur Reproduktion
+- Prüfe bestehende Issues, bevor du ein neues eröffnest

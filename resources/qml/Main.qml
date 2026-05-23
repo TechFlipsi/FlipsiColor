@@ -1,4 +1,4 @@
-// FlipsiColor — Main QML
+// FlipsiColor — Haupt-QML
 // Copyright (C) 2026 Fabian Kirchweger (TechFlipsi)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
@@ -7,7 +7,7 @@ import QtQuick.Controls
 import QtQuick.Layouts
 
 ApplicationWindow {
-    id: window
+    id: fenster
     width: 1280
     height: 800
     minimumWidth: 960
@@ -15,7 +15,7 @@ ApplicationWindow {
     title: "FlipsiColor"
     color: "#1a1a2e"
 
-    // Sidebar (icons only)
+    // Seitenleiste (nur Icons)
     RowLayout {
         anchors.fill: parent
         spacing: 0
@@ -31,31 +31,31 @@ ApplicationWindow {
                 anchors.topMargin: 16
                 spacing: 16
 
-                // Image mode
+                // Bild-Modus
                 ToolButton {
                     icon.source: "qrc:/icons/image.svg"
                     icon.color: "#e94560"
-                    ToolTip.text: "Image"
+                    ToolTip.text: "Bild"
                 }
 
-                // Video mode
+                // Video-Modus
                 ToolButton {
                     icon.source: "qrc:/icons/video.svg"
                     icon.color: "#a0a0b0"
                     ToolTip.text: "Video"
                 }
 
-                // Settings
+                // Einstellungen
                 ToolButton {
                     icon.source: "qrc:/icons/settings.svg"
                     icon.color: "#a0a0b0"
-                    ToolTip.text: "Settings"
-                    onClicked: settingsDrawer.open()
+                    ToolTip.text: "Einstellungen"
+                    onClicked: einstellungenPanel.open()
                 }
             }
         }
 
-        // Main content area
+        // Hauptinhaltsbereich
         Rectangle {
             Layout.fillWidth: true
             Layout.fillHeight: true
@@ -72,7 +72,7 @@ ApplicationWindow {
     }
 
     Drawer {
-        id: settingsDrawer
+        id: einstellungenPanel
         width: 320
         height: parent.height
         edge: Qt.RightEdge
