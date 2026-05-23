@@ -35,21 +35,24 @@ ApplicationWindow {
                 ToolButton {
                     icon.source: "qrc:/icons/image.svg"
                     icon.color: "#e94560"
-                    ToolTip.text: "Bild"
+                    ToolTip.text: qsTr("Bild")
+                    ToolTip.visible: hovered
                 }
 
                 // Video-Modus
                 ToolButton {
                     icon.source: "qrc:/icons/video.svg"
                     icon.color: "#a0a0b0"
-                    ToolTip.text: "Video"
+                    ToolTip.text: qsTr("Video")
+                    ToolTip.visible: hovered
                 }
 
                 // Einstellungen
                 ToolButton {
                     icon.source: "qrc:/icons/settings.svg"
                     icon.color: "#a0a0b0"
-                    ToolTip.text: "Einstellungen"
+                    ToolTip.text: qsTr("Einstellungen")
+                    ToolTip.visible: hovered
                     onClicked: einstellungenPanel.open()
                 }
             }
@@ -76,5 +79,58 @@ ApplicationWindow {
         width: 320
         height: parent.height
         edge: Qt.RightEdge
+
+        ColumnLayout {
+            anchors.fill: parent
+            anchors.margins: 16
+            spacing: 12
+
+            Label {
+                text: qsTr("Einstellungen")
+                font.pixelSize: 20
+                font.bold: true
+                Layout.fillWidth: true
+            }
+
+            // Sprachauswahl
+            Label {
+                text: qsTr("Sprache")
+                font.pixelSize: 14
+            }
+            ComboBox {
+                id: sprachAuswahl
+                Layout.fillWidth: true
+                model: verfuegbareSprachen
+                currentIndex: verfuegbareSprachen.indexOf(aktuelleSprache)
+                onActivated: {
+                    // Sprachwechsel erfordert Neustart
+                    einstellungen.value("sprache", model[index]);
+                    neustartDialog.open();
+                }
+            }
+
+            Label {
+                text: qsTr("Thema")
+                font.pixelSize: 14
+            }
+            ComboBox {
+                Layout.fillWidth: true
+                model: [qsTr("Dunkel"), qsTr("Hell"), qsTr("System")]
+            }
+        }
+    }
+
+    Dialog {
+        id: neustartDialog
+        title: qsTr("Sprache geändert")
+        modal: true
+        anchors.centerIn: parent
+        standardButtons: Dialog.Ok | Dialog.Cancel
+
+        Label {
+            text: qsTr("Die Sprache wird nach einem Neustart wirksam.")
+        }
+
+        onAccepted: Qt.quit()
     }
 }

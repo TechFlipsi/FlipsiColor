@@ -10,13 +10,18 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
+# ── i18n (Mehrsprachigkeit) ──────────────────────────────────────────────────
+# Deutsch = Default, weitere Sprachen als .qm kompiliert
+set(FLIPSICOLOR_LANGUAGES de en es fr it pt_BR ja zh_CN ko)
+set(I18N_TS_DIR ${CMAKE_CURRENT_SOURCE_DIR}/i18n)
+
 # ── Optionen ─────────────────────────────────────────────────────────────────
 option(FLIPSICOLOR_BUILD_TESTS "Tests bauen" ON)
 option(FLIPSICOLOR_USE_VCPKG "vcpkg für Abhängigkeiten verwenden" OFF)
 option(FLIPSICOLOR_STATIC_LINK "Bibliotheken statisch verknüpfen" OFF)
 
 # ── Qt ───────────────────────────────────────────────────────────────────────
-find_package(Qt6 REQUIRED COMPONENTS Core Gui Quick QuickControls2 Widgets)
+find_package(Qt6 REQUIRED COMPONENTS Core Gui Quick QuickControls2 Widgets LinguistTools)
 qt_standard_project_setup(REQUIRES 6.5)
 
 # ── Abhängigkeiten ───────────────────────────────────────────────────────────
@@ -29,6 +34,30 @@ find_package(LCMS2 REQUIRED)
 
 # ── Quellen ──────────────────────────────────────────────────────────────────
 add_subdirectory(src)
+
+# ── i18n .qm kompilieren ────────────────────────────────────────────────────
+set(QM_DIR ${CMAKE_CURRENT_BINARY_DIR}/i18n)
+file(MAKE_DIRECTORY ${QM_DIR})
+
+foreach(LANG ${FLIPSICOLOR_LANGUAGES})
+    set(TS_FILE ${I18N_TS_DIR}/flipsicolor_${LANG}.ts)
+    set(QM_FILE ${QM_DIR}/flipsicolor_${LANG}.qm)
+    add_custom_command(
+        OUTPUT ${QM_FILE}
+        COMMAND Qt6::lrelease -compress -removeidentical ${TS_FILE} -qm ${QM_FILE}
+        DEPENDS ${TS_FILE}
+        COMMENT "Übersetzung kompilieren: ${LANG}"
+    )
+    list(APPEND QM_FILES ${QM_FILE})
+endforeach()
+
+# Benutzerdefiniertes Ziel: Alle .qm kompilieren
+add_custom_target(translations ALL DEPENDS ${QM_FILES})
+
+# .qm Dateien zum Build-Output hinzufügen (Installation als seperate Dateien)
+foreach(QM ${QM_FILES})
+    install(FILES ${QM} DESTINATION share/flipsicolor/i18n)
+endforeach()
 
 # ── Ressourcen ──────────────────────────────────────────────────────────────
 qt_add_resources(RESOURCES resources/resources.qrc)
