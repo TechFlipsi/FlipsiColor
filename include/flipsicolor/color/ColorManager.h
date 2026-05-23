@@ -1,4 +1,4 @@
-// FlipsiColor — Color Management
+// FlipsiColor — Farbmanagement
 // Copyright (C) 2026 Fabian Kirchweger (TechFlipsi)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
@@ -6,6 +6,10 @@
 
 #include <QObject>
 #include <QString>
+#include <memory>
+
+// OpenCV Vorwärtsdeklaration (vermeidet Header-Abhängigkeit)
+namespace cv { class Mat; }
 
 namespace flipsicolor {
 
@@ -16,11 +20,11 @@ class ColorManager : public QObject
 public:
     explicit ColorManager(QObject* parent = nullptr);
 
-    // Working color space = ProPhoto RGB (prevents clipping during editing)
-    static constexpr const char* WORKING_COLOR_SPACE = "ProPhoto RGB";
+    // Arbeitsfarbraum = ProPhoto RGB (verhindert Clipping bei Bearbeitung)
+    static constexpr const char* ARBEITSFARBRAUM = "ProPhoto RGB";
 
-    void initialize();
-    QString detectMonitorProfile() const;
+    void initialisieren();
+    QString monitorProfilErkennen() const;
 
 private:
     struct Impl;
@@ -34,15 +38,15 @@ class WhiteBalance : public QObject
 public:
     explicit WhiteBalance(QObject* parent = nullptr);
 
-    // Statistical methods (zero model, <1ms)
-    struct WBResult {
-        double temperature;
+    // Statistische Methoden (kein Modell, <1ms)
+    struct WBErgebnis {
+        double temperatur;
         double tint;
     };
 
-    WBResult grayWorld(const cv::Mat& image) const;
-    WBResult shadesOfGray(const cv::Mat& image, int m = 10) const;
-    WBResult autoWB(const cv::Mat& image) const; // Combines both
+    WBErgebnis grayWorld(const cv::Mat& bild) const;
+    WBErgebnis shadesOfGray(const cv::Mat& bild, int m = 10) const;
+    WBErgebnis autoWB(const cv::Mat& bild) const; // Kombiniert beide
 };
 
 } // namespace flipsicolor

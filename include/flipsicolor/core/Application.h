@@ -1,4 +1,4 @@
-// FlipsiColor — Application Core
+// FlipsiColor — App-Kern
 // Copyright (C) 2026 Fabian Kirchweger (TechFlipsi)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
@@ -12,31 +12,31 @@ namespace flipsicolor {
 class Application : public QObject
 {
     Q_OBJECT
-    Q_PROPERTY(bool gpuAvailable READ gpuAvailable NOTIFY gpuAvailableChanged)
-    Q_PROPERTY(QString gpuName READ gpuName NOTIFY gpuAvailableChanged)
-    Q_PROPERTY(int feedbackCount READ feedbackCount NOTIFY feedbackCountChanged)
+    Q_PROPERTY(bool gpuVerfuegbar READ gpuVerfuegbar NOTIFY gpuVerfuegbarChanged)
+    Q_PROPERTY(QString gpuName READ gpuName NOTIFY gpuVerfuegbarChanged)
+    Q_PROPERTY(int feedbackAnzahl READ feedbackAnzahl NOTIFY feedbackAnzahlChanged)
 
 public:
     explicit Application(QObject* parent = nullptr);
 
-    void initialize();
+    void initialisieren();
 
-    bool gpuAvailable() const { return m_gpuAvailable; }
+    bool gpuVerfuegbar() const { return m_gpuVerfuegbar; }
     QString gpuName() const { return m_gpuName; }
-    int feedbackCount() const { return m_feedbackCount; }
+    int feedbackAnzahl() const { return m_feedbackAnzahl; }
 
 signals:
-    void gpuAvailableChanged();
-    void feedbackCountChanged();
+    void gpuVerfuegbarChanged();
+    void feedbackAnzahlChanged();
 
 private:
-    void detectGPU();
-    void loadSettings();
-    void initializeAI();
+    void gpuErkennen();
+    void einstellungenLaden();
+    void kiInitialisieren();
 
-    bool m_gpuAvailable = false;
+    bool m_gpuVerfuegbar = false;
     QString m_gpuName;
-    int m_feedbackCount = 0;
+    int m_feedbackAnzahl = 0;
 };
 
 } // namespace flipsicolor

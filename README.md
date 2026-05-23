@@ -2,14 +2,16 @@
 
 # 🎨 FlipsiColor
 
-**AI-powered Image & Video Color Correction Desktop App**
+**KI-gestützte Bild- & Videofarbkorrektur Desktop-App**
 
-*Professional color grading — local, zero setup, style-learning*
+*Professionelles Color Grading — lokal, kein Setup, stil-lernend*
 
 [![C++20](https://img.shields.io/badge/C%2B%2B-20-blue.svg)](https://en.cppreference.com/w/cpp/20)
 [![Qt6](https://img.shields.io/badge/Qt-6-green.svg)](https://www.qt.io)
 [![ONNX Runtime](https://img.shields.io/badge/ONNX-Runtime-purple.svg)](https://onnxruntime.ai)
-[![License: GPL v3](https://img.shields.io/badge/License-GPLv3-blue.svg)](https://www.gnu.org/licenses/gpl-3.0)
+[![Lizenz: GPL v3](https://img.shields.io/badge/Lizenz-GPLv3-blue.svg)](https://www.gnu.org/licenses/gpl-3.0)
+
+[🇬🇧 English](README.en.md)
 
 </div>
 
@@ -17,118 +19,126 @@
 
 ## ✨ Features
 
-- **🎯 Zero Setup** — Install, start, use. No extra software, no plugin installs, no manual model downloads.
-- **🔒 Local First** — Everything runs locally. No cloud, no account, no subscription. Your photos stay on your machine.
-- **🛡️ Non-Destructive** — Original files are NEVER modified. All edits stored as parameter stacks.
-- **🤖 AI-Enhanced** — State-of-the-art models: NAFNet (denoise), Restormer (deblur), Real_HAT_GAN (upscale), CodeFormer (face), AiLUT-Transform (style).
-- **📚 Style Learning** — The AI learns YOUR editing style over time (Ask / Smart-Learn / Turbo modes).
-- **📷 Camera-Universal** — Lens correction for 500+ cameras/lenses via Lensfun. DJI, Canon, Sony, Nikon, and more.
-- **🎬 Video Support** — Full color grading pipeline with frame-consistent processing.
-- **🖥️ Cross-Platform** — Windows, macOS, Linux. One codebase.
+- **🎯 Kein Setup** — Installieren, starten, nutzen. Keine Zusatz-Software, keine Plugin-Installationen, keine manuellen Modell-Downloads.
+- **🔒 Lokal zuerst** — Alles läuft lokal. Keine Cloud, kein Account, kein Abo. Deine Fotos bleiben auf deinem Rechner.
+- **🛡️ Nicht-destruktiv** — Originaldateien werden NIE verändert. Alle Bearbeitungen als Parameter-Stacks gespeichert.
+- **🤖 KI-Verbessert** — State-of-the-Art Modelle: NAFNet (Entrauschen), Restormer (Entschärfen), Real_HAT_GAN (Hochskalieren), CodeFormer (Gesichter), AiLUT-Transform (Stil).
+- **📚 Stil-Lernen** — Die KI lernt DEINEN Bearbeitungsstil mit der Zeit (Ask / Smart-Learn / Turbo Modus).
+- **📷 Kamera-Universell** — Objektivkorrektur für 500+ Kameras/Objektive via Lensfun. DJI, Canon, Sony, Nikon und mehr.
+- **🎬 Video-Unterstützung** — Komplette Color-Grading-Pipeline mit Frame-konsistenter Verarbeitung.
+- **🖥️ Plattformübergreifend** — Windows, macOS, Linux. Eine Codebasis.
 
-## 🤖 AI Models
+## 🤖 KI-Modelle
 
-| Task | Model | Size | Quality | Speed |
-|------|-------|------|---------|-------|
-| White Balance | Gray World + Shades of Gray | 0 MB (code) | Good | <1 ms |
-| Denoise | NAFNet (SIDD SOTA) | 17 MB | Excellent | ~20 ms |
-| Deblur / Multi-Task | Restormer-light | 24 MB | Very Good | ~50 ms |
-| Upscale (Best) | Real_HAT_GAN_SRx4 | 120 MB | Excellent | ~200 ms |
-| Upscale (Fast) | Real-ESRGAN | 64 MB | Good | ~150 ms |
-| Face Restoration | CodeFormer (adjustable fidelity) | 350 MB | Excellent | ~60 ms |
-| Color Style | AiLUT-Transform (Image-Adaptive) | 8 MB | Very Good | ~1 ms |
-| Scene Classification | EfficientNet-Lite0 | 4.6 MB | Good | ~5 ms |
+| Aufgabe | Modell | Größe | Qualität | Geschwindigkeit |
+|---------|--------|-------|----------|-----------------|
+| Weißabgleich | Gray World + Shades of Gray | 0 MB (Code) | Gut | <1 ms |
+| Entrauschen | NAFNet (SIDD SOTA) | 17 MB | Hervorragend | ~20 ms |
+| Entschärfen / Multi-Task | Restormer-light | 24 MB | Sehr gut | ~50 ms |
+| Hochskalieren (Beste) | Real_HAT_GAN_SRx4 | 120 MB | Hervorragend | ~200 ms |
+| Hochskalieren (Schnell) | Real-ESRGAN | 64 MB | Gut | ~150 ms |
+| Gesichtswiederherstellung | CodeFormer (einstellbare Fidelity) | 350 MB | Hervorragend | ~60 ms |
+| Farbstil | AiLUT-Transform (Bild-Adaptiv) | 8 MB | Sehr gut | ~1 ms |
+| Szenen-Klassifizierung | EfficientNet-Lite0 | 4,6 MB | Gut | ~5 ms |
 
-**Core download: ~54 MB** · Optional (lazy-load): up to ~534 MB
+**Core-Download: ~54 MB** · Optional (Lazy-Load): bis zu ~534 MB
 
-## 🎮 Three Modes
+## 🎮 Drei Modi
 
-| Mode | Interaction | Best For |
-|------|-------------|----------|
-| **Ask** 👍👎 | Swipe-style feedback on every image | Learning your style |
-| **Smart-Learn** 🧠 | AI learns silently from your edits | Building style without effort |
-| **Turbo** ⚡ | Zero interaction, folder in → export out | Bulk processing |
+| Modus | Interaktion | Am besten für |
+|-------|-------------|---------------|
+| **Ask** 👍👎 | Swipe-Feedback bei jedem Bild | Stil lernen |
+| **Smart-Learn** 🧠 | KI lernt stillschweigend aus deinen Bearbeitungen | Stil aufbauen ohne Aufwand |
+| **Turbo** ⚡ | Keine Interaktion, Ordner rein → Export raus | Massenverarbeitung |
 
-## 🎚️ Three Intensity Levels
+## 🎚️ Drei Intensitätsstufen
 
-| Level | Behavior |
-|-------|----------|
-| **Leicht** | Minimal corrections — white balance, lens correction only |
-| **Mittel** | Professional touch — full pipeline, balanced (default) |
-| **Stark** | AI takes over — style LUT, scene-adaptive, maximum enhancement |
+| Stufe | Verhalten |
+|-------|-----------|
+| **Leicht** | Minimale Korrekturen — Weißabgleich, Objektivkorrektur nur |
+| **Mittel** | Professioneller Touch — volle Pipeline, ausgewogen (Standard) |
+| **Stark** | KI übernimmt — Stil-LUT, szenen-adaptiv, maximale Verbesserung |
 
-## 🛠️ Tech Stack
+### CodeFormer Fidelity-Weight → FlipsiColor Intensität
 
-| Component | Technology |
-|-----------|-----------|
-| Language | C++20 |
-| UI Framework | Qt6 + QML |
-| AI Runtime | ONNX Runtime (CUDA / DirectML / Metal) |
-| Image Processing | OpenCV |
-| RAW Decoding | LibRaw |
-| Lens Correction | Lensfun |
-| Video Codecs | FFmpeg (HW-accelerated) |
-| Color Management | LCMS2 (ICC profiles, ProPhoto RGB working space) |
-| Build System | CMake |
+| Intensität | Fidelity Weight | Wirkung |
+|------------|----------------|---------|
+| Leicht | 0,7 | Leichte Berührung, mehr Original erhalten |
+| Mittel | 0,5 | Ausgewogen (Standard) |
+| Stark | 0,3 | Maximale Wiederherstellung, generative Priors dominieren |
 
-## 💻 Minimum Hardware
+## 🛠️ Tech-Stack
 
-| Component | Images Only | Images + Video |
-|-----------|-------------|----------------|
+| Komponente | Technologie |
+|------------|-------------|
+| Sprache | C++20 |
+| UI-Framework | Qt6 + QML |
+| KI-Runtime | ONNX Runtime (CUDA / DirectML / Metal) |
+| Bildverarbeitung | OpenCV |
+| RAW-Dekodierung | LibRaw |
+| Objektivkorrektur | Lensfun |
+| Video-Codecs | FFmpeg (HW-beschleunigt) |
+| Farbmanagement | LCMS2 (ICC-Profile, ProPhoto RGB Arbeitsfarbraum) |
+| Build-System | CMake |
+
+## 💻 Mindest-Hardware
+
+| Komponente | Nur Bilder | Bilder + Video |
+|------------|------------|----------------|
 | GPU | Dedicated 4 GB VRAM | RTX 3060 / RX 6600 XT |
-| CPU | 4-core x64 | 8+ core |
+| CPU | 4-Kern x64 | 8+ Kerne |
 | RAM | 8 GB | 16+ GB |
-| Storage | 2 GB | 10+ GB |
+| Speicher | 2 GB | 10+ GB |
 
-> ⚠️ Intel UHD/Iris: KI features disabled (warning on startup). Intel Arc: experimental.
+> ⚠️ Intel UHD/Iris: KI-Funktionen deaktiviert (Warnung beim Start). Intel Arc: experimentell.
 
-## 📁 Project Structure
+## 📁 Projektstruktur
 
 ```
 FlipsiColor/
-├── src/                    # Source code
-│   ├── core/               # Application core, pipeline
-│   ├── ai/                 # ONNX model management, inference
-│   ├── color/              # Color management (LCMS2, LUT)
-│   ├── image/              # Image processing pipeline
-│   ├── video/              # Video processing pipeline
-│   ├── ui/                 # QML UI components
-│   └── utils/              # Utilities, logging
-├── include/flipsicolor/    # Public headers
-├── resources/              # QML, icons, model manifests
-├── docs/                   # Concept, SDP, research
-├── tests/                  # Unit + integration tests
-├── cmake/                  # CMake modules
+├── src/                    # Quellcode
+│   ├── core/               # App-Kern, Pipeline
+│   ├── ai/                  # ONNX-Modellverwaltung, Inferenz
+│   ├── color/               # Farbmanagement (LCMS2, LUT)
+│   ├── image/               # Bildverarbeitungs-Pipeline
+│   ├── video/               # Videverarbeitungs-Pipeline
+│   ├── ui/                  # QML-UI-Komponenten
+│   └── utils/               # Hilfsprogramme, Protokollierung
+├── include/flipsicolor/    # Öffentliche Header
+├── resources/              # QML, Icons, Modell-Manifeste
+├── docs/                   # Konzept, SDP, Research
+├── tests/                  # Unit- + Integrationstests
+├── cmake/                  # CMake-Module
 └── .github/workflows/      # CI/CD
 ```
 
-## 📖 Documentation
+## 📖 Dokumentation
 
-- [Concept Document v1.2](docs/concept/flipsicolor-concept.md) — Full feature specification
-- [Software Development Plan](docs/SDP.md) — Architecture, modules, phases
-- [Research](docs/research/) — AI model analysis, photo/video pipeline research
+- [Konzept-Dokument v1.2](docs/concept/flipsicolor-concept.md) — Vollständige Feature-Spezifikation
+- [Software-Entwicklungsplan](docs/SDP.md) — Architektur, Module, Phasen
+- [Research](docs/research/) — KI-Modell-Analyse, Foto-/Video-Pipeline-Research
 
 ## 🚀 Roadmap
 
-| Phase | Goal | Duration |
-|-------|------|----------|
-| 1 | Core pipeline + UI skeleton | 4 weeks |
-| 2 | AI integration (denoise, deblur, style) | 3 weeks |
-| 3 | Learning system (3 modes, 2-round) | 3 weeks |
-| 4 | Video processing | 4 weeks |
-| 5 | Polish + optimization | 3 weeks |
-| 6 | Release (installer, docs) | 3 weeks |
+| Phase | Ziel | Dauer |
+|-------|------|-------|
+| 1 | Core-Pipeline + UI-Skelett | 4 Wochen |
+| 2 | KI-Integration (Entrauschen, Entschärfen, Stil) | 3 Wochen |
+| 3 | Lern-System (3 Modi, 2 Runden) | 3 Wochen |
+| 4 | Video-Verarbeitung | 4 Wochen |
+| 5 | Feinschliff + Optimierung | 3 Wochen |
+| 6 | Release (Installer, Doku) | 3 Wochen |
 
-## 📄 License
+## 📄 Lizenz
 
-This project is licensed under the **GNU General Public License v3.0** — see [LICENSE](LICENSE) for details.
+Dieses Projekt steht unter der **GNU General Public License v3.0** — siehe [LICENSE](LICENSE) für Details.
 
-Qt6 is used under **LGPLv3** (dynamic linking). ONNX Runtime is MIT licensed.
+Qt6 wird unter **LGPLv3** (dynamische Verknüpfung) verwendet. ONNX Runtime ist MIT-lizenziert.
 
 ---
 
 <div align="center">
 
-*Part of the Flipsi family: [FlipsiInk](https://github.com/TechFlipsi/FlipsiInk) · [FlipsiSort](https://github.com/TechFlipsi/FlipsiSort) · **FlipsiColor***
+*Teil der Flipsi-Familie: [FlipsiInk](https://github.com/TechFlipsi/FlipsiInk) · [FlipsiSort](https://github.com/TechFlipsi/FlipsiSort) · **FlipsiColor***
 
 </div>

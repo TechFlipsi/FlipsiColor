@@ -1,24 +1,24 @@
-# FlipsiColor — Source tree
+# FlipsiColor — Quell-Baum
 
 set(SOURCES
-    # Core
+    # Kern
     src/core/Application.cpp
     src/core/Pipeline.cpp
     src/core/Project.cpp
     src/core/Settings.cpp
 
-    # AI
+    # KI
     src/ai/ModelManager.cpp
     src/ai/InferenceEngine.cpp
     src/ai/ModelDownloader.cpp
 
-    # Color
+    # Farbe
     src/color/ColorManager.cpp
     src/color/LensCorrector.cpp
     src/color/StyleLUT.cpp
     src/color/WhiteBalance.cpp
 
-    # Image
+    # Bild
     src/image/ImagePipeline.cpp
     src/image/RawDecoder.cpp
     src/image/ExifReader.cpp
@@ -35,7 +35,7 @@ set(SOURCES
     src/ui/SettingsPanel.cpp
     src/ui/LearningUI.cpp
 
-    # Utils
+    # Hilfsprogramme
     src/utils/Logger.cpp
     src/utils/GPUInfo.cpp
     src/utils/FileSystem.cpp
