@@ -1,0 +1,63 @@
+# C++ / Qt / CMake
+build/
+cmake-build-*/
+*.user
+*.user.*
+CMakeLists.txt.user
+CMakeCache.txt
+CMakeFiles/
+cmake_install.cmake
+Makefile
+*.cmake.in
+
+# Compiled
+*.o
+*.obj
+*.so
+*.so.*
+*.dylib
+*.dll
+*.a
+*.lib
+*.exe
+*.out
+*.app
+
+# Qt
+moc_*.cpp
+ui_*.h
+qrc_*.cpp
+*.qm
+*.qrc.cxx
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+Thumbs.db
+
+# ONNX models (large, lazy-downloaded)
+resources/models/*.onnx
+
+# FlipsiColor project files (user data)
+*.flipsicolor
+*.flipsicolor-style
+
+# Logs
+*.log
+
+# OS
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Desktop.ini
+
+# Dependencies (built separately)
+vcpkg/
+conan/

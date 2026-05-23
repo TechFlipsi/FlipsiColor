@@ -1,0 +1,36 @@
+                    GNU GENERAL PUBLIC LICENSE
+                       Version 3, 29 June 2007
+
+ Copyright (C) 2026 Fabian Kirchweger (TechFlipsi)
+
+ This program is free software: you can redistribute it and/or modify
+ it under the terms of the GNU General Public License as published by
+ the Free Software Foundation, either version 3 of the License, or
+ (at your option) any later version.
+
+ This program is distributed in the hope that it will be useful,
+ but WITHOUT ANY WARRANTY; without even the implied warranty of
+ MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ GNU General Public License for more details.
+
+ You should have received a copy of the GNU General Public License
+ along with this program.  If not, see <https://www.gnu.org/licenses/>.
+
+---
+
+## Third-Party Licenses
+
+| Library | License |
+|---------|---------|
+| Qt6 | LGPLv3 |
+| ONNX Runtime | MIT |
+| OpenCV | Apache 2.0 |
+| LibRaw | LGPLv2.1 / CDDL |
+| Lensfun | LGPLv3 |
+| FFmpeg | LGPLv2.1+ (shared libs) |
+| LCMS2 | MIT |
+| NAFNet | BSD-3 (model weights) |
+| Restormer | BSD-3 (model weights) |
+| Real-ESRGAN / HAT | BSD-3 (model weights) |
+| CodeFormer | Apache 2.0 (model weights) |
+| EfficientNet | Apache 2.0 (model weights) |

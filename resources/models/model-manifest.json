@@ -1,0 +1,57 @@
+{
+  "version": "1.0",
+  "models": {
+    "nafnet": {
+      "url": "https://models.flipsicolor.com/nafnet-sidd-v1.0.onnx",
+      "size": 17825792,
+      "sha256": "abc123...",
+      "required": true,
+      "description": "NAFNet Denoise — SIDD SOTA (17MB)"
+    },
+    "restormer-light": {
+      "url": "https://models.flipsicolor.com/restormer-light-v1.0.onnx",
+      "size": 25165824,
+      "sha256": "def456...",
+      "required": true,
+      "description": "Restormer Light Multi-Task Deblur (24MB)"
+    },
+    "real-hat-gan": {
+      "url": "https://models.flipsicolor.com/real-hat-gan-srx4-v1.0.onnx",
+      "size": 125829120,
+      "sha256": "hat123...",
+      "required": false,
+      "description": "Real_HAT_GAN_SRx4 Best Quality Upscale — CVPR 2023 (120MB)"
+    },
+    "real-esrgan": {
+      "url": "https://models.flipsicolor.com/real-esrgan-x4-v1.0.onnx",
+      "size": 67108864,
+      "sha256": "ghi789...",
+      "required": false,
+      "description": "Real-ESRGAN Fast Upscale (64MB)"
+    },
+    "codeformer": {
+      "url": "https://models.flipsicolor.com/codeformer-v1.0.onnx",
+      "size": 367001600,
+      "sha256": "cfo456...",
+      "required": false,
+      "description": "CodeFormer Face Restoration with Adjustable Fidelity Weight — NeurIPS 2022 (350MB)"
+    },
+    "ailut-transform": {
+      "url": "https://models.flipsicolor.com/ailut-transform-v1.0.onnx",
+      "size": 8388608,
+      "sha256": "mno345...",
+      "required": true,
+      "description": "AiLUT-Transform Image-Adaptive Style Learning — SOTA 2026 (8MB)"
+    },
+    "efficientnet-lite0": {
+      "url": "https://models.flipsicolor.com/efficientnet-lite0-places365-v1.0.onnx",
+      "size": 4816896,
+      "sha256": "pqr789...",
+      "required": true,
+      "description": "EfficientNet-Lite0 Scene Classification (4.6MB)"
+    }
+  },
+  "core_size_mb": 54,
+  "optional_size_mb": 534,
+  "total_size_mb": 588
+}
