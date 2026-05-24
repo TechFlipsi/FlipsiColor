@@ -10,6 +10,9 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
+# ── CMake Module Path (FindLibRaw, FindLensfun, FindLibExif etc.) ──────────
+list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/cmake")
+
 # ── i18n (Mehrsprachigkeit) ──────────────────────────────────────────────────
 set(FLIPSICOLOR_LANGUAGES de en es fr it pt_BR ja)
 set(I18N_TS_DIR ${CMAKE_CURRENT_SOURCE_DIR}/i18n)
