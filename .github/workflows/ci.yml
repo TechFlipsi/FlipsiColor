@@ -72,6 +72,10 @@ jobs:
 
   build-windows:
     runs-on: windows-2022
+    permissions:
+      contents: write
+      actions: write
+      packages: write
     steps:
       - uses: actions/checkout@v4
 
@@ -105,6 +109,8 @@ jobs:
       - name: vcpkg Abhängigkeiten installieren
         shell: pwsh
         run: C:\vcpkg\vcpkg install --triplet x64-windows
+        env:
+          VCPKG_BINARY_SOURCES: "clear;x-gha,readwrite"
 
       - name: FFMPEG pre-built herunterladen
         shell: pwsh
@@ -126,11 +132,19 @@ jobs:
           Expand-Archive -Path onnxruntime.zip -DestinationPath C:\onnxruntime -Force
           echo "ONNXRUNTIME_DIR=C:\onnxruntime\onnxruntime-win-x64-1.20.0" >> $env:GITHUB_ENV
 
+      - name: OpenCV pre-built herunterladen
+        shell: pwsh
+        run: |
+          $url = "https://github.com/opencv/opencv/releases/download/4.10.0/opencv-4.10.0-windows.exe"
+          Invoke-WebRequest -Uri $url -OutFile opencv.exe -MaximumRetryCount 3
+          7z x opencv.exe -oC:\opencv -y
+          echo "OpenCV_ROOT=C:\opencv\build" >> $env:GITHUB_ENV
+
       - name: Konfigurieren
         shell: pwsh
         run: cmake -B build -DCMAKE_BUILD_TYPE=Release -DFLIPSICOLOR_BUILD_TESTS=OFF -DCMAKE_TOOLCHAIN_FILE=C:\vcpkg\scripts\buildsystems\vcpkg.cmake
         env:
-          CMAKE_PREFIX_PATH: "${{ steps.install-qt.outputs.Qt_Path_Dir }};${{ env.FFMPEG_DIR }};${{ env.ONNXRUNTIME_DIR }}"
+          CMAKE_PREFIX_PATH: "${{ steps.install-qt.outputs.Qt_Path_Dir }};${{ env.FFMPEG_DIR }};${{ env.ONNXRUNTIME_DIR }};${{ env.OpenCV_ROOT }}"
           FFMPEG_INCLUDE_DIRS: "${{ env.FFMPEG_INCLUDE }}"
           FFMPEG_LIBRARIES: "avcodec.lib;avformat.lib;avutil.lib;swscale.lib;swresample.lib"
           FFMPEG_LIBRARY_DIR: '${{ env.FFMPEG_LIB }}'
@@ -165,6 +179,11 @@ jobs:
           $ortDll = "${{ env.ONNXRUNTIME_DIR }}\lib\onnxruntime.dll"
           if (Test-Path $ortDll) {
             Copy-Item $ortDll -Destination ".\Release\" -ErrorAction SilentlyContinue
+          }
+          # OpenCV DLLs
+          $ocvDlls = "${{ env.OpenCV_ROOT }}\x64\vc17\bin"
+          if (Test-Path $ocvDlls) {
+            Get-ChildItem "$ocvDlls\opencv_*.dll" | Copy-Item -Destination ".\Release\" -ErrorAction SilentlyContinue
           }
 
       - name: NSIS-Installer bauen
@@ -211,7 +230,7 @@ jobs:
           # macdeployqt: Qt-Libs ins App Bundle kopieren
           APP_BUNDLE=$(find . -name "flipsicolor.app" -type d | head -1)
           if [ -n "$APP_BUNDLE" ]; then
-            $GITHUB_WORKSPACE/../Qt/*/macos/bin/macdeployqt "$APP_BUNDLE" -verbose=2 || true
+            $GITHUB_WORKSPACE/../Qt/*/macos/bin/macdeployqt "$APP_BUNDLE" -verbose=2
             echo "App Bundle erstellt: $APP_BUNDLE"
           else
             echo "Kein .app Bundle gefunden — erstelle manuell"
@@ -220,7 +239,7 @@ jobs:
       - name: DMG erstellen
         working-directory: build
         run: |
-          cpack -G DragNDrop || true
+          cpack -G DragNDrop || echo "CPack DragNDrop fehlgeschlagen, versuche manuelles DMG"
           # Fallback: manuelles DMG falls CPack fehlschlägt
           if [ ! -f *.dmg ]; then
             APP_BUNDLE=$(find . -name "flipsicolor.app" -type d | head -1)
