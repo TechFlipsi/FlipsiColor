@@ -160,29 +160,35 @@ if(NOT OpenCV_FOUND)
     if(PKG_CONFIG_FOUND)
         pkg_check_modules(OpenCV QUIET IMPORTED_TARGET opencv4)
         if(OpenCV_FOUND)
-            # Create imported targets aliasing PkgConfig targets
-            set(_OpenCV_PC_MODULES opencv_core opencv_imgproc opencv_imgcodecs opencv_photo opencv_video)
-            foreach(_pc_mod ${_OpenCV_PC_MODULES})
-                string(REPLACE "opencv_" "" _mod_name "${_pc_mod}")
-                # Capitalize first letter for target naming: core → Core, imgproc → Imgproc
-                string(SUBSTRING "${_mod_name}" 0 1 _first)
-                string(TOUPPER "${_first}" _first_upper)
-                string(LENGTH "${_mod_name}" _len)
-                if(_len GREATER 1)
-                    math(EXPR _rest_start 1)
-                    string(SUBSTRING "${_mod_name}" ${_rest_start} -1 _rest)
-                    string(TOLOWER "${_rest}" _rest_lower)
-                    set(_target_name "${_first_upper}${_rest_lower}")
-                else()
-                    set(_target_name "${_first_upper}")
-                endif()
+            # pkg_check_modules(IMPORTED_TARGET) creates PkgConfig::OpenCV (prefix-based
+            # name, NOT PkgConfig::opencv4).  The CMake error "target PkgConfig::opencv4
+            # was not found" was caused by referencing the wrong name.  We now use the raw
+            # link flags instead of the target reference.
+            set(_OpenCV_INCLUDE_DIRS "${OpenCV_INCLUDE_DIRS}")
+            set(_OpenCV_LDFLAGS      "${OpenCV_LDFLAGS}")
+            set(_OpenCV_LDFLAGS_OTHER "${OpenCV_LDFLAGS_OTHER}")
+
+            # Explicit mapping: internal module name → exported target name.
+            # Must match the names used in CMakeLists.txt target_link_libraries.
+            set(_OpenCV_MODULE_MAP
+                "core:Core"
+                "imgproc:ImgProc"
+                "imgcodecs:ImgCodecs"
+                "photo:Photo"
+                "video:Video"
+            )
+
+            foreach(_entry ${_OpenCV_MODULE_MAP})
+                string(REGEX REPLACE ":.*$" "" _mod "${_entry}")
+                string(REGEX REPLACE "^.*:" "" _target_name "${_entry}")
+
                 if(NOT TARGET OpenCV::${_target_name})
-                    # PkgConfig::opencv4 is a single monolithic target;
-                    # individual PkgConfig::opencv_* targets do NOT exist.
-                    # Create INTERFACE IMPORTED library that links to the whole opencv4.
                     add_library(OpenCV::${_target_name} INTERFACE IMPORTED)
+                    # Use raw link libraries from pkg-config — avoids referencing
+                    # the PkgConfig target which may not be visible.
                     set_target_properties(OpenCV::${_target_name} PROPERTIES
-                        INTERFACE_LINK_LIBRARIES "PkgConfig::opencv4"
+                        INTERFACE_INCLUDE_DIRECTORIES "${_OpenCV_INCLUDE_DIRS}"
+                        INTERFACE_LINK_LIBRARIES "${_OpenCV_LDFLAGS};${_OpenCV_LDFLAGS_OTHER}"
                     )
                 endif()
             endforeach()
