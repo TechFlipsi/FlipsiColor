@@ -5,132 +5,110 @@
 import QtQuick
 import QtQuick.Controls
 import QtQuick.Layouts
+import "."
 
 ApplicationWindow {
     id: fenster
-    width: 1280
-    height: 800
+    width: 1440
+    height: 900
     minimumWidth: 960
     minimumHeight: 600
     title: "FlipsiColor"
-    color: "#1a1a2e"
+    color: AppTheme.hintergrundPrimar
+    flags: Qt.Window | Qt.WindowMinMaxButtonsHint
 
-    // Seitenleiste (nur Icons)
+    // 3-Panel Layout wie DaVinci Resolve
     RowLayout {
         anchors.fill: parent
         spacing: 0
 
-        Rectangle {
-            Layout.preferredWidth: 64
+        // Linke Seitenleiste (Werkzeuge)
+        Sidebar {
+            Layout.preferredWidth: 48
             Layout.fillHeight: true
-            color: "#16213e"
-
-            Column {
-                anchors.horizontalCenter: parent.horizontalCenter
-                anchors.top: parent.top
-                anchors.topMargin: 16
-                spacing: 16
-
-                // Bild-Modus
-                ToolButton {
-                    icon.source: "qrc:/icons/image.svg"
-                    icon.color: "#e94560"
-                    ToolTip.text: qsTr("Bild")
-                    ToolTip.visible: hovered
-                }
-
-                // Video-Modus
-                ToolButton {
-                    icon.source: "qrc:/icons/video.svg"
-                    icon.color: "#a0a0b0"
-                    ToolTip.text: qsTr("Video")
-                    ToolTip.visible: hovered
-                }
-
-                // Einstellungen
-                ToolButton {
-                    icon.source: "qrc:/icons/settings.svg"
-                    icon.color: "#a0a0b0"
-                    ToolTip.text: qsTr("Einstellungen")
-                    ToolTip.visible: hovered
-                    onClicked: einstellungenPanel.open()
-                }
-            }
+            onModusGeaendert: ajustPanel.aktuellerModus = modus
+            onEinstellungenAnfordern: einstellungenDialog.open()
         }
 
-        // Hauptinhaltsbereich
-        Rectangle {
+        // Mitte: Bild/Video-Anzeige
+        CanvasArea {
             Layout.fillWidth: true
             Layout.fillHeight: true
-            color: "#1a1a2e"
+        }
 
-            Label {
-                anchors.centerIn: parent
-                text: "FlipsiColor v0.1.0"
-                font.pixelSize: 32
-                font.bold: true
-                color: "#e94560"
-            }
+        // Rechts: Einstellungs-Panel
+        AdjustPanel {
+            id: ajustPanel
+            Layout.preferredWidth: 320
+            Layout.fillHeight: true
         }
     }
 
-    Drawer {
-        id: einstellungenPanel
-        width: 320
-        height: parent.height
-        edge: Qt.RightEdge
+    // Statusleiste unten
+    footer: Rectangle {
+        height: 28
+        color: AppTheme.hintergrundSekundaer
+        Layout.fillWidth: true
 
-        ColumnLayout {
+        RowLayout {
             anchors.fill: parent
-            anchors.margins: 16
-            spacing: 12
+            anchors.leftMargin: 12
+            anchors.rightMargin: 12
+            spacing: 16
 
             Label {
-                text: qsTr("Einstellungen")
-                font.pixelSize: 20
-                font.bold: true
+                text: qsTr("Bereit")
+                font.pixelSize: 11
+                color: AppTheme.textSekundaer
                 Layout.fillWidth: true
             }
 
-            // Sprachauswahl
             Label {
-                text: qsTr("Sprache")
-                font.pixelSize: 14
-            }
-            ComboBox {
-                id: sprachAuswahl
-                Layout.fillWidth: true
-                model: verfuegbareSprachen
-                currentIndex: verfuegbareSprachen.indexOf(aktuelleSprache)
-                onActivated: {
-                    // Sprachwechsel erfordert Neustart
-                    einstellungen.value("sprache", model[index]);
-                    neustartDialog.open();
-                }
+                text: "GPU: —"
+                font.pixelSize: 11
+                font.family: "JetBrains Mono"
+                color: AppTheme.textSekundaer
             }
 
             Label {
-                text: qsTr("Thema")
-                font.pixelSize: 14
-            }
-            ComboBox {
-                Layout.fillWidth: true
-                model: [qsTr("Dunkel"), qsTr("Hell"), qsTr("System")]
+                text: "v0.1.0"
+                font.pixelSize: 11
+                font.family: "JetBrains Mono"
+                color: AppTheme.textTertiar
             }
         }
     }
 
-    Dialog {
-        id: neustartDialog
-        title: qsTr("Sprache geändert")
-        modal: true
-        anchors.centerIn: parent
-        standardButtons: Dialog.Ok | Dialog.Cancel
+    // Export-Dialog
+    ExportDialog {
+        id: exportDialog
+    }
 
-        Label {
-            text: qsTr("Die Sprache wird nach einem Neustart wirksam.")
-        }
+    // Einstellungen-Dialog
+    SettingsPanel {
+        id: einstellungenDialog
+    }
 
-        onAccepted: Qt.quit()
+    // Erststart-Assistent
+    FirstStartWizard {
+        id: erststartAssistent
+    }
+
+    // Tastaturkürzel
+    Shortcut {
+        sequence: "Ctrl+O"
+        onActivated: /* bildOeffnen() */ {}
+    }
+    Shortcut {
+        sequence: "Ctrl+E"
+        onActivated: exportDialog.open()
+    }
+    Shortcut {
+        sequence: "Ctrl+,"
+        onActivated: einstellungenDialog.open()
+    }
+    Shortcut {
+        sequence: "F11"
+        onActivated: fenster.visibility = fenster.visibility === Window.FullScreen ? Window.Windowed : Window.FullScreen
     }
 }
