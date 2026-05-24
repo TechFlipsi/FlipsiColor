@@ -160,10 +160,16 @@ if(NOT OpenCV_FOUND)
     if(PKG_CONFIG_FOUND)
         pkg_check_modules(OpenCV QUIET IMPORTED_TARGET opencv4)
         if(OpenCV_FOUND)
-            # pkg_check_modules(OpenUV QUIET IMPORTED_TARGET opencv4) creates
-            # the PkgConfig target as PkgConfig::OpenCV — named after the PREFIX
-            # (first argument), NOT after the module name (opencv4).
+            # pkg_check_modules(OpenCV QUIET IMPORTED_TARGET opencv4) creates
+            # target PkgConfig::OpenCV (prefix-based name, NOT opencv4).
             #
+            # We create INTERFACE IMPORTED targets per module that link to
+            # PkgConfig::OpenCV AND explicitly set INTERFACE_INCLUDE_DIRECTORIES.
+            # The explicit include dirs are necessary because CMake sometimes
+            # fails to propagate include directories from INTERFACE IMPORTED
+            # targets through other INTERFACE IMPORTED targets.
+            set(_OpenCV_INCLUDE_DIRS "${OpenCV_INCLUDE_DIRS}")
+
             # Explicit mapping: internal module name → exported target name.
             # Must match the names used in CMakeLists.txt target_link_libraries.
             set(_OpenCV_MODULE_MAP
@@ -180,11 +186,8 @@ if(NOT OpenCV_FOUND)
 
                 if(NOT TARGET OpenCV::${_target_name})
                     add_library(OpenCV::${_target_name} INTERFACE IMPORTED)
-                    # Link to PkgConfig::OpenCV which brings in all libraries,
-                    # include directories and link flags in one target.
-                    # NOTE: The target is PkgConfig::OpenUV (prefix-based),
-                    # NOT PkgConfig::opencv4 (module-name-based).
                     set_target_properties(OpenCV::${_target_name} PROPERTIES
+                        INTERFACE_INCLUDE_DIRECTORIES "${_OpenCV_INCLUDE_DIRS}"
                         INTERFACE_LINK_LIBRARIES "PkgConfig::OpenCV"
                     )
                 endif()
