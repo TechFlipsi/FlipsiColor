@@ -50,11 +50,4 @@ void StyleLUT::feedbackAufzeichnen(const TrainingsPaar& paar, bool positiv)
     }
 }
 
-int StyleLUT::lernRunde() const
-{
-    if (m_feedbackAnzahl < 60) return 1;
-    if (m_feedbackAnzahl < 120) return 2;
-    return 3;
-}
-
 } // namespace flipsicolor

@@ -5,8 +5,8 @@
 #include <flipsicolor/color/LensCorrector.h>
 #include <lensfun.h>
 #include <QDebug>
-#include <opencv2/core/core.hpp>
-#include <opencv2/imgproc/imgproc.hpp>
+#include <opencv2/core.hpp>
+#include <opencv2/imgproc.hpp>
 
 namespace flipsicolor {
 
@@ -62,9 +62,12 @@ bool LensCorrector::objektivSetzen(const QString& hersteller, const QString& mod
 {
     if (!m_impl->db) return false;
 
-    const lfLens** objektive = lf_db_find_lenses(m_impl->db, m_impl->kamera,
-        hersteller.toUtf8().constData(),
-        modell.toUtf8().constData());
+    // lf_db_find_lenses braucht ein lfLens-Objekt als Such-Vorlage
+    lfLens suchObjektiv;
+    suchObjektiv.Maker = hersteller.toUtf8().constData();
+    suchObjektiv.Model = modell.toUtf8().constData();
+
+    const lfLens** objektive = lf_db_find_lenses(m_impl->db, &suchObjektiv, 0);
 
     if (objektive && objektive[0]) {
         m_impl->objektiv = objektive[0];
@@ -82,12 +85,14 @@ cv::Mat LensCorrector::korrigieren(const cv::Mat& bild, float brennweite, float 
         return bild.clone();
 
     // Lensfun Korrektur-Modifikation erstellen (C++ API)
-    // Der Konstruktor nimmt: lens, crop-Faktor, Breite, Höhe
-    lfModifier mod(m_impl->objektiv, 1.0f, bild.cols, bild.rows);
+    // Konstruktor: (lens, crop, width, height)
+    float crop = m_impl->kamera ? m_impl->kamera->CropFactor : 1.0f;
+    lfModifier mod(m_impl->objektiv, crop, bild.cols, bild.rows);
 
-    // Korrektur-Typen aktivieren
-    mod.Initialize(m_impl->objektiv, LF_MODIFY_DISTORTION | LF_MODIFY_VIGNETTING | LF_MODIFY_TCA,
-                   brennweite, blende / 1000.0f, 1.0f, 0.0f, LF_PF_U16, false);
+    // Korrektur-Typen aktivieren via Initialize
+    // Signatur: (lens, pixelFormat, focal, aperture, distance, scale, targeom, flags, reverse)
+    mod.Initialize(m_impl->objektiv, LF_PF_U16, brennweite, blende, 1.0f, 0.0f,
+                   LF_RECTILINEAR, LF_MODIFY_DISTORTION | LF_MODIFY_VIGNETTING | LF_MODIFY_TCA, false);
 
     // Rückwärts-Abbildung generieren
     // TODO: Vollständige Implementierung mit cv::remap

@@ -5,7 +5,7 @@
 #include <flipsicolor/image/RawDecoder.h>
 #include <libraw/libraw.h>
 #include <QDebug>
-#include <opencv2/core/core.hpp>
+#include <opencv2/core.hpp>
 
 namespace flipsicolor {
 
@@ -36,4 +36,32 @@ bool RawDecoder::laden(const QString& pfad)
     }
 
     int ergebnis = libraw_open_file(m_impl->rawData, pfad.toUtf8().constData());
-    if (erg...[truncated]
+    if (ergebnis != LIBRAW_SUCCESS) {
+        qWarning() << "LibRaw Fehler beim Öffnen:" << libraw_strerror(ergebnis);
+        libraw_close(m_impl->rawData);
+        m_impl->rawData = nullptr;
+        return false;
+    }
+
+    ergebnis = libraw_unpack(m_impl->rawData);
+    if (ergebnis != LIBRAW_SUCCESS) {
+        qWarning() << "LibRaw Fehler beim Entpacken:" << libraw_strerror(ergebnis);
+        libraw_close(m_impl->rawData);
+        m_impl->rawData = nullptr;
+        return false;
+    }
+
+    qDebug() << "RAW-Datei geladen:" << pfad;
+    emit geladen(pfad);
+    return true;
+}
+
+void RawDecoder::schliessen()
+{
+    if (m_impl->rawData) {
+        libraw_close(m_impl->rawData);
+        m_impl->rawData = nullptr;
+    }
+}
+
+} // namespace flipsicolor
