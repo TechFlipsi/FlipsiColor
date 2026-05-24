@@ -20,12 +20,21 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y \
             build-essential cmake ninja-build \
-            qt6-base-dev qt6-declarative-dev qt6-tools-dev-tools qt6-linguist-tools-dev \
-            libopencv-dev libonnxruntime-dev libraw-dev \
+            qt6-base-dev qt6-declarative-dev qt6-tools-dev \
+            libopencv-dev libraw-dev \
             liblensfun-dev liblcms2-dev \
             libavcodec-dev libavformat-dev libavutil-dev libswscale-dev libswresample-dev \
             libexif-dev \
             libgl-dev libxkbcommon-dev clang-format-18
+
+      - name: ONNX Runtime installieren (nicht in Ubuntu 24.04 repos)
+        run: |
+          mkdir -p /tmp/onnxruntime && cd /tmp/onnxruntime
+          curl -sL https://github.com/microsoft/onnxruntime/releases/download/v1.20.0/onnxruntime-linux-x64-1.20.0.tgz -o ort.tgz
+          tar xzf ort.tgz
+          sudo cp -r onnxruntime-linux-x64-1.20.0/include/* /usr/local/include/
+          sudo cp -r onnxruntime-linux-x64-1.20.0/lib/* /usr/local/lib/
+          sudo ldconfig
 
       - name: Konfigurieren
         run: cmake -B build -G Ninja -DCMAKE_BUILD_TYPE=Release -DFLIPSICOLOR_BUILD_TESTS=ON
@@ -55,6 +64,7 @@ jobs:
       - uses: actions/checkout@v4
 
       - name: Qt installieren
+        id: install-qt
         uses: jurplel/install-qt-action@v4
         with:
           version: '6.7.*'
