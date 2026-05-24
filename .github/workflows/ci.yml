@@ -101,10 +101,8 @@ jobs:
           .\bootstrap-vcpkg.bat
           echo "VCPKG_ROOT=C:\vcpkg" >> $env:GITHUB_ENV
 
-      - name: vcpkg Abhängigkeiten installieren (ohne FFMPEG/ONNX)
-        run: C:\vcpkg\vcpkg install opencv4 libraw lcms libexif lensfun --triplet x64-windows
-        env:
-          VCPKG_DEFAULT_TRIPLET: x64-windows
+      - name: vcpkg Abhängigkeiten installieren
+        run: C:\vcpkg\vcpkg install --triplet x64-windows
 
       - name: FFMPEG pre-built herunterladen
         run: |
