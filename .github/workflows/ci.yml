@@ -45,7 +45,7 @@ jobs:
         run: cmake -B build -G Ninja -DCMAKE_BUILD_TYPE=Release -DFLIPSICOLOR_BUILD_TESTS=ON
 
       - name: Kompilieren
-        run: cmake --build build --config Release 2>&1 || true
+        run: cmake --build build --config Release
 
       - name: Tests ausführen
         working-directory: build
@@ -74,15 +74,22 @@ jobs:
           arch: 'win64_mingw'
           cache: true
 
+      - name: vcpkg bootstrappen
+        run: |
+          git clone https://github.com/microsoft/vcpkg.git C:\vcpkg
+          C:\vcpkg\bootstrap-vcpkg.bat
+          echo "VCPKG_ROOT=C:\vcpkg" >> $env:GITHUB_ENV
+
       - name: vcpkg Abhängigkeiten installieren
-        uses: lukka/run-vcpkg@v11
-        with:
-          vcpkgJsonGlob: 'vcpkg.json'
+        run: C:\vcpkg\vcpkg install --triplet x64-mingw-dynamic
 
       - name: Konfigurieren
-        run: cmake -B build -DCMAKE_BUILD_TYPE=Release -DFLIPSICOLOR_BUILD_TESTS=OFF
+        run: cmake -B build -G "MinGW Makefiles" -DCMAKE_BUILD_TYPE=Release -DFLIPSICOLOR_BUILD_TESTS=OFF -DCMAKE_TOOLCHAIN_FILE=C:\vcpkg\scripts\buildsystems\vcpkg.cmake
         env:
           CMAKE_PREFIX_PATH: "${{ steps.install-qt.outputs.Qt_Path_Dir }}"
+
+      - name: Kompilieren
+        run: cmake --build build --config Release
 
   build-macos:
     runs-on: macos-14
@@ -101,4 +108,4 @@ jobs:
             -DFLIPSICOLOR_BUILD_TESTS=OFF
 
       - name: Kompilieren
-        run: cmake --build build --config Release 2>&1 || true
+        run: cmake --build build --config Release
