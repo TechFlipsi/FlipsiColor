@@ -162,16 +162,9 @@ if(NOT OpenCV_FOUND)
         if(OpenCV_FOUND)
             # pkg_check_modules(OpenCV QUIET IMPORTED_TARGET opencv4) creates
             # target PkgConfig::OpenCV (prefix-based name, NOT opencv4).
-            #
-            # We create INTERFACE IMPORTED targets per module that link to
-            # PkgConfig::OpenCV AND explicitly set INTERFACE_INCLUDE_DIRECTORIES.
-            # The explicit include dirs are necessary because CMake sometimes
-            # fails to propagate include directories from INTERFACE IMPORTED
-            # targets through other INTERFACE IMPORTED targets.
-            set(_OpenCV_INCLUDE_DIRS "${OpenCV_INCLUDE_DIRS}")
-
-            # Explicit mapping: internal module name → exported target name.
-            # Must match the names used in CMakeLists.txt target_link_libraries.
+            # PkgConfig::OpenCV is a proper IMPORTED target that correctly
+            # propagates include directories and link flags.  We create ALIAS
+            # targets so that OpenCV::Core etc. resolve to it.
             set(_OpenCV_MODULE_MAP
                 "core:Core"
                 "imgproc:ImgProc"
@@ -181,15 +174,10 @@ if(NOT OpenCV_FOUND)
             )
 
             foreach(_entry ${_OpenCV_MODULE_MAP})
-                string(REGEX REPLACE ":.*$" "" _mod "${_entry}")
                 string(REGEX REPLACE "^.*:" "" _target_name "${_entry}")
 
                 if(NOT TARGET OpenCV::${_target_name})
-                    add_library(OpenCV::${_target_name} INTERFACE IMPORTED)
-                    set_target_properties(OpenCV::${_target_name} PROPERTIES
-                        INTERFACE_INCLUDE_DIRECTORIES "${_OpenCV_INCLUDE_DIRS}"
-                        INTERFACE_LINK_LIBRARIES "PkgConfig::OpenCV"
-                    )
+                    add_library(OpenCV::${_target_name} ALIAS PkgConfig::OpenCV)
                 endif()
             endforeach()
             message(STATUS "FindOpenCV: Found via pkg-config")

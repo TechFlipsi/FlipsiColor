@@ -10,56 +10,6 @@ env:
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
 
 jobs:
-  build-linux:
-    runs-on: ubuntu-24.04
-    steps:
-      - uses: actions/checkout@v4
-
-      - name: Abhängigkeiten installieren
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y \
-            build-essential cmake ninja-build pkg-config \
-            qt6-base-dev qt6-declarative-dev qt6-tools-dev \
-            libopencv-dev libraw-dev \
-            liblensfun-dev liblcms2-dev \
-            libavcodec-dev libavformat-dev libavutil-dev libswscale-dev libswresample-dev \
-            libexif-dev \
-            libgl-dev libxkbcommon-dev clang-format-18
-
-      - name: ONNX Runtime installieren (nicht in Ubuntu 24.04 repos)
-        run: |
-          mkdir -p /tmp/onnxruntime && cd /tmp/onnxruntime
-          curl -sL https://github.com/microsoft/onnxruntime/releases/download/v1.20.0/onnxruntime-linux-x64-1.20.0.tgz -o ort.tgz
-          tar xzf ort.tgz
-          sudo cp -r onnxruntime-linux-x64-1.20.0/include/* /usr/local/include/
-          sudo cp -r onnxruntime-linux-x64-1.20.0/lib/* /usr/local/lib/
-          sudo mkdir -p /usr/local/lib64
-          sudo ln -sf /usr/local/lib/libonnxruntime.so.1.20.0 /usr/local/lib64/libonnxruntime.so.1.20.0
-          sudo ln -sf /usr/local/lib/libonnxruntime.so.1.20.0 /usr/local/lib64/libonnxruntime.so
-          sudo ln -sf /usr/local/lib/libonnxruntime.so.1.20.0 /usr/local/lib64/libonnxruntime.so.1
-          sudo ldconfig
-
-      - name: Konfigurieren
-        run: cmake -B build -G Ninja -DCMAKE_BUILD_TYPE=Release -DFLIPSICOLOR_BUILD_TESTS=ON
-
-      - name: Kompilieren
-        run: cmake --build build --config Release
-
-      - name: Tests ausführen
-        working-directory: build
-        run: ctest --output-on-failure || true
-
-      - name: DEB-Paket bauen
-        working-directory: build
-        run: cpack -G DEB
-
-      - name: Artefakt hochladen (Linux .deb)
-        uses: actions/upload-artifact@v4
-        with:
-          name: FlipsiColor-Linux
-          path: build/*.deb
-
   format-check:
     runs-on: ubuntu-24.04
     steps:
@@ -205,57 +155,8 @@ jobs:
             build/*.exe
             build/*.zip
 
-  build-macos:
-    runs-on: macos-14
-    steps:
-      - uses: actions/checkout@v4
-
-      - name: Abhängigkeiten installieren
-        run: brew install qt6 opencv onnxruntime libraw little-cms2 ffmpeg libexif lensfun molten-vk pkg-config
-
-      - name: Konfigurieren
-        run: |
-          BREW_PREFIX="$(brew --prefix)"
-          cmake -B build -DCMAKE_BUILD_TYPE=Release \
-            -DCMAKE_PREFIX_PATH="${BREW_PREFIX}/qt6;${BREW_PREFIX}/opencv;${BREW_PREFIX}/onnxruntime;${BREW_PREFIX}/libraw;${BREW_PREFIX}/lensfun;${BREW_PREFIX}/little-cms2;${BREW_PREFIX}/ffmpeg;${BREW_PREFIX}/libexif" \
-            -DPKG_CONFIG_PATH="${BREW_PREFIX}/lib/pkgconfig:${BREW_PREFIX}/ffmpeg/lib/pkgconfig" \
-            -DFLIPSICOLOR_BUILD_TESTS=OFF
-
-      - name: Kompilieren
-        run: cmake --build build --config Release
-
-      - name: macOS App Bundle
-        working-directory: build
-        run: |
-          # macdeployqt: Qt-Libs ins App Bundle kopieren
-          APP_BUNDLE=$(find . -name "flipsicolor.app" -type d | head -1)
-          if [ -n "$APP_BUNDLE" ]; then
-            $GITHUB_WORKSPACE/../Qt/*/macos/bin/macdeployqt "$APP_BUNDLE" -verbose=2
-            echo "App Bundle erstellt: $APP_BUNDLE"
-          else
-            echo "Kein .app Bundle gefunden — erstelle manuell"
-          fi
-
-      - name: DMG erstellen
-        working-directory: build
-        run: |
-          cpack -G DragNDrop || echo "CPack DragNDrop fehlgeschlagen, versuche manuelles DMG"
-          # Fallback: manuelles DMG falls CPack fehlschlägt
-          if [ ! -f *.dmg ]; then
-            APP_BUNDLE=$(find . -name "flipsicolor.app" -type d | head -1)
-            if [ -n "$APP_BUNDLE" ]; then
-              hdiutil create -volname "FlipsiColor" -srcfolder "$APP_BUNDLE" -ov -format UDZO FlipsiColor-macOS.dmg
-            fi
-          fi
-
-      - name: Artefakt hochladen (macOS .dmg)
-        uses: actions/upload-artifact@v4
-        with:
-          name: FlipsiColor-macOS
-          path: build/*.dmg
-
   release:
-    needs: [build-linux, build-windows, build-macos]
+    needs: [build-windows]
     if: github.ref == 'refs/heads/main' && github.event_name == 'push'
     runs-on: ubuntu-24.04
     permissions:
@@ -271,7 +172,5 @@ jobs:
         with:
           tag_name: v0.1.0
           files: |
-            artifacts/FlipsiColor-Linux/*.deb
             artifacts/FlipsiColor-Windows/*.exe
             artifacts/FlipsiColor-Windows/*.zip
-            artifacts/FlipsiColor-macOS/*.dmg
