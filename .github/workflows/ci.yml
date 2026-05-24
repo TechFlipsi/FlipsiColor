@@ -76,7 +76,7 @@ jobs:
 
       - name: vcpkg bootstrappen
         run: |
-          git clone https://github.com/microsoft/vcpkg.git C:\vcpkg
+          git clone --depth=0 https://github.com/microsoft/vcpkg.git C:\vcpkg
           C:\vcpkg\bootstrap-vcpkg.bat
           echo "VCPKG_ROOT=C:\vcpkg" >> $env:GITHUB_ENV
 
