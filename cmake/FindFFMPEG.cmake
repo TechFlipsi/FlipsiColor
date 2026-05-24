@@ -7,7 +7,7 @@
 #
 # Find FFmpeg libraries (avcodec, avformat, avutil, swscale, swresample)
 #
-# Uses pkg-config for discovery. Falls back to manual search.
+# Uses pkg-config for discovery. Falls back to manual library search.
 #
 # Imported Targets:
 #   FFMPEG::avcodec, FFMPEG::avformat, FFMPEG::avutil,
@@ -29,12 +29,11 @@ set(FFMPEG_INCLUDE_DIRS)
 set(FFMPEG_LIBRARIES)
 
 foreach(_comp ${_FFMPEG_COMPONENTS})
-  # pkg-config discovery (libavcodec, libavformat etc. on Debian/Ubuntu)
-  # On macOS/Homebrew: libavcodec, libavformat, etc.
-  # On all platforms pkg-config uses the "lib" prefix
+  # pkg-config discovery — on Debian/Ubuntu the .pc files are named libavcodec.pc etc.
+  # pkg_check_modules stores results in PC_<prefix> variables
   pkg_check_modules(PC_${_comp} QUIET IMPORTED_TARGET lib${_comp})
 
-  if(TARGET PkgConfig::PC_${_comp})
+  if(PC_${_comp}_FOUND)
     # Create alias target with canonical name
     if(NOT TARGET FFMPEG::${_comp})
       add_library(FFMPEG::${_comp} ALIAS PkgConfig::PC_${_comp})
