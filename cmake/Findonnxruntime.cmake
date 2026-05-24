@@ -24,6 +24,11 @@
 include(FindPackageHandleStandardArgs)
 
 # ── Strategy 1: Environment variable ──────
+# Check both CMake variable and environment variable (GITHUB_ENV on CI)
+if(NOT ONNXRUNTIME_DIR AND DEFINED ENV{ONNXRUNTIME_DIR})
+    set(ONNXRUNTIME_DIR "$ENV{ONNXRUNTIME_DIR}")
+endif()
+
 if(ONNXRUNTIME_DIR AND EXISTS "${ONNXRUNTIME_DIR}")
   message(STATUS "Findonnxruntime: Using ONNXRUNTIME_DIR = ${ONNXRUNTIME_DIR}")
 
