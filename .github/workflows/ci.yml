@@ -98,9 +98,11 @@ jobs:
         run: cmake -B build -DCMAKE_BUILD_TYPE=Release -DFLIPSICOLOR_BUILD_TESTS=OFF -DCMAKE_TOOLCHAIN_FILE=C:\vcpkg\scripts\buildsystems\vcpkg.cmake
         env:
           CMAKE_PREFIX_PATH: "${{ steps.install-qt.outputs.Qt_Path_Dir }};${{ env.FFMPEG_DIR }};${{ env.ONNXRUNTIME_DIR }};${{ env.OpenCV_ROOT }}"
+          FFMPEG_DIR: "${{ env.FFMPEG_DIR }}"
           FFMPEG_INCLUDE_DIRS: "${{ env.FFMPEG_INCLUDE }}"
           FFMPEG_LIBRARIES: "avcodec.lib;avformat.lib;avutil.lib;swscale.lib;swresample.lib"
-          FFMPEG_LIBRARY_DIR: '${{ env.FFMPEG_LIB }}'
+          FFMPEG_LIBRARY_DIR: "${{ env.FFMPEG_LIB }}"
+          ONNXRUNTIME_DIR: "${{ env.ONNXRUNTIME_DIR }}"
 
       - name: Kompilieren
         run: cmake --build build --config Release

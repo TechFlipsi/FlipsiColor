@@ -31,6 +31,17 @@ set(FFMPEG_LIBRARIES)
 
 # ── Strategy 1: Environment variables (Windows pre-built) ──────
 # FFMPEG_DIR, FFMPEG_INCLUDE_DIRS, FFMPEG_LIBRARY_DIR or FFMPEG_LIBRARIES
+# Also check environment variables (set via GITHUB_ENV on CI)
+if(NOT FFMPEG_DIR AND DEFINED ENV{FFMPEG_DIR})
+    set(FFMPEG_DIR "$ENV{FFMPEG_DIR}")
+endif()
+if(NOT FFMPEG_INCLUDE_DIRS AND DEFINED ENV{FFMPEG_INCLUDE})
+    set(FFMPEG_INCLUDE_DIRS "$ENV{FFMPEG_INCLUDE}")
+endif()
+if(NOT FFMPEG_LIBRARY_DIR AND DEFINED ENV{FFMPEG_LIB})
+    set(FFMPEG_LIBRARY_DIR "$ENV{FFMPEG_LIB}")
+endif()
+
 if(FFMPEG_DIR OR FFMPEG_INCLUDE_DIRS)
   message(STATUS "FindFFMPEG: Using environment variable paths")
 
