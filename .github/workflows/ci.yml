@@ -34,6 +34,11 @@ jobs:
           tar xzf ort.tgz
           sudo cp -r onnxruntime-linux-x64-1.20.0/include/* /usr/local/include/
           sudo cp -r onnxruntime-linux-x64-1.20.0/lib/* /usr/local/lib/
+          # CMake-Targets referenziert lib64 — Symlink erstellen
+          sudo mkdir -p /usr/local/lib64
+          sudo ln -sf /usr/local/lib/libonnxruntime.so.1.20.0 /usr/local/lib64/libonnxruntime.so.1.20.0
+          sudo ln -sf /usr/local/lib/libonnxruntime.so.1.20.0 /usr/local/lib64/libonnxruntime.so
+          sudo ln -sf /usr/local/lib/libonnxruntime.so.1.20.0 /usr/local/lib64/libonnxruntime.so.1
           sudo ldconfig
 
       - name: Konfigurieren
@@ -86,7 +91,10 @@ jobs:
           brew install qt6 opencv onnxruntime libraw little-cms2 ffmpeg libexif lensfun
 
       - name: Konfigurieren
-        run: cmake -B build -DCMAKE_BUILD_TYPE=Release -DCMAKE_PREFIX_PATH="$(brew --prefix qt6)" -DFLIPSICOLOR_BUILD_TESTS=OFF
+        run: |
+          cmake -B build -DCMAKE_BUILD_TYPE=Release \
+            -DCMAKE_PREFIX_PATH="$(brew --prefix qt6);$(brew --prefix opencv);$(brew --prefix onnxruntime);$(brew --prefix libraw);$(brew --prefix lensfun);$(brew --prefix little-cms2);$(brew --prefix ffmpeg)" \
+            -DFLIPSICOLOR_BUILD_TESTS=OFF
 
       - name: Kompilieren
         run: cmake --build build --config Release 2>&1 || true
