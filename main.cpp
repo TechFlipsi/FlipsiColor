@@ -114,8 +114,8 @@ int main(int argc, char* argv[])
     engine.rootContext()->setContextProperty("flipsiApp", &flipsiApp);
 
     // Sprachinformationen für QML verfügbar machen
-    engine.rootContext()->setContextProperty("verfuegbareSprachen", VERFUEGBARE_SPRACHEN);
-    engine.rootContext()->setContextProperty("sprachNamen", SPRACHNAMEN);
+    engine.rootContext()->setContextProperty("verfuegbareSprachen", QVariant::fromValue(VERFUEGBARE_SPRACHEN));
+    engine.rootContext()->setContextProperty("sprachNamen", QVariant::fromValue(SPRACHNAMEN));
     engine.rootContext()->setContextProperty("aktuelleSprache", sprache);
 
     const QUrl url(u"qrc:/qml/Main.qml"_qs);
