@@ -3,6 +3,7 @@
   "version": "0.1.0",
   "description": "KI-gestützte Bild- & Videofarbkorrektur Desktop-App",
   "dependencies": [
+    "opencv4",
     "libraw",
     "lcms",
     "libexif",
