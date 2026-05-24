@@ -24,14 +24,16 @@ if(PKG_CONFIG_FOUND)
   pkg_check_modules(PC_onnxruntime QUIET onnxruntime)
 endif()
 
-# Find header
+# Find header — ONNX Runtime ships headers directly in include/ (not in include/onnxruntime/)
+# The main header is onnxruntime_cxx_api.h, NOT core/session/onnxruntime_cxx_api.h
 find_path(onnxruntime_INCLUDE_DIR
-  NAMES core/session/onnxruntime_cxx_api.h
+  NAMES onnxruntime_cxx_api.h
   HINTS
     ${PC_onnxruntime_INCLUDE_DIRS}
     /usr/local/include
     /usr/include
     /opt/homebrew/include
+    /opt/homebrew/include/onnxruntime
   PATH_SUFFIXES onnxruntime include/onnxruntime
 )
 

@@ -74,10 +74,11 @@ jobs:
           arch: 'win64_mingw'
           cache: true
 
-      - name: vcpkg bootstrappen
+      - name: vcpkg vorbereiten
         run: |
-          git clone --depth=0 https://github.com/microsoft/vcpkg.git C:\vcpkg
-          C:\vcpkg\bootstrap-vcpkg.bat
+          cd C:\vcpkg
+          git fetch --unshallow 2>$null; git pull
+          .\bootstrap-vcpkg.bat
           echo "VCPKG_ROOT=C:\vcpkg" >> $env:GITHUB_ENV
 
       - name: vcpkg Abhängigkeiten installieren
