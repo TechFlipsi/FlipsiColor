@@ -39,6 +39,7 @@ set(SOURCES
     src/utils/Logger.cpp
     src/utils/GPUInfo.cpp
     src/utils/FileSystem.cpp
-
-    PARENT_SCOPE
+    src/utils/AutoUpdater.cpp
 )
+
+PARENT_SCOPE)

@@ -42,6 +42,19 @@ int main(int argc, char* argv[])
     app.setApplicationName("FlipsiColor");
     app.setApplicationVersion("0.1.0");
 
+    // ── App-Icon setzen (plattformübergreifend) ─────────────────────────────
+    QIcon appIcon;
+    appIcon.addFile(QString::fromUtf8(":/icons/flipsicolor_16x16.png"), QSize(16, 16));
+    appIcon.addFile(QString::fromUtf8(":/icons/flipsicolor_24x24.png"), QSize(24, 24));
+    appIcon.addFile(QString::fromUtf8(":/icons/flipsicolor_32x32.png"), QSize(32, 32));
+    appIcon.addFile(QString::fromUtf8(":/icons/flipsicolor_48x48.png"), QSize(48, 48));
+    appIcon.addFile(QString::fromUtf8(":/icons/flipsicolor_64x64.png"), QSize(64, 64));
+    appIcon.addFile(QString::fromUtf8(":/icons/flipsicolor_128x128.png"), QSize(128, 128));
+    appIcon.addFile(QString::fromUtf8(":/icons/flipsicolor_256x256.png"), QSize(256, 256));
+    appIcon.addFile(QString::fromUtf8(":/icons/flipsicolor_512x512.png"), QSize(512, 512));
+    app.setWindowIcon(appIcon);
+    QGuiApplication::setDesktopFileName("flipsicolor");
+
     QQuickStyle::setStyle("Fusion");
 
     // ── Übersetzung laden ────────────────────────────────────────────────────

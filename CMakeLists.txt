@@ -96,6 +96,37 @@ install(TARGETS flipsicolor
     BUNDLE DESTINATION .
 )
 
+# ── Icons & Desktop-Datei installieren ──────────────────────────────────────
+# Linux: .desktop + PNG Icons
+if(NOT WIN32 AND NOT APPLE)
+    install(FILES resources/flipsicolor.desktop
+            DESTINATION share/applications)
+    install(FILES resources/icons/flipsicolor_16x16.png
+            DESTINATION share/icons/hicolor/16x16/apps
+            RENAME flipsicolor.png)
+    install(FILES resources/icons/flipsicolor_24x24.png
+            DESTINATION share/icons/hicolor/24x24/apps
+            RENAME flipsicolor.png)
+    install(FILES resources/icons/flipsicolor_32x32.png
+            DESTINATION share/icons/hicolor/32x32/apps
+            RENAME flipsicolor.png)
+    install(FILES resources/icons/flipsicolor_48x48.png
+            DESTINATION share/icons/hicolor/48x48/apps
+            RENAME flipsicolor.png)
+    install(FILES resources/icons/flipsicolor_64x64.png
+            DESTINATION share/icons/hicolor/64x64/apps
+            RENAME flipsicolor.png)
+    install(FILES resources/icons/flipsicolor_128x128.png
+            DESTINATION share/icons/hicolor/128x128/apps
+            RENAME flipsicolor.png)
+    install(FILES resources/icons/flipsicolor_256x256.png
+            DESTINATION share/icons/hicolor/256x256/apps
+            RENAME flipsicolor.png)
+    install(FILES resources/icons/flipsicolor_512x512.png
+            DESTINATION share/icons/hicolor/512x512/apps
+            RENAME flipsicolor.png)
+endif()
+
 # ── Tests ───────────────────────────────────────────────────────────────────
 if(FLIPSICOLOR_BUILD_TESTS)
     enable_testing()
@@ -111,6 +142,10 @@ set(CPACK_PACKAGE_HOMEPAGE_URL "https://github.com/TechFlipsi/FlipsiColor")
 set(CPACK_RESOURCE_FILE_LICENSE "${CMAKE_SOURCE_DIR}/LICENSE")
 set(CPACK_PACKAGE_INSTALL_DIRECTORY "FlipsiColor")
 
+# ── App-Icon für Installer+Desktop ────────────────────────────────────────
+set(APP_ICON "${CMAKE_SOURCE_DIR}/resources/icons/flipsicolor.ico")
+set(APP_ICON_PNG "${CMAKE_SOURCE_DIR}/resources/icons/flipsicolor_256x256.png")
+
 # Windows: NSIS Installer
 set(CPACK_GENERATOR "NSIS;DEB;RPM")
 
@@ -122,6 +157,24 @@ set(CPACK_NSIS_HELP_LINK "https://github.com/TechFlipsi/FlipsiColor")
 set(CPACK_NSIS_URL_INFO_ABOUT "https://github.com/TechFlipsi/FlipsiColor")
 set(CPACK_NSIS_MODIFY_PATH ON)
 set(CPACK_NSIS_ENABLE_UNINSTALL_BEFORE_INSTALL ON)
+
+# Windows: Icon in die .exe einbetten (RC-Datei)
+if(WIN32)
+    configure_file(
+        "${CMAKE_SOURCE_DIR}/resources/icons/flipsicolor.rc.in"
+        "${CMAKE_BINARY_DIR}/flipsicolor.rc"
+    )
+    target_sources(flipsicolor PRIVATE "${CMAKE_BINARY_DIR}/flipsicolor.rc")
+endif()
+
+# macOS: Icon ins App Bundle einbetten
+if(APPLE)
+    set(MACOSX_BUNDLE_ICON_FILE flipsicolor.icns)
+    set(ICON_FILE "${CMAKE_SOURCE_DIR}/resources/icons/flipsicolor.icns")
+    set_source_files_properties(${ICON_FILE} PROPERTIES MACOSX_PACKAGE_LOCATION "Resources")
+    target_sources(flipsicolor PRIVATE ${ICON_FILE})
+    set_target_properties(flipsicolor PROPERTIES MACOSX_BUNDLE_ICON_FILE flipsicolor.icns)
+endif()
 
 # DEB Optionen
 set(CPACK_DEBIAN_PACKAGE_NAME "flipsicolor")
