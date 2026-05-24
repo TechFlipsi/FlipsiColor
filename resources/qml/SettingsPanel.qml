@@ -670,6 +670,152 @@ Dialog {
                 }
             }
 
+            // ── Section: Updates ──────────────────────────────────
+            SettingsSection { text: qsTr("Updates") }
+
+            Rectangle {
+                id: updateSection
+                Layout.fillWidth: true
+                Layout.preferredHeight: updateAvailable ? 120 : 80
+                radius: AppTheme.radiusMd
+                color: AppTheme.bgInput
+                border.color: updateAvailable ? AppTheme.accentPrimary : AppTheme.borderSubtle
+
+                property bool updateAvailable: false
+                property string newVersion: ""
+
+                ColumnLayout {
+                    anchors {
+                        fill: parent
+                        leftMargin: AppTheme.spacingMd
+                        rightMargin: AppTheme.spacingMd
+                        topMargin: AppTheme.spacingSm
+                    }
+                    spacing: AppTheme.spacingSm
+
+                    RowLayout {
+                        Layout.fillWidth: true
+                        spacing: AppTheme.spacingMd
+
+                        Label {
+                            text: qsTr("Current Version:")
+                            font.pixelSize: AppTheme.fontSizeSm
+                            font.family: AppTheme.fontFamily
+                            color: AppTheme.textSecondary
+                        }
+
+                        Label {
+                            text: "v0.1.0"
+                            font.pixelSize: AppTheme.fontSizeSm
+                            font.family: AppTheme.fontMono
+                            color: AppTheme.textPrimary
+                        }
+
+                        Item { Layout.fillWidth: true }
+
+                        Button {
+                            text: qsTr("Check for Updates")
+                            font.pixelSize: AppTheme.fontSizeSm
+                            font.family: AppTheme.fontFamily
+                            flat: true
+
+                            background: Rectangle {
+                                color: parent.hovered ? AppTheme.alpha(AppTheme.accentPrimary, 0.12) : "transparent"
+                                radius: AppTheme.radiusMd
+                            }
+                            contentItem: Label {
+                                text: parent.text
+                                color: AppTheme.accentPrimary
+                                font: parent.font
+                                horizontalAlignment: Text.AlignHCenter
+                                verticalAlignment: Text.AlignVCenter
+                            }
+                            onClicked: {
+                                // TODO: Connect to Application.updatePruefen()
+                                updateSection.updateAvailable = false
+                                console.log("Update-Prüfung gestartet")
+                            }
+                        }
+                    }
+
+                    // Update-Hinweis (nur sichtbar wenn Update verfügbar)
+                    RowLayout {
+                        Layout.fillWidth: true
+                        visible: updateSection.updateAvailable
+                        spacing: AppTheme.spacingMd
+
+                        Rectangle {
+                            Layout.preferredWidth: 8
+                            Layout.preferredHeight: 8
+                            radius: 4
+                            color: AppTheme.accentPrimary
+
+                            SequentialAnimation on opacity {
+                                loops: Animation.Infinite
+                                NumberAnimation { from: 1.0; to: 0.3; duration: 1000 }
+                                NumberAnimation { from: 0.3; to: 1.0; duration: 1000 }
+                            }
+                        }
+
+                        Label {
+                            text: qsTr("Update available: v%1").arg(updateSection.newVersion)
+                            font.pixelSize: AppTheme.fontSizeSm
+                            font.family: AppTheme.fontFamily
+                            color: AppTheme.accentPrimary
+                            font.bold: true
+                        }
+
+                        Item { Layout.fillWidth: true }
+
+                        Button {
+                            text: qsTr("Install Update")
+                            font.pixelSize: AppTheme.fontSizeSm
+                            font.family: AppTheme.fontFamily
+
+                            background: Rectangle {
+                                color: AppTheme.accentPrimary
+                                radius: AppTheme.radiusMd
+                            }
+                            contentItem: Label {
+                                text: parent.text
+                                color: "#ffffff"
+                                font: parent.font
+                                font.bold: true
+                                horizontalAlignment: Text.AlignHCenter
+                                verticalAlignment: Text.AlignVCenter
+                            }
+                            onClicked: {
+                                // TODO: Connect to Application.updateStarten()
+                                console.log("Update-Installation gestartet")
+                            }
+                        }
+
+                        Button {
+                            text: qsTr("Later")
+                            font.pixelSize: AppTheme.fontSizeSm
+                            font.family: AppTheme.fontFamily
+                            flat: true
+
+                            background: Rectangle {
+                                color: parent.hovered ? AppTheme.alpha(AppTheme.textPrimary, 0.08) : "transparent"
+                                radius: AppTheme.radiusMd
+                            }
+                            contentItem: Label {
+                                text: parent.text
+                                color: AppTheme.textSecondary
+                                font: parent.font
+                                horizontalAlignment: Text.AlignHCenter
+                                verticalAlignment: Text.AlignVCenter
+                            }
+                            onClicked: {
+                                updateSection.updateAvailable = false
+                                console.log("Update auf später verschoben")
+                            }
+                        }
+                    }
+                }
+            }
+
             Item { Layout.preferredHeight: AppTheme.spacingMd }
         }
     }

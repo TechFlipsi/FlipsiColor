@@ -4,6 +4,7 @@
 
 #include "flipsicolor/core/Application.h"
 #include "flipsicolor/ai/ModelManager.h"
+#include "flipsicolor/utils/AutoUpdater.h"
 
 #include <QSettings>
 #include <QDebug>
@@ -23,7 +24,42 @@ void Application::initialisieren()
     gpuErkennen();
     einstellungenLaden();
     kiInitialisieren();
+
+    // ── Auto-Updater starten ────────────────────────────────────────────
+    m_updater = std::make_unique<AutoUpdater>(this);
+    connect(m_updater.get(), &AutoUpdater::updateVerfuegbarChanged,
+            this, &Application::updateVerfuegbarChanged);
+    connect(m_updater.get(), &AutoUpdater::neueVersionChanged,
+            this, &Application::neueVersionChanged);
+    // Prüfung startet automatisch nach 30s
+    qDebug() << "FlipsiColor — Auto-Updater initialisiert (prüft automatisch)";
+
     qDebug() << "FlipsiColor — App-Initialisierung abgeschlossen";
+}
+
+bool Application::updateVerfuegbar() const
+{
+    return m_updater ? m_updater->updateVerfuegbar() : false;
+}
+
+QString Application::neueVersion() const
+{
+    return m_updater ? m_updater->neueVersion() : QString();
+}
+
+void Application::updatePruefen()
+{
+    if (m_updater) m_updater->pruefen();
+}
+
+void Application::updateStarten()
+{
+    if (m_updater) m_updater->updateStarten();
+}
+
+void Application::updateIgnorieren()
+{
+    if (m_updater) m_updater->ignorieren();
 }
 
 void Application::gpuErkennen()

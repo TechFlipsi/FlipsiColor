@@ -1,0 +1,35 @@
+// FlipsiColor Windows Resource File
+// Embeds the app icon into the .exe
+// Copyright (C) 2026 Fabian Kirchweger (TechFlipsi)
+// SPDX-License-Identifier: GPL-3.0-or-later
+
+1 ICON "${CMAKE_SOURCE_DIR}/resources/icons/flipsicolor.ico"
+
+1 VERSIONINFO
+FILEVERSION ${PROJECT_VERSION_MAJOR},${PROJECT_VERSION_MINOR},${PROJECT_VERSION_PATCH},0
+PRODUCTVERSION ${PROJECT_VERSION_MAJOR},${PROJECT_VERSION_MINOR},${PROJECT_VERSION_PATCH},0
+FILEFLAGSMASK 0x3fL
+FILEFLAGS 0x0L
+FILEOS 0x40004L
+FILETYPE 0x1L
+FILESUBTYPE 0x0L
+BEGIN
+    BLOCK "StringFileInfo"
+    BEGIN
+        BLOCK "040704b0"
+        BEGIN
+            VALUE "CompanyName", "TechFlipsi"
+            VALUE "FileDescription", "KI-gestützte Bild- & Videofarbkorrektur"
+            VALUE "FileVersion", "${PROJECT_VERSION}"
+            VALUE "InternalName", "flipsicolor"
+            VALUE "LegalCopyright", "Copyright (C) 2026 Fabian Kirchweger (TechFlipsi)"
+            VALUE "OriginalFilename", "flipsicolor.exe"
+            VALUE "ProductName", "FlipsiColor"
+            VALUE "ProductVersion", "${PROJECT_VERSION}"
+        END
+    END
+    BLOCK "VarFileInfo"
+    BEGIN
+        VALUE "Translation", 0x0407, 1200
+    END
+END
