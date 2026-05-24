@@ -192,7 +192,6 @@ if(APPLE)
     endif()
     set_target_properties(flipsicolor PROPERTIES MACOSX_BUNDLE_ICON_FILE flipsicolor.icns)
 endif()
-endif()
 
 # DEB Optionen
 set(CPACK_DEBIAN_PACKAGE_NAME "flipsicolor")
