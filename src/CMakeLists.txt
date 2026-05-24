@@ -43,3 +43,46 @@ set(SOURCES
 
     PARENT_SCOPE
 )
+
+set(HEADERS
+    # Kern
+    include/flipsicolor/core/Application.h
+    include/flipsicolor/core/Pipeline.h
+    include/flipsicolor/core/Project.h
+    include/flipsicolor/core/Settings.h
+
+    # KI
+    include/flipsicolor/ai/InferenceEngine.h
+    include/flipsicolor/ai/ModelManager.h
+    include/flipsicolor/ai/ModelDownloader.h
+
+    # Farbe
+    include/flipsicolor/color/ColorManager.h
+    include/flipsicolor/color/LensCorrector.h
+    include/flipsicolor/color/StyleLUT.h
+
+    # Bild
+    include/flipsicolor/image/ImagePipeline.h
+    include/flipsicolor/image/RawDecoder.h
+    include/flipsicolor/image/ExifReader.h
+
+    # Video
+    include/flipsicolor/video/VideoPipeline.h
+    include/flipsicolor/video/FrameProcessor.h
+    include/flipsicolor/video/SceneDetector.h
+
+    # UI
+    include/flipsicolor/ui/AppWindow.h
+    include/flipsicolor/ui/ImageEditor.h
+    include/flipsicolor/ui/VideoEditor.h
+    include/flipsicolor/ui/SettingsPanel.h
+    include/flipsicolor/ui/LearningUI.h
+
+    # Hilfsprogramme
+    include/flipsicolor/utils/Logger.h
+    include/flipsicolor/utils/GPUInfo.h
+    include/flipsicolor/utils/FileSystem.h
+    include/flipsicolor/utils/AutoUpdater.h
+
+    PARENT_SCOPE
+)

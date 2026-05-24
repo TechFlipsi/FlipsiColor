@@ -27,7 +27,7 @@ find_package(Qt6 REQUIRED COMPONENTS Core Gui Quick QuickControls2 Widgets Lingu
 qt_standard_project_setup(REQUIRES 6.5)
 
 # ── Abhängigkeiten ───────────────────────────────────────────────────────────
-find_package(OpenCV REQUIRED COMPONENTS core imgproc photo video)
+find_package(OpenCV REQUIRED COMPONENTS core imgproc imgcodecs photo video)
 find_package(onnxruntime REQUIRED)
 find_package(LibRaw REQUIRED)
 find_package(Lensfun REQUIRED)
@@ -67,6 +67,7 @@ qt_add_resources(RESOURCES resources/resources.qrc)
 qt_add_executable(flipsicolor
     main.cpp
     ${SOURCES}
+    ${HEADERS}
     ${RESOURCES}
 )
 
@@ -82,11 +83,14 @@ target_link_libraries(flipsicolor PRIVATE
     Qt6::QuickControls2
     Qt6::Widgets
     Qt6::Network
+    Qt6::Test
     opencv_core
     opencv_imgproc
+    opencv_imgcodecs
     opencv_photo
     opencv_video
     onnxruntime
+    LibRaw::LibRaw
     Lensfun::Lensfun
     FFMPEG::avcodec
     FFMPEG::avformat

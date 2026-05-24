@@ -19,6 +19,7 @@
 #include <QUrl>
 #include <QFileInfo>
 #include <QCryptographicHash>
+#include <QCoreApplication>
 
 namespace flipsicolor {
 
@@ -71,7 +72,7 @@ AutoUpdater::AutoUpdater(QObject* parent)
 
     // Erste Prüfung nach 30 Sekunden (App muss erst laden)
     m_impl->pruefTimer.start(30000);
-    Logger::instanz()->loggen(Stufe::Info, "AutoUpdater",
+    Logger::instanz()->loggen(Logger::Stufe::Info, "AutoUpdater",
         "Initialisiert. Prüfung in 30s, dann alle 24h.");
 }
 
@@ -91,19 +92,19 @@ void AutoUpdater::Impl::pruefungStarten()
         url += "?per_page=10"; // Pre-releases einschließen
     }
 
-    QNetworkRequest anfrage(QUrl(url));
+    QNetworkRequest anfrage{QUrl(url)};
     anfrage.setHeader(QNetworkRequest::UserAgentHeader,
         QString("FlipsiColor/%1").arg(aktuelleVersion.toString()));
     // Kein Content-Type auf GET-Request (hat keinen Body)
 
     QNetworkReply* antwort = networkManager.get(anfrage);
 
-    QObject::connect(antwort, &QNetworkReply::finished, this,
+    QObject::connect(antwort, &QNetworkReply::finished, q,
         [this, antwort]() {
             antwort->deleteLater();
 
             if (antwort->error() != QNetworkReply::NoError) {
-                Logger::instanz()->loggen(Stufe::Warnung, "AutoUpdater",
+                Logger::instanz()->loggen(Logger::Stufe::Warnung, "AutoUpdater",
                     QString("Prüfung fehlgeschlagen: %1").arg(antwort->errorString()));
                 // Nächste Prüfung in 1h
                 pruefTimer.start(3600000);
@@ -116,7 +117,7 @@ void AutoUpdater::Impl::pruefungStarten()
             QJsonDocument doc = QJsonDocument::fromJson(daten);
 
             if (!doc.isArray()) {
-                Logger::instanz()->loggen(Stufe::Warnung, "AutoUpdater",
+                Logger::instanz()->loggen(Logger::Stufe::Warnung, "AutoUpdater",
                     "Unerwartetes JSON-Format von GitHub API");
                 pruefTimer.start(3600000);
                 emit q->fehler("Unerwartetes JSON-Format von GitHub API");
@@ -147,7 +148,7 @@ void AutoUpdater::Impl::pruefungStarten()
                 // DOWNGRADE-SCHUTZ: Niemals auf ältere Version downgraden
                 // ═══════════════════════════════════════════════════════════════
                 if (releaseVersion < aktuelleVersion) {
-                    Logger::instanz()->loggen(Stufe::Warnung, "AutoUpdater",
+                    Logger::instanz()->loggen(Logger::Stufe::Warnung, "AutoUpdater",
                         QString("DOWNGRADE BLOCKIERT: v%1 < v%2 (aktuell). "
                                 "Update auf ältere Version verweigert.")
                             .arg(tag, aktuelleVersion.toString()));
@@ -159,7 +160,7 @@ void AutoUpdater::Impl::pruefungStarten()
 
                 // Ignorierte Version überspringen (User hat "Überspringen" geklickt)
                 if (tag == ignorierteVersion) {
-                    Logger::instanz()->loggen(Stufe::Info, "AutoUpdater",
+                    Logger::instanz()->loggen(Logger::Stufe::Info, "AutoUpdater",
                         QString("Version v%1 wird ignoriert (User-Entscheidung).").arg(tag));
                     continue;
                 }
@@ -193,7 +194,7 @@ void AutoUpdater::Impl::pruefungStarten()
                 downloadUrlStr = releaseUrl;
                 downloadGroesseVal = groesse;
 
-                Logger::instanz()->loggen(Stufe::Info, "AutoUpdater",
+                Logger::instanz()->loggen(Logger::Stufe::Info, "AutoUpdater",
                     QString("Update gefunden: v%1 (aktuell: v%2)")
                         .arg(tag, aktuelleVersion.toString()));
 
@@ -210,7 +211,7 @@ void AutoUpdater::Impl::pruefungStarten()
 
             if (!gefunden) {
                 updateVerfuegbar = false;
-                Logger::instanz()->loggen(Stufe::Info, "AutoUpdater",
+                Logger::instanz()->loggen(Logger::Stufe::Info, "AutoUpdater",
                     "Kein Update verfügbar.");
                 emit q->updateVerfuegbarChanged(false);
                 emit q->pruefungFertig(false, {});
@@ -238,7 +239,7 @@ void AutoUpdater::updateStarten()
         emit fehler(QString("DOWNGRADE BLOCKIERT: v%1 ≤ v%2 (aktuell). "
                              "Update auf ältere oder gleiche Version verweigert.")
                     .arg(m_impl->neueVersionStr, m_impl->aktuelleVersion.toString()));
-        Logger::instanz()->loggen(Stufe::Warnung, "AutoUpdater",
+        Logger::instanz()->loggen(Logger::Stufe::Warnung, "AutoUpdater",
             QString("DOWNGRADE-VERSUCH BLOCKIERT: Ziel v%1 <= aktuell v%2")
                 .arg(m_impl->neueVersionStr, m_impl->aktuelleVersion.toString()));
         return;
@@ -258,7 +259,7 @@ void AutoUpdater::updateStarten()
     m_impl->downloadPfad = QStandardPaths::writableLocation(QStandardPaths::TempLocation)
         + "/FlipsiColor-Update-" + m_impl->neueVersionStr + ".exe";
 
-    QNetworkRequest anfrage(QUrl(url));
+    QNetworkRequest anfrage{QUrl(url)};
     anfrage.setHeader(QNetworkRequest::UserAgentHeader, "FlipsiColor-Updater");
     QNetworkReply* antwort = m_impl->networkManager.get(anfrage);
 
@@ -288,7 +289,7 @@ void AutoUpdater::updateStarten()
                     verifyDatei.close();
                     // TODO: SHA256 mit GitHub Release-Asset vergleichen wenn verfügbar
                     // Aktuell: Nur Loggen, keine Blockierung
-                    Logger::instanz()->loggen(Stufe::Info, "AutoUpdater",
+                    Logger::instanz()->loggen(Logger::Stufe::Info, "AutoUpdater",
                         QString("Download SHA256: %1").arg(QString(hash.result().toHex())));
                 }
 
@@ -320,7 +321,7 @@ void AutoUpdater::spaeterErinnern()
     m_impl->updateVerfuegbar = false;
     m_impl->pruefTimer.start(14400000); // 4h
     emit updateVerfuegbarChanged(false);
-    Logger::instanz()->loggen(Stufe::Info, "AutoUpdater",
+    Logger::instanz()->loggen(Logger::Stufe::Info, "AutoUpdater",
         "Erinnerung in 4 Stunden.");
 }
 
@@ -331,7 +332,7 @@ void AutoUpdater::ignorieren()
     m_impl->ignorierteVersion = m_impl->neueVersionStr;
     m_impl->updateVerfuegbar = false;
     emit updateVerfuegbarChanged(false);
-    Logger::instanz()->loggen(Stufe::Info, "AutoUpdater",
+    Logger::instanz()->loggen(Logger::Stufe::Info, "AutoUpdater",
         QString("Version v%1 wird ignoriert.").arg(m_impl->neueVersionStr));
 }
 

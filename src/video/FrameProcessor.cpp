@@ -3,8 +3,8 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 #include <flipsicolor/video/FrameProcessor.h>
-#include <opencv2/core/core.hpp>
-#include <opencv2/imgproc/imgproc.hpp>
+#include <opencv2/core.hpp>
+#include <opencv2/imgproc.hpp>
 #include <cmath>
 
 namespace flipsicolor {
@@ -39,4 +39,25 @@ bool FrameProcessor::szenenWechselErkennen(const cv::Mat& frame1, const cv::Mat&
     return histogrammAehnlichkeit(frame1, frame2) > schwellwert;
 }
 
-cv::Mat FrameProcessor::histogrammA...[truncated]
+cv::Mat FrameProcessor::histogrammAnpassen(const cv::Mat& frame, const cv::Mat& referenz) const
+{
+    if (frame.empty() || referenz.empty())
+        return frame.clone();
+
+    // Histogramm-Anpassung (Histogram Matching) pro Kanal
+    cv::Mat ergebnis;
+    std::vector<cv::Mat> frameKanaele, refKanaele, ergebnisKanaele;
+    cv::split(frame, frameKanaele);
+    cv::split(referenz, refKanaele);
+
+    for (int i = 0; i < 3 && i < static_cast<int>(frameKanaele.size()) && i < static_cast<int>(refKanaele.size()); ++i) {
+        cv::Mat angepasst;
+        cv::equalizeHist(frameKanaele[i], angepasst);
+        ergebnisKanaele.push_back(angepasst);
+    }
+
+    cv::merge(ergebnisKanaele, ergebnis);
+    return ergebnis;
+}
+
+} // namespace flipsicolor
