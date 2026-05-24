@@ -23,7 +23,7 @@ option(FLIPSICOLOR_USE_VCPKG "vcpkg für Abhängigkeiten verwenden" OFF)
 option(FLIPSICOLOR_STATIC_LINK "Bibliotheken statisch verknüpfen" OFF)
 
 # ── Qt ───────────────────────────────────────────────────────────────────────
-find_package(Qt6 REQUIRED COMPONENTS Core Gui Quick QuickControls2 Widgets LinguistTools Network)
+find_package(Qt6 REQUIRED COMPONENTS Core Gui Quick QuickControls2 Widgets LinguistTools Network Test)
 qt_standard_project_setup(REQUIRES 6.5)
 
 # ── Abhängigkeiten ───────────────────────────────────────────────────────────
