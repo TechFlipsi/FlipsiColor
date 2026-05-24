@@ -31,7 +31,7 @@ find_package(OpenCV REQUIRED COMPONENTS core imgproc photo video)
 find_package(onnxruntime REQUIRED)
 find_package(LibRaw REQUIRED)
 find_package(Lensfun REQUIRED)
-find_package(FFMPEG REQUIRED COMPONENTS avcodec avformat avutil swscale swresample)
+find_package(FFMPEG REQUIRED)
 find_package(LCMS2 REQUIRED)
 find_package(LibExif REQUIRED)
 
@@ -88,7 +88,11 @@ target_link_libraries(flipsicolor PRIVATE
     opencv_video
     onnxruntime
     lensfun
-    ${FFMPEG_LIBRARIES}
+    FFMPEG::avcodec
+    FFMPEG::avformat
+    FFMPEG::avutil
+    FFMPEG::swscale
+    FFMPEG::swresample
     lcms2
     libexif
 )
