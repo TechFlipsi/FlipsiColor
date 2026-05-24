@@ -160,14 +160,10 @@ if(NOT OpenCV_FOUND)
     if(PKG_CONFIG_FOUND)
         pkg_check_modules(OpenCV QUIET IMPORTED_TARGET opencv4)
         if(OpenCV_FOUND)
-            # pkg_check_modules(IMPORTED_TARGET) creates PkgConfig::OpenCV (prefix-based
-            # name, NOT PkgConfig::opencv4).  The CMake error "target PkgConfig::opencv4
-            # was not found" was caused by referencing the wrong name.  We now use the raw
-            # link flags instead of the target reference.
-            set(_OpenCV_INCLUDE_DIRS "${OpenCV_INCLUDE_DIRS}")
-            set(_OpenCV_LDFLAGS      "${OpenCV_LDFLAGS}")
-            set(_OpenCV_LDFLAGS_OTHER "${OpenCV_LDFLAGS_OTHER}")
-
+            # pkg_check_modules(OpenUV QUIET IMPORTED_TARGET opencv4) creates
+            # the PkgConfig target as PkgConfig::OpenCV — named after the PREFIX
+            # (first argument), NOT after the module name (opencv4).
+            #
             # Explicit mapping: internal module name → exported target name.
             # Must match the names used in CMakeLists.txt target_link_libraries.
             set(_OpenCV_MODULE_MAP
@@ -184,11 +180,12 @@ if(NOT OpenCV_FOUND)
 
                 if(NOT TARGET OpenCV::${_target_name})
                     add_library(OpenCV::${_target_name} INTERFACE IMPORTED)
-                    # Use raw link libraries from pkg-config — avoids referencing
-                    # the PkgConfig target which may not be visible.
+                    # Link to PkgConfig::OpenCV which brings in all libraries,
+                    # include directories and link flags in one target.
+                    # NOTE: The target is PkgConfig::OpenUV (prefix-based),
+                    # NOT PkgConfig::opencv4 (module-name-based).
                     set_target_properties(OpenCV::${_target_name} PROPERTIES
-                        INTERFACE_INCLUDE_DIRECTORIES "${_OpenCV_INCLUDE_DIRS}"
-                        INTERFACE_LINK_LIBRARIES "${_OpenCV_LDFLAGS};${_OpenCV_LDFLAGS_OTHER}"
+                        INTERFACE_LINK_LIBRARIES "PkgConfig::OpenCV"
                     )
                 endif()
             endforeach()
