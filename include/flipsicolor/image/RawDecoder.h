@@ -24,7 +24,7 @@ public:
     QVariantMap metadaten() const;
 
 signals:
-    void geladen();
+    void geladen(const QString& pfad);
 
 private:
     struct Impl;

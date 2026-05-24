@@ -63,9 +63,12 @@ bool LensCorrector::objektivSetzen(const QString& hersteller, const QString& mod
     if (!m_impl->db) return false;
 
     // lf_db_find_lenses braucht ein lfLens-Objekt als Such-Vorlage
-    lfLens suchObjektiv;
-    suchObjektiv.Maker = hersteller.toUtf8().constData();
-    suchObjektiv.Model = modell.toUtf8().constData();
+    // Achtung: lfMLstr = char* (nicht const), QByteArray muss am Leben bleiben
+    QByteArray herstellerBytes = hersteller.toUtf8();
+    QByteArray modellBytes = modell.toUtf8();
+    lfLens suchObjektiv{};
+    suchObjektiv.Maker = herstellerBytes.data();
+    suchObjektiv.Model = modellBytes.data();
 
     const lfLens** objektive = lf_db_find_lenses(m_impl->db, &suchObjektiv, 0);
 
