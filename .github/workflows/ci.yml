@@ -72,7 +72,6 @@ jobs:
         with:
           version: '6.8.*'
           arch: 'win64_mingw'
-          modules: 'qtdeclarative qttools'
           cache: true
 
       - name: vcpkg Abhängigkeiten installieren
