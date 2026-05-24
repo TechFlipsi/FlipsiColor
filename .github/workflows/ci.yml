@@ -34,7 +34,6 @@ jobs:
           tar xzf ort.tgz
           sudo cp -r onnxruntime-linux-x64-1.20.0/include/* /usr/local/include/
           sudo cp -r onnxruntime-linux-x64-1.20.0/lib/* /usr/local/lib/
-          # CMake-Targets referenziert lib64 — Symlink erstellen
           sudo mkdir -p /usr/local/lib64
           sudo ln -sf /usr/local/lib/libonnxruntime.so.1.20.0 /usr/local/lib64/libonnxruntime.so.1.20.0
           sudo ln -sf /usr/local/lib/libonnxruntime.so.1.20.0 /usr/local/lib64/libonnxruntime.so
@@ -50,6 +49,16 @@ jobs:
       - name: Tests ausführen
         working-directory: build
         run: ctest --output-on-failure || true
+
+      - name: DEB-Paket bauen
+        working-directory: build
+        run: cpack -G DEB
+
+      - name: Artefakt hochladen (Linux .deb)
+        uses: actions/upload-artifact@v4
+        with:
+          name: FlipsiColor-Linux
+          path: build/*.deb
 
   format-check:
     runs-on: ubuntu-24.04
@@ -92,6 +101,16 @@ jobs:
       - name: Kompilieren
         run: cmake --build build --config Release
 
+      - name: NSIS-Installer bauen
+        working-directory: build
+        run: cpack -G NSIS
+
+      - name: Artefakt hochladen (Windows .exe)
+        uses: actions/upload-artifact@v4
+        with:
+          name: FlipsiColor-Windows
+          path: build/*.exe
+
   build-macos:
     runs-on: macos-14
     steps:
@@ -110,3 +129,15 @@ jobs:
 
       - name: Kompilieren
         run: cmake --build build --config Release
+
+      - name: App Bundle erstellen
+        working-directory: build
+        run: |
+          # macOS .app Bundle ins .dmg packen
+          cpack -G DragNDrop
+
+      - name: Artefakt hochladen (macOS .dmg)
+        uses: actions/upload-artifact@v4
+        with:
+          name: FlipsiColor-macOS
+          path: build/*.dmg
