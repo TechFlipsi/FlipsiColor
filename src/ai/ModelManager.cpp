@@ -18,7 +18,7 @@
 #include <QCryptographicHash>
 
 // ONNX Runtime C API — verwendet anstelle des C++ Headers für Portabilität
-#include <onnxruntime/core/session/onnxruntime_c_api.h>
+#include <onnxruntime_c_api.h>
 
 namespace flipsicolor {
 
