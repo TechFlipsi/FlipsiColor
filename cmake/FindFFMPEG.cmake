@@ -86,5 +86,4 @@ endif()
 find_package_handle_standard_args(FFMPEG
   REQUIRED_VARS _FFMPEG_FOUND_ALL
   VERSION_VAR FFMPEG_VERSION
-  HANDLE_COMPONENTS
 )
