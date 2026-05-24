@@ -8,6 +8,7 @@
 #include "flipsicolor/color/StyleLUT.h"
 #include <opencv2/core/core.hpp>
 #include <opencv2/imgproc/imgproc.hpp>
+#include <opencv2/imgcodecs.hpp>
 #include <opencv2/photo/photo.hpp>
 #include <QDebug>
 

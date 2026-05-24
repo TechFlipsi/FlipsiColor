@@ -8,6 +8,8 @@
 #include <QFile>
 #include <QDir>
 #include <QStandardPaths>
+#include <opencv2/core.hpp>
+#include <opencv2/imgproc.hpp>
 
 namespace flipsicolor {
 
@@ -44,4 +46,15 @@ void StyleLUT::feedbackAufzeichnen(const TrainingsPaar& paar, bool positiv)
 
     // Vielfalt-Check
     if (brauchtVielfalt()) {
-        qDebug() << "Lernphase: Bitte verschi...[truncated]
+        qDebug() << "Lernphase: Bitte verschiedene Szenen bewerten!";
+    }
+}
+
+int StyleLUT::lernRunde() const
+{
+    if (m_feedbackAnzahl < 60) return 1;
+    if (m_feedbackAnzahl < 120) return 2;
+    return 3;
+}
+
+} // namespace flipsicolor

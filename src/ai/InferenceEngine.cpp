@@ -38,9 +38,13 @@ bool InferenceEngine::modellLaden(const QString& modellId, const QString& dateiP
     }
 
     try {
-        auto wgPfad = dateiPfad.toStdWString();
+#ifdef _WIN32
+        auto pfad = dateiPfad.toStdWString();
+#else
+        auto pfad = dateiPfad.toStdString();
+#endif
         auto session = std::make_unique<Ort::Session>(
-            m_impl->umgebung, wgPfad.c_str(), m_impl->optionen);
+            m_impl->umgebung, pfad.c_str(), m_impl->optionen);
         m_impl->sessions[modellId.toStdString()] = std::move(session);
         qDebug() << "Modell geladen:" << modellId;
         return true;

@@ -39,10 +39,11 @@ WhiteBalance::WBErgebnis WhiteBalance::grayWorld(const cv::Mat& bild) const
         return {5500.0, 0.0};
 
     double faktorR = avgGray / std::max(avgR, 1e-6);
+    double faktorG = avgGray / std::max(avgG, 1e-6);
     double faktorB = avgGray / std::max(avgB, 1e-6);
 
     // Faktoren → Temperatur/Tint konvertieren (vereinfacht)
-    double temperatur = 5500.0 + (faktorB - 1.0) * 3000.0;
+    double temperatur = 5500.0 + (faktorB - faktorR) * 3000.0;
     double tint = (faktorG - 1.0) * 50.0;
 
     temperatur = std::clamp(temperatur, 2000.0, 12000.0);

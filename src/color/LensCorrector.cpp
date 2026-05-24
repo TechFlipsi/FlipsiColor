@@ -13,8 +13,8 @@ namespace flipsicolor {
 class LensCorrector::Impl {
 public:
     lfDatabase* db = nullptr;
-    lfCamera* kamera = nullptr;
-    lfLens* objektiv = nullptr;
+    const lfCamera* kamera = nullptr;
+    const lfLens* objektiv = nullptr;
 };
 
 LensCorrector::LensCorrector(QObject* parent)
@@ -81,16 +81,16 @@ cv::Mat LensCorrector::korrigieren(const cv::Mat& bild, float brennweite, float 
     if (!m_impl->objektiv || bild.empty())
         return bild.clone();
 
-    // Lensfun Korrektur-Modifikation erstellen
-    lfModifier* mod = lf_modifier_create(
-        m_impl->objektiv, LF_CF_DISTORTION | LF_CF_VIGNETTING | LF_CF_TCA,
-        bild.cols, bild.rows, LF_PF_U16, brennweite, blende, 1.0f, 0.0f);
+    // Lensfun Korrektur-Modifikation erstellen (C++ API)
+    // Der Konstruktor nimmt: lens, crop-Faktor, Breite, Höhe
+    lfModifier mod(m_impl->objektiv, 1.0f, bild.cols, bild.rows);
 
-    if (!mod) return bild.clone();
+    // Korrektur-Typen aktivieren
+    mod.Initialize(m_impl->objektiv, LF_MODIFY_DISTORTION | LF_MODIFY_VIGNETTING | LF_MODIFY_TCA,
+                   brennweite, blende / 1000.0f, 1.0f, 0.0f, LF_PF_U16, false);
 
     // Rückwärts-Abbildung generieren
     // TODO: Vollständige Implementierung mit cv::remap
-    lf_modifier_destroy(mod);
     return bild.clone();
 }
 
