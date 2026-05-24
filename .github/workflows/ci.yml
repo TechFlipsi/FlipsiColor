@@ -83,6 +83,17 @@ jobs:
           arch: 'win64_msvc2022_64'
           cache: true
 
+      - name: vcpkg Cache
+        uses: actions/cache@v4
+        with:
+          path: |
+            C:\vcpkg\installed
+            C:\vcpkg\packages
+            C:\vcpkg\downloads
+          key: vcpkg-x64-windows-${{ hashFiles('vcpkg.json') }}
+          restore-keys: |
+            vcpkg-x64-windows-
+
       - name: vcpkg vorbereiten
         run: |
           cd C:\vcpkg
@@ -90,13 +101,36 @@ jobs:
           .\bootstrap-vcpkg.bat
           echo "VCPKG_ROOT=C:\vcpkg" >> $env:GITHUB_ENV
 
-      - name: vcpkg Abhängigkeiten installieren
-        run: C:\vcpkg\vcpkg install --triplet x64-windows
+      - name: vcpkg Abhängigkeiten installieren (ohne FFMPEG/ONNX)
+        run: C:\vcpkg\vcpkg install opencv4 libraw lcms libexif lensfun --triplet x64-windows
+        env:
+          VCPKG_DEFAULT_TRIPLET: x64-windows
+
+      - name: FFMPEG pre-built herunterladen
+        run: |
+          $url = "https://github.com/GyanD/codexffmpeg/releases/download/7.1/ffmpeg-7.1-full_build-shared.zip"
+          Invoke-WebRequest -Uri $url -OutFile ffmpeg.zip -MaximumRetryCount 3
+          Expand-Archive -Path ffmpeg.zip -DestinationPath C:\ffmpeg -Force
+          $ffmpegDir = Get-ChildItem "C:\ffmpeg" -Directory | Select-Object -First 1
+          echo "FFMPEG_DIR=$($ffmpegDir.FullName)" >> $env:GITHUB_ENV
+          echo "FFMPEG_INCLUDE=$($ffmpegDir.FullName)\include" >> $env:GITHUB_ENV
+          echo "FFMPEG_LIB=$($ffmpegDir.FullName)\lib" >> $env:GITHUB_ENV
+          echo "FFMPEG_BIN=$($ffmpegDir.FullName)\bin" >> $env:GITHUB_ENV
+
+      - name: ONNX Runtime herunterladen
+        run: |
+          $url = "https://github.com/microsoft/onnxruntime/releases/download/v1.20.0/onnxruntime-win-x64-1.20.0.zip"
+          Invoke-WebRequest -Uri $url -OutFile onnxruntime.zip -MaximumRetryCount 3
+          Expand-Archive -Path onnxruntime.zip -DestinationPath C:\onnxruntime -Force
+          echo "ONNXRUNTIME_DIR=C:\onnxruntime\onnxruntime-win-x64-1.20.0" >> $env:GITHUB_ENV
 
       - name: Konfigurieren
         run: cmake -B build -DCMAKE_BUILD_TYPE=Release -DFLIPSICOLOR_BUILD_TESTS=OFF -DCMAKE_TOOLCHAIN_FILE=C:\vcpkg\scripts\buildsystems\vcpkg.cmake
         env:
-          CMAKE_PREFIX_PATH: "${{ steps.install-qt.outputs.Qt_Path_Dir }}"
+          CMAKE_PREFIX_PATH: "${{ steps.install-qt.outputs.Qt_Path_Dir }};${{ env.FFMPEG_DIR }};${{ env.ONNXRUNTIME_DIR }}"
+          FFMPEG_INCLUDE_DIRS: "${{ env.FFMPEG_INCLUDE }}"
+          FFMPEG_LIBRARIES: "avcodec.lib;avformat.lib;avutil.lib;swscale.lib;swresample.lib"
+          FFMPEG_LIBRARY_DIR: '${{ env.FFMPEG_LIB }}'
 
       - name: Kompilieren
         run: cmake --build build --config Release
@@ -110,12 +144,22 @@ jobs:
             & $deployQt --release --no-translations --no-opengl-sw --dir "." $exePath.FullName
           }
 
-      - name: vcpkg-DLLs kopieren
+      - name: DLLs kopieren
         working-directory: build
         run: |
-          $dllDir = "C:\vcpkg\installed\x64-windows\bin"
-          if (Test-Path $dllDir) {
-            Get-ChildItem "$dllDir\*.dll" | Copy-Item -Destination ".\Release\" -ErrorAction SilentlyContinue
+          # vcpkg DLLs
+          $vcpkgDlls = "C:\vcpkg\installed\x64-windows\bin"
+          if (Test-Path $vcpkgDlls) {
+            Get-ChildItem "$vcpkgDlls\*.dll" | Copy-Item -Destination ".\Release\" -ErrorAction SilentlyContinue
+          }
+          # FFMPEG DLLs
+          if (Test-Path "${{ env.FFMPEG_BIN }}") {
+            Get-ChildItem "${{ env.FFMPEG_BIN }}\*.dll" | Copy-Item -Destination ".\Release\" -ErrorAction SilentlyContinue
+          }
+          # ONNX Runtime DLL
+          $ortDll = "${{ env.ONNXRUNTIME_DIR }}\lib\onnxruntime.dll"
+          if (Test-Path $ortDll) {
+            Copy-Item $ortDll -Destination ".\Release\" -ErrorAction SilentlyContinue
           }
 
       - name: NSIS-Installer bauen
@@ -125,7 +169,7 @@ jobs:
           choco install nsis -y --no-progress 2>$null
           cpack -G NSIS
           if ($LASTEXITCODE -ne 0) {
-            Write-Host "NSIS fehlgeschlagen, erstle portable ZIP als Fallback"
+            Write-Host "NSIS fehlgeschlagen, erstelle portable ZIP als Fallback"
             Compress-Archive -Path "Release\*" -DestinationPath "FlipsiColor-Windows-Portable.zip"
           }
 
