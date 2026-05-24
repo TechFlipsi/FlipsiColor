@@ -14,7 +14,6 @@ public:
     Ort::Env umgebung{ORT_LOGGING_LEVEL_WARNING, "FlipsiColor"};
     Ort::SessionOptions optionen;
     std::map<std::string, std::unique_ptr<Ort::Session>> sessions;
-    Ort::AllocatorWithDefaultOptions zuweiser;
 };
 
 InferenceEngine::InferenceEngine(QObject* parent)
@@ -39,8 +38,9 @@ bool InferenceEngine::modellLaden(const QString& modellId, const QString& dateiP
     }
 
     try {
+        auto wgPfad = dateiPfad.toStdWString();
         auto session = std::make_unique<Ort::Session>(
-            m_impl->umgebung, dateiPfad.toStdWString(), m_impl->optionen);
+            m_impl->umgebung, wgPfad.c_str(), m_impl->optionen);
         m_impl->sessions[modellId.toStdString()] = std::move(session);
         qDebug() << "Modell geladen:" << modellId;
         return true;
@@ -62,8 +62,10 @@ QVector<float> InferenceEngine::inferenz(const QString& modellId, const QVector<
 
     // Eingabe-Tensor erstellen
     std::vector<int64_t> inputShape(form.begin(), form.end());
+    auto memoryInfo = Ort::MemoryInfo::CreateCpu(OrtArenaAllocator, OrtMemTypeDefault);
     auto inputTensor = Ort::Value::CreateTensor<float>(
-        m_impl->zuweiser, inputShape, const_cast<float*>(eingabe.data()), eingabe.size());
+        memoryInfo, const_cast<float*>(eingabe.data()), eingabe.size() * sizeof(float),
+        inputShape.data(), inputShape.size());
 
     const char* inputNamen[] = {"input"};
     const char* outputNamen[] = {"output"};

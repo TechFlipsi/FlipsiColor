@@ -87,14 +87,14 @@ target_link_libraries(flipsicolor PRIVATE
     opencv_photo
     opencv_video
     onnxruntime
-    lensfun
+    Lensfun::Lensfun
     FFMPEG::avcodec
     FFMPEG::avformat
     FFMPEG::avutil
     FFMPEG::swscale
     FFMPEG::swresample
-    lcms2
-    libexif
+    LCMS2::LCMS2
+    LibExif::LibExif
 )
 
 # ── Installation ────────────────────────────────────────────────────────────

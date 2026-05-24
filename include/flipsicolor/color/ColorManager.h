@@ -19,6 +19,7 @@ class ColorManager : public QObject
 
 public:
     explicit ColorManager(QObject* parent = nullptr);
+    ~ColorManager();
 
     // Arbeitsfarbraum = ProPhoto RGB (verhindert Clipping bei Bearbeitung)
     static constexpr const char* ARBEITSFARBRAUM = "ProPhoto RGB";
