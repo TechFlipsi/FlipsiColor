@@ -681,8 +681,8 @@ Dialog {
                 color: AppTheme.bgInput
                 border.color: updateAvailable ? AppTheme.accentPrimary : AppTheme.borderSubtle
 
-                property bool updateAvailable: false
-                property string newVersion: ""
+                property bool updateAvailable: flipsiApp ? flipsiApp.updateVerfuegbar : false
+                property string newVersion: flipsiApp ? flipsiApp.neueVersion : ""
 
                 ColumnLayout {
                     anchors {
@@ -731,8 +731,7 @@ Dialog {
                                 verticalAlignment: Text.AlignVCenter
                             }
                             onClicked: {
-                                // TODO: Connect to Application.updatePruefen()
-                                updateSection.updateAvailable = false
+                                flipsiApp.updatePruefen()
                                 console.log("Update-Prüfung gestartet")
                             }
                         }
@@ -785,7 +784,7 @@ Dialog {
                                 verticalAlignment: Text.AlignVCenter
                             }
                             onClicked: {
-                                // TODO: Connect to Application.updateStarten()
+                                flipsiApp.updateStarten()
                                 console.log("Update-Installation gestartet")
                             }
                         }
@@ -808,6 +807,7 @@ Dialog {
                                 verticalAlignment: Text.AlignVCenter
                             }
                             onClicked: {
+                                flipsiApp.ignorieren()
                                 updateSection.updateAvailable = false
                                 console.log("Update auf später verschoben")
                             }

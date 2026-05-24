@@ -40,6 +40,6 @@ set(SOURCES
     src/utils/GPUInfo.cpp
     src/utils/FileSystem.cpp
     src/utils/AutoUpdater.cpp
-)
 
-PARENT_SCOPE)
+    PARENT_SCOPE
+)

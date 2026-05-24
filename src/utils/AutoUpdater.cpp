@@ -13,10 +13,12 @@
 #include <QStandardPaths>
 #include <QSettings>
 #include <QDir>
+#include <QFile>
 #include <QProcess>
 #include <QDesktopServices>
 #include <QUrl>
 #include <QFileInfo>
+#include <QCryptographicHash>
 
 namespace flipsicolor {
 
@@ -24,6 +26,7 @@ class AutoUpdater::Impl {
 public:
     QNetworkAccessManager networkManager;
     QTimer pruefTimer;
+    AutoUpdater* q = nullptr;  // Pointer auf äußeres Objekt für emit
 
     bool updateVerfuegbar = false;
     QString neueVersionStr;
@@ -36,7 +39,7 @@ public:
     static constexpr const char* GITHUB_API_URL =
         "https://api.github.com/repos/TechFlipsi/FlipsiColor/releases";
 
-    // Aktuelle.app-Version (wird im Konstruktor gesetzt)
+    // Aktuelle App-Version (wird im Konstruktor gesetzt)
     QVersionNumber aktuelleVersion;
 
     // Ignorierte Version (User hat "Überspringen" geklickt)
@@ -47,13 +50,14 @@ public:
 
     void pruefungStarten();
     QStringList assetNamenFuerPlattform() const;
-    QString platformIdentifier() const;
 };
 
 AutoUpdater::AutoUpdater(QObject* parent)
     : QObject(parent)
     , m_impl(std::make_unique<Impl>())
 {
+    m_impl->q = this;  // Pointer für emit-Callbacks
+
     m_impl->aktuelleVersion = QVersionNumber::fromString(
         QCoreApplication::applicationVersion());
 
@@ -67,13 +71,16 @@ AutoUpdater::AutoUpdater(QObject* parent)
 
     // Erste Prüfung nach 30 Sekunden (App muss erst laden)
     m_impl->pruefTimer.start(30000);
-    Logger::info("AutoUpdater", "Initialisiert. Prüfung in 30s, dann alle 24h.");
+    Logger::instanz()->loggen(Stufe::Info, "AutoUpdater",
+        "Initialisiert. Prüfung in 30s, dann alle 24h.");
 }
 
 AutoUpdater::~AutoUpdater() = default;
 
 void AutoUpdater::pruefen()
 {
+    // Laufenden Timer stoppen (verhindert doppelte Prüfung bei manuellem Click)
+    m_impl->pruefTimer.stop();
     m_impl->pruefungStarten();
 }
 
@@ -87,7 +94,7 @@ void AutoUpdater::Impl::pruefungStarten()
     QNetworkRequest anfrage(QUrl(url));
     anfrage.setHeader(QNetworkRequest::UserAgentHeader,
         QString("FlipsiColor/%1").arg(aktuelleVersion.toString()));
-    anfrage.setHeader(QNetworkRequest::ContentTypeHeader, "application/json");
+    // Kein Content-Type auf GET-Request (hat keinen Body)
 
     QNetworkReply* antwort = networkManager.get(anfrage);
 
@@ -96,10 +103,12 @@ void AutoUpdater::Impl::pruefungStarten()
             antwort->deleteLater();
 
             if (antwort->error() != QNetworkReply::NoError) {
-                Logger::warnung("AutoUpdater",
+                Logger::instanz()->loggen(Stufe::Warnung, "AutoUpdater",
                     QString("Prüfung fehlgeschlagen: %1").arg(antwort->errorString()));
                 // Nächste Prüfung in 1h
                 pruefTimer.start(3600000);
+                emit q->fehler(antwort->errorString());
+                emit q->pruefungFertig(false, {});
                 return;
             }
 
@@ -107,8 +116,11 @@ void AutoUpdater::Impl::pruefungStarten()
             QJsonDocument doc = QJsonDocument::fromJson(daten);
 
             if (!doc.isArray()) {
-                Logger::warnung("AutoUpdater", "Unerwartetes JSON-Format von GitHub API");
+                Logger::instanz()->loggen(Stufe::Warnung, "AutoUpdater",
+                    "Unerwartetes JSON-Format von GitHub API");
                 pruefTimer.start(3600000);
+                emit q->fehler("Unerwartetes JSON-Format von GitHub API");
+                emit q->pruefungFertig(false, {});
                 return;
             }
 
@@ -135,7 +147,7 @@ void AutoUpdater::Impl::pruefungStarten()
                 // DOWNGRADE-SCHUTZ: Niemals auf ältere Version downgraden
                 // ═══════════════════════════════════════════════════════════════
                 if (releaseVersion < aktuelleVersion) {
-                    Logger::warnung("AutoUpdater",
+                    Logger::instanz()->loggen(Stufe::Warnung, "AutoUpdater",
                         QString("DOWNGRADE BLOCKIERT: v%1 < v%2 (aktuell). "
                                 "Update auf ältere Version verweigert.")
                             .arg(tag, aktuelleVersion.toString()));
@@ -147,7 +159,7 @@ void AutoUpdater::Impl::pruefungStarten()
 
                 // Ignorierte Version überspringen (User hat "Überspringen" geklickt)
                 if (tag == ignorierteVersion) {
-                    Logger::info("AutoUpdater",
+                    Logger::instanz()->loggen(Stufe::Info, "AutoUpdater",
                         QString("Version v%1 wird ignoriert (User-Entscheidung).").arg(tag));
                     continue;
                 }
@@ -174,16 +186,23 @@ void AutoUpdater::Impl::pruefungStarten()
                     if (!releaseUrl.isEmpty()) break;
                 }
 
-                // Update-Info setzen
+                // Update-Info setzen + Signale emitieren
                 updateVerfuegbar = true;
                 neueVersionStr = tag;
                 aenderungenStr = release["body"].toString();
                 downloadUrlStr = releaseUrl;
                 downloadGroesseVal = groesse;
 
-                Logger::info("AutoUpdater",
+                Logger::instanz()->loggen(Stufe::Info, "AutoUpdater",
                     QString("Update gefunden: v%1 (aktuell: v%2)")
                         .arg(tag, aktuelleVersion.toString()));
+
+                emit q->updateVerfuegbarChanged(true);
+                emit q->neueVersionChanged(tag);
+                emit q->aenderungenChanged(aenderungenStr);
+                emit q->downloadUrlChanged(releaseUrl);
+                emit q->downloadGroesseChanged(groesse);
+                emit q->pruefungFertig(true, tag);
 
                 gefunden = true;
                 break; // Nur die neueste Version zeigen
@@ -191,7 +210,10 @@ void AutoUpdater::Impl::pruefungStarten()
 
             if (!gefunden) {
                 updateVerfuegbar = false;
-                Logger::info("AutoUpdater", "Kein Update verfügbar.");
+                Logger::instanz()->loggen(Stufe::Info, "AutoUpdater",
+                    "Kein Update verfügbar.");
+                emit q->updateVerfuegbarChanged(false);
+                emit q->pruefungFertig(false, {});
             }
 
             // Nächste Prüfung in 24h
@@ -216,7 +238,7 @@ void AutoUpdater::updateStarten()
         emit fehler(QString("DOWNGRADE BLOCKIERT: v%1 ≤ v%2 (aktuell). "
                              "Update auf ältere oder gleiche Version verweigert.")
                     .arg(m_impl->neueVersionStr, m_impl->aktuelleVersion.toString()));
-        Logger::warnung("AutoUpdater",
+        Logger::instanz()->loggen(Stufe::Warnung, "AutoUpdater",
             QString("DOWNGRADE-VERSUCH BLOCKIERT: Ziel v%1 <= aktuell v%2")
                 .arg(m_impl->neueVersionStr, m_impl->aktuelleVersion.toString()));
         return;
@@ -257,6 +279,19 @@ void AutoUpdater::updateStarten()
             if (datei.open(QIODevice::WriteOnly)) {
                 datei.write(antwort->readAll());
                 datei.close();
+
+                // SHA256-Verifikation des Downloads
+                QFile verifyDatei(m_impl->downloadPfad);
+                if (verifyDatei.open(QIODevice::ReadOnly)) {
+                    QCryptographicHash hash(QCryptographicHash::Sha256);
+                    hash.addData(&verifyDatei);
+                    verifyDatei.close();
+                    // TODO: SHA256 mit GitHub Release-Asset vergleichen wenn verfügbar
+                    // Aktuell: Nur Loggen, keine Blockierung
+                    Logger::instanz()->loggen(Stufe::Info, "AutoUpdater",
+                        QString("Download SHA256: %1").arg(QString(hash.result().toHex())));
+                }
+
                 emit downloadFertig(m_impl->downloadPfad);
 
                 // Installer starten und App beenden
@@ -273,8 +308,7 @@ void AutoUpdater::updateStarten()
         "https://github.com/TechFlipsi/FlipsiColor/releases/latest"));
 
 #elif defined(Q_OS_LINUX)
-    // Linux: apt/pacaur/yay oder AppImage-Download
-    // AppImage: Download + chmod +x
+    // Linux: AppImage-Download oder Paketmanager
     QDesktopServices::openUrl(QUrl(
         "https://github.com/TechFlipsi/FlipsiColor/releases/latest"));
 #endif
@@ -283,8 +317,11 @@ void AutoUpdater::updateStarten()
 void AutoUpdater::spaeterErinnern()
 {
     // Erneut in 4 Stunden prüfen
+    m_impl->updateVerfuegbar = false;
     m_impl->pruefTimer.start(14400000); // 4h
-    Logger::info("AutoUpdater", "Erinnerung in 4 Stunden.");
+    emit updateVerfuegbarChanged(false);
+    Logger::instanz()->loggen(Stufe::Info, "AutoUpdater",
+        "Erinnerung in 4 Stunden.");
 }
 
 void AutoUpdater::ignorieren()
@@ -293,7 +330,8 @@ void AutoUpdater::ignorieren()
     einstellungen.setValue("update/ignorierteVersion", m_impl->neueVersionStr);
     m_impl->ignorierteVersion = m_impl->neueVersionStr;
     m_impl->updateVerfuegbar = false;
-    Logger::info("AutoUpdater",
+    emit updateVerfuegbarChanged(false);
+    Logger::instanz()->loggen(Stufe::Info, "AutoUpdater",
         QString("Version v%1 wird ignoriert.").arg(m_impl->neueVersionStr));
 }
 
