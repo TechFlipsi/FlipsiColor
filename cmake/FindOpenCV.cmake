@@ -76,6 +76,8 @@ if(NOT OpenCV_FOUND AND DEFINED ENV{OpenCV_ROOT})
 
     # Fallback: try opencv_world (single-library build)
     if(NOT _OpenCV_FOUND_ALL)
+        message(STATUS "FindOpenCV: Individual modules not found, trying opencv_world fallback...")
+        message(STATUS "FindOpenCV: Searching in: ${_OpenCV_ROOT}/x64/vc17/lib, ${_OpenCV_ROOT}/x64/vc16/lib, ${_OpenCV_ROOT}/lib")
         find_library(OpenCV_WORLD_IMPLIB
             NAMES "opencv_world4100" "opencv_world" "opencv_world4130"
             PATHS
@@ -87,7 +89,9 @@ if(NOT OpenCV_FOUND AND DEFINED ENV{OpenCV_ROOT})
         if(OpenCV_WORLD_IMPLIB)
             set(_OpenCV_FOUND_ALL TRUE)
             set(_OpenCV_LIBS "${OpenCV_WORLD_IMPLIB}")
-            message(STATUS "FindOpenCV: Using opencv_world fallback")
+            message(STATUS "FindOpenCV: Using opencv_world fallback: ${OpenCV_WORLD_IMPLIB}")
+        else()
+            message(STATUS "FindOpenCV: opencv_world not found either")
         endif()
     endif()
 
