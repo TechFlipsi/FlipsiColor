@@ -71,7 +71,7 @@ jobs:
         uses: jurplel/install-qt-action@v4
         with:
           version: '6.8.*'
-          arch: 'win64_mingw'
+          arch: 'win64_msvc2022_64'
           cache: true
 
       - name: vcpkg vorbereiten
@@ -82,10 +82,10 @@ jobs:
           echo "VCPKG_ROOT=C:\vcpkg" >> $env:GITHUB_ENV
 
       - name: vcpkg Abhängigkeiten installieren
-        run: C:\vcpkg\vcpkg install --triplet x64-mingw-dynamic
+        run: C:\vcpkg\vcpkg install --triplet x64-windows
 
       - name: Konfigurieren
-        run: cmake -B build -G "MinGW Makefiles" -DCMAKE_BUILD_TYPE=Release -DFLIPSICOLOR_BUILD_TESTS=OFF -DCMAKE_TOOLCHAIN_FILE=C:\vcpkg\scripts\buildsystems\vcpkg.cmake
+        run: cmake -B build -DCMAKE_BUILD_TYPE=Release -DFLIPSICOLOR_BUILD_TESTS=OFF -DCMAKE_TOOLCHAIN_FILE=C:\vcpkg\scripts\buildsystems\vcpkg.cmake
         env:
           CMAKE_PREFIX_PATH: "${{ steps.install-qt.outputs.Qt_Path_Dir }}"
 
