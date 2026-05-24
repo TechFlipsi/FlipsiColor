@@ -40,7 +40,7 @@ void ModelDownloader::herunterladen(const QString& modellId, const QString& url,
         return;
     }
 
-    QNetworkRequest anfrage(QUrl(url));
+    QNetworkRequest anfrage{QUrl(url)};
     anfrage.setHeader(QNetworkRequest::UserAgentHeader, "FlipsiColor/v0.1.0");
 
     QNetworkReply* antwort = m_impl->networkManager.get(anfrage);

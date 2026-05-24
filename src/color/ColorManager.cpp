@@ -6,6 +6,7 @@
 
 #include <QDebug>
 #include <QFileInfo>
+#include <QDir>
 #include <lcms2.h>
 
 namespace flipsicolor {
@@ -44,7 +45,7 @@ ColorManager::~ColorManager()
 void ColorManager::initialisieren()
 {
     // Standard-Profile erstellen
-    m_impl->sRGBProfil = cmsCreateSRGBProfile();
+    m_impl->sRGBProfil = cmsCreate_sRGBProfile();
     m_impl->proPhotoProfil = cmsCreateProfilePlaceholder(nullptr);
     // ProPhoto RGB (ROMM RGB) Primaries
     cmsCIExyY whitePoint = {0.3457, 0.3585, 1.0}; // D50
