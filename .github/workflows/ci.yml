@@ -73,7 +73,7 @@ jobs:
         uses: jurplel/install-qt-action@v4
         with:
           version: '6.7.*'
-          modules: 'qtdeclarative qtquickcontrols2 qttools'
+          modules: 'qtdeclarative qttools'
           cache: true
 
       - name: Konfigurieren (ohne vcpkg)
@@ -88,7 +88,7 @@ jobs:
 
       - name: Abhängigkeiten installieren
         run: |
-          brew install qt6 opencv onnxruntime libraw little-cms2 ffmpeg libexif lensfun
+          brew install qt6 opencv onnxruntime libraw little-cms2 ffmpeg libexif lensfun molten-vk
 
       - name: Konfigurieren
         run: |
