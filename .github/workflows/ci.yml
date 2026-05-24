@@ -88,7 +88,10 @@ jobs:
           $url = "https://github.com/opencv/opencv/releases/download/4.10.0/opencv-4.10.0-windows.exe"
           Invoke-WebRequest -Uri $url -OutFile opencv.exe -MaximumRetryCount 3
           7z x opencv.exe -oC:\opencv -y
-          echo "OpenCV_ROOT=C:\opencv\build" >> $env:GITHUB_ENV
+          # Archive contains opencv/build/... structure, so after extract it's C:\opencv\opencv\build\...
+          $ocvDir = if (Test-Path "C:\opencv\opencv\build\x64") { "C:\opencv\opencv\build" } elseif (Test-Path "C:\opencv\build\x64") { "C:\opencv\build" } else { Get-ChildItem "C:\opencv" -Directory -Recurse -Filter "build" | Where-Object { Test-Path "$($_.FullName)\x64" } | Select-Object -First 1 -ExpandProperty FullName }
+          echo "OpenCV_ROOT=$ocvDir" >> $env:GITHUB_ENV
+          Write-Host "OpenCV_ROOT set to: $ocvDir"
 
       - name: Konfigurieren
         shell: pwsh
