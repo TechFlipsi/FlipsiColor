@@ -38,6 +38,7 @@ class ModelManager : public QObject
 
 public:
     explicit ModelManager(QObject* parent = nullptr);
+    ~ModelManager();
 
     void manifestLaden();
     bool modellSicherstellen(ModellId id);

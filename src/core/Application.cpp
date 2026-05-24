@@ -70,9 +70,8 @@ void Application::gpuErkennen()
     QStringList verfuegbareProvider;
 
     try {
-        // Prüfe verfügbare Execution-Provider via ONNX Runtime API
-        auto api = Ort::GetApi();
-        auto providers = api.GetAvailableProviders();
+        // Prüfe verfügbare Execution-Provider via ONNX Runtime C++ API
+        auto providers = Ort::GetAvailableProviders();
         for (const auto& p : providers) {
             QString s = QString::fromStdString(p);
             verfuegbareProvider << s;
