@@ -70,7 +70,8 @@ jobs:
         id: install-qt
         uses: jurplel/install-qt-action@v4
         with:
-          version: '6.7.*'
+          version: '6.8.*'
+          arch: 'win64_mingw'
           modules: 'qtdeclarative qttools'
           cache: true
 
