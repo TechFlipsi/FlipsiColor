@@ -95,6 +95,7 @@ jobs:
             vcpkg-x64-windows-
 
       - name: vcpkg vorbereiten
+        shell: pwsh
         run: |
           cd C:\vcpkg
           git fetch --unshallow 2>$null; git pull
@@ -102,9 +103,11 @@ jobs:
           echo "VCPKG_ROOT=C:\vcpkg" >> $env:GITHUB_ENV
 
       - name: vcpkg Abhängigkeiten installieren
+        shell: pwsh
         run: C:\vcpkg\vcpkg install --triplet x64-windows
 
       - name: FFMPEG pre-built herunterladen
+        shell: pwsh
         run: |
           $url = "https://github.com/GyanD/codexffmpeg/releases/download/7.1/ffmpeg-7.1-full_build-shared.zip"
           Invoke-WebRequest -Uri $url -OutFile ffmpeg.zip -MaximumRetryCount 3
@@ -116,16 +119,27 @@ jobs:
           echo "FFMPEG_BIN=$($ffmpegDir.FullName)\bin" >> $env:GITHUB_ENV
 
       - name: ONNX Runtime herunterladen
+        shell: pwsh
         run: |
           $url = "https://github.com/microsoft/onnxruntime/releases/download/v1.20.0/onnxruntime-win-x64-1.20.0.zip"
           Invoke-WebRequest -Uri $url -OutFile onnxruntime.zip -MaximumRetryCount 3
           Expand-Archive -Path onnxruntime.zip -DestinationPath C:\onnxruntime -Force
           echo "ONNXRUNTIME_DIR=C:\onnxruntime\onnxruntime-win-x64-1.20.0" >> $env:GITHUB_ENV
 
+      - name: OpenCV pre-built herunterladen
+        shell: pwsh
+        run: |
+          $url = "https://github.com/thommyho/Cpp-OpenCV-Windows-PreBuilts/releases/download/v4.13.0/OpenCV-4.13.0-MSVC143-x64-Release.zip"
+          Invoke-WebRequest -Uri $url -OutFile opencv.zip -MaximumRetryCount 3
+          Expand-Archive -Path opencv.zip -DestinationPath C:\opencv -Force
+          $ocvDir = Get-ChildItem "C:\opencv" -Directory | Select-Object -First 1
+          echo "OPENCV_DIR=$($ocvDir.FullName)" >> $env:GITHUB_ENV
+
       - name: Konfigurieren
+        shell: pwsh
         run: cmake -B build -DCMAKE_BUILD_TYPE=Release -DFLIPSICOLOR_BUILD_TESTS=OFF -DCMAKE_TOOLCHAIN_FILE=C:\vcpkg\scripts\buildsystems\vcpkg.cmake
         env:
-          CMAKE_PREFIX_PATH: "${{ steps.install-qt.outputs.Qt_Path_Dir }};${{ env.FFMPEG_DIR }};${{ env.ONNXRUNTIME_DIR }}"
+          CMAKE_PREFIX_PATH: "${{ steps.install-qt.outputs.Qt_Path_Dir }};${{ env.FFMPEG_DIR }};${{ env.ONNXRUNTIME_DIR }};${{ env.OPENCV_DIR }}"
           FFMPEG_INCLUDE_DIRS: "${{ env.FFMPEG_INCLUDE }}"
           FFMPEG_LIBRARIES: "avcodec.lib;avformat.lib;avutil.lib;swscale.lib;swresample.lib"
           FFMPEG_LIBRARY_DIR: '${{ env.FFMPEG_LIB }}'
@@ -135,6 +149,7 @@ jobs:
 
       - name: Qt-Deployment (windeployqt)
         working-directory: build
+        shell: pwsh
         run: |
           $exePath = Get-ChildItem -Recurse -Filter "flipsicolor.exe" | Select-Object -First 1
           if ($exePath) {
@@ -144,6 +159,7 @@ jobs:
 
       - name: DLLs kopieren
         working-directory: build
+        shell: pwsh
         run: |
           # vcpkg DLLs
           $vcpkgDlls = "C:\vcpkg\installed\x64-windows\bin"
@@ -158,6 +174,10 @@ jobs:
           $ortDll = "${{ env.ONNXRUNTIME_DIR }}\lib\onnxruntime.dll"
           if (Test-Path $ortDll) {
             Copy-Item $ortDll -Destination ".\Release\" -ErrorAction SilentlyContinue
+          }
+          # OpenCV DLLs
+          if (Test-Path "${{ env.OPENCV_DIR }}\x64\vc17\bin") {
+            Get-ChildItem "${{ env.OPENCV_DIR }}\x64\vc17\bin\*.dll" | Copy-Item -Destination ".\Release\" -ErrorAction SilentlyContinue
           }
 
       - name: NSIS-Installer bauen
