@@ -177,7 +177,13 @@ if(NOT OpenCV_FOUND)
                     set(_target_name "${_first_upper}")
                 endif()
                 if(NOT TARGET OpenCV::${_target_name})
-                    add_library(OpenCV::${_target_name} ALIAS PkgConfig::${_pc_mod})
+                    # PkgConfig::opencv4 is a single monolithic target;
+                    # individual PkgConfig::opencv_* targets do NOT exist.
+                    # Create INTERFACE IMPORTED library that links to the whole opencv4.
+                    add_library(OpenCV::${_target_name} INTERFACE IMPORTED)
+                    set_target_properties(OpenCV::${_target_name} PROPERTIES
+                        INTERFACE_LINK_LIBRARIES "PkgConfig::opencv4"
+                    )
                 endif()
             endforeach()
             message(STATUS "FindOpenCV: Found via pkg-config")
