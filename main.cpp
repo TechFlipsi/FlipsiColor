@@ -108,6 +108,9 @@ int main(int argc, char* argv[])
 
     QQmlApplicationEngine engine;
 
+    // ── App-Objekt für QML zugänglich machen ─────────────────────────────
+    engine.rootContext()->setContextProperty("flipsiApp", &flipsiApp);
+
     // Sprachinformationen für QML verfügbar machen
     engine.rootContext()->setContextProperty("verfuegbareSprachen", VERFUEGBARE_SPRACHEN);
     engine.rootContext()->setContextProperty("sprachNamen", SPRACHNAMEN);
