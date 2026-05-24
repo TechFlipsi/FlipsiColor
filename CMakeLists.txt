@@ -11,8 +11,7 @@ set(CMAKE_CXX_EXTENSIONS OFF)
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
 # ── i18n (Mehrsprachigkeit) ──────────────────────────────────────────────────
-# Deutsch = Default, weitere Sprachen als .qm kompiliert
-set(FLIPSICOLOR_LANGUAGES de en es fr it pt_BR ja zh_CN ko)
+set(FLIPSICOLOR_LANGUAGES de en es fr it pt_BR ja)
 set(I18N_TS_DIR ${CMAKE_CURRENT_SOURCE_DIR}/i18n)
 
 # ── Optionen ─────────────────────────────────────────────────────────────────
@@ -21,7 +20,7 @@ option(FLIPSICOLOR_USE_VCPKG "vcpkg für Abhängigkeiten verwenden" OFF)
 option(FLIPSICOLOR_STATIC_LINK "Bibliotheken statisch verknüpfen" OFF)
 
 # ── Qt ───────────────────────────────────────────────────────────────────────
-find_package(Qt6 REQUIRED COMPONENTS Core Gui Quick QuickControls2 Widgets LinguistTools)
+find_package(Qt6 REQUIRED COMPONENTS Core Gui Quick QuickControls2 Widgets LinguistTools Network)
 qt_standard_project_setup(REQUIRES 6.5)
 
 # ── Abhängigkeiten ───────────────────────────────────────────────────────────
@@ -31,6 +30,7 @@ find_package(LibRaw REQUIRED)
 find_package(Lensfun REQUIRED)
 find_package(FFMPEG REQUIRED COMPONENTS avcodec avformat avutil swscale swresample)
 find_package(LCMS2 REQUIRED)
+find_package(LibExif REQUIRED)
 
 # ── Quellen ──────────────────────────────────────────────────────────────────
 add_subdirectory(src)
@@ -51,10 +51,8 @@ foreach(LANG ${FLIPSICOLOR_LANGUAGES})
     list(APPEND QM_FILES ${QM_FILE})
 endforeach()
 
-# Benutzerdefiniertes Ziel: Alle .qm kompilieren
 add_custom_target(translations ALL DEPENDS ${QM_FILES})
 
-# .qm Dateien zum Build-Output hinzufügen (Installation als seperate Dateien)
 foreach(QM ${QM_FILES})
     install(FILES ${QM} DESTINATION share/flipsicolor/i18n)
 endforeach()
@@ -80,6 +78,7 @@ target_link_libraries(flipsicolor PRIVATE
     Qt6::Quick
     Qt6::QuickControls2
     Qt6::Widgets
+    Qt6::Network
     opencv_core
     opencv_imgproc
     opencv_photo
@@ -88,6 +87,7 @@ target_link_libraries(flipsicolor PRIVATE
     lensfun
     ${FFMPEG_LIBRARIES}
     lcms2
+    libexif
 )
 
 # ── Installation ────────────────────────────────────────────────────────────
@@ -101,3 +101,37 @@ if(FLIPSICOLOR_BUILD_TESTS)
     enable_testing()
     add_subdirectory(tests)
 endif()
+
+# ── Installer (CPack) ──────────────────────────────────────────────────────
+set(CPACK_PACKAGE_NAME "FlipsiColor")
+set(CPACK_PACKAGE_VENDOR "TechFlipsi")
+set(CPACK_PACKAGE_VERSION "${PROJECT_VERSION}")
+set(CPACK_PACKAGE_DESCRIPTION "KI-gestützte Bild- & Videofarbkorrektur")
+set(CPACK_PACKAGE_HOMEPAGE_URL "https://github.com/TechFlipsi/FlipsiColor")
+set(CPACK_RESOURCE_FILE_LICENSE "${CMAKE_SOURCE_DIR}/LICENSE")
+set(CPACK_PACKAGE_INSTALL_DIRECTORY "FlipsiColor")
+
+# Windows: NSIS Installer
+set(CPACK_GENERATOR "NSIS;DEB;RPM")
+
+# NSIS Optionen
+set(CPACK_NSIS_PACKAGE_NAME "FlipsiColor v${PROJECT_VERSION}")
+set(CPACK_NSIS_DISPLAY_NAME "FlipsiColor")
+set(CPACK_NSIS_INSTALLED_ICON_NAME "bin\\\\flipsicolor.exe")
+set(CPACK_NSIS_HELP_LINK "https://github.com/TechFlipsi/FlipsiColor")
+set(CPACK_NSIS_URL_INFO_ABOUT "https://github.com/TechFlipsi/FlipsiColor")
+set(CPACK_NSIS_MODIFY_PATH ON)
+set(CPACK_NSIS_ENABLE_UNINSTALL_BEFORE_INSTALL ON)
+
+# DEB Optionen
+set(CPACK_DEBIAN_PACKAGE_NAME "flipsicolor")
+set(CPACK_DEBIAN_PACKAGE_MAINTAINER "Fabian Kirchweger <kibot@kirchweger.de>")
+set(CPACK_DEBIAN_PACKAGE_SECTION "graphics")
+set(CPACK_DEBIAN_PACKAGE_DEPENDS "libqt6core6,libopencv-core4,libonnxruntime,liblcms2-2,liblensfun1,libraw23,libavcodec60,libavformat60,libexif12")
+
+# RPM Optionen
+set(CPACK_RPM_PACKAGE_NAME "flipsicolor")
+set(CPACK_RPM_PACKAGE_GROUP "Applications/Graphics")
+set(CPACK_RPM_PACKAGE_LICENSE "GPL-3.0-or-later")
+
+include(CPack)

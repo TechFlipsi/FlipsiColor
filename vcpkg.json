@@ -1,0 +1,18 @@
+{
+  "name": "flipsicolor",
+  "version": "0.1.0",
+  "description": "KI-gestützte Bild- & Videofarbkorrektur Desktop-App",
+  "dependencies": [
+    "opencv4",
+    "onnxruntime",
+    "libraw",
+    "lcms",
+    "libexif",
+    {
+      "name": "ffmpeg",
+      "features": ["avcodec", "avformat", "swscale", "swresample"]
+    }
+  ],
+  "overrides": [],
+  "builtin-baseline": ""
+}

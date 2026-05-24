@@ -22,8 +22,6 @@ static const QStringList VERFUEGBARE_SPRACHEN = {
     "it",     // Italiano
     "pt_BR",  // Português (Brasil)
     "ja",     // 日本語
-    "zh_CN",  // 简体中文
-    "ko"      // 한국어
 };
 
 static const QMap<QString, QString> SPRACHNAMEN = {
@@ -34,8 +32,6 @@ static const QMap<QString, QString> SPRACHNAMEN = {
     {"it",    "Italiano"},
     {"pt_BR", "Português (Brasil)"},
     {"ja",    "日本語"},
-    {"zh_CN", "简体中文"},
-    {"ko",    "한국어"}
 };
 
 int main(int argc, char* argv[])

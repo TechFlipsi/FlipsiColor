@@ -1,10 +1,24 @@
 <RCC>
     <qresource prefix="/">
         <file>qml/Main.qml</file>
+        <file>qml/AppTheme.qml</file>
+        <file>qml/Sidebar.qml</file>
+        <file>qml/CanvasArea.qml</file>
+        <file>qml/AdjustPanel.qml</file>
+        <file>qml/Histogram.qml</file>
+        <file>qml/ModeSelector.qml</file>
+        <file>qml/IntensitySelector.qml</file>
+        <file>qml/LearningCard.qml</file>
+        <file>qml/ExportDialog.qml</file>
+        <file>qml/SettingsPanel.qml</file>
+        <file>qml/FirstStartWizard.qml</file>
     </qresource>
     <qresource prefix="/icons">
         <file alias="image.svg">icons/image.svg</file>
         <file alias="video.svg">icons/video.svg</file>
         <file alias="settings.svg">icons/settings.svg</file>
+    </qresource>
+    <qresource prefix="/i18n">
+        <file alias="translations.md">../i18n/LANGUAGE.md</file>
     </qresource>
 </RCC>

@@ -15,22 +15,24 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Install dependencies
+      - name: Abhängigkeiten installieren
         run: |
           sudo apt-get update
           sudo apt-get install -y \
             build-essential cmake ninja-build \
-            qt6-base-dev qt6-declarative-dev qt6-quickcontrols2-dev \
-            libopencv-dev libonnxruntime-dev libraw-dev liblensfun-dev \
-            liblcms2-dev libffmpeg-dev pkg-config
+            qt6-base-dev qt6-declarative-dev qt6-tools-dev \
+            libopencv-dev libonnxruntime-dev libraw-dev \
+            liblensfun-dev liblcms2-dev libavcodec-dev libavformat-dev \
+            libavutil-dev libswscale-dev libswresample-dev libexif-dev \
+            libgl-dev libxkbcommon-dev
 
-      - name: Configure
+      - name: Konfigurieren
         run: cmake -B build -G Ninja -DCMAKE_BUILD_TYPE=Release
 
-      - name: Build
+      - name: Kompilieren
         run: cmake --build build --config Release
 
-      - name: Test
+      - name: Tests ausführen
         working-directory: build
         run: ctest --output-on-failure
 
@@ -39,21 +41,21 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Install Qt6
+      - name: Qt installieren
         uses: jurplel/install-qt-action@v4
         with:
           version: '6.7.*'
-          modules: 'qtshadertools qtquick3d'
+          modules: 'qtdeclarative qtquickcontrols2 qttools'
 
-      - name: Install vcpkg dependencies
+      - name: Vcpkg Abhängigkeiten
         uses: lukka/run-vcpkg@v11
         with:
-          vcpkgJsonGlob: 'vcpkg.json'
+          vcpkgJsonGlob: vcpkg.json
 
-      - name: Configure
+      - name: Konfigurieren
         run: cmake -B build -DCMAKE_BUILD_TYPE=Release
 
-      - name: Build
+      - name: Kompilieren
         run: cmake --build build --config Release
 
   build-macos:
@@ -61,27 +63,21 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Install dependencies
-        run: |
-          brew install qt6 opencv onnxruntime libraw lensfun little-cms2 ffmpeg cmake ninja
+      - name: Abhängigkeiten installieren
+        run: brew install qt6 opencv onnxruntime libraw lensfun little-cms2 ffmpeg libexif
 
-      - name: Configure
-        run: cmake -B build -G Ninja -DCMAKE_BUILD_TYPE=Release -DCMAKE_PREFIX_PATH=$(brew --prefix qt6)
+      - name: Konfigurieren
+        run: cmake -B build -DCMAKE_BUILD_TYPE=Release -DCMAKE_PREFIX_PATH=$(brew --prefix qt6)
 
-      - name: Build
+      - name: Kompilieren
         run: cmake --build build --config Release
 
-  lint:
+  clang-format:
     runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v4
 
-      - name: Install clang-format
-        run: sudo apt-get install -y clang-format
-
-      - name: Check formatting
+      - name: Clang-Format prüfen
         run: |
-          find src include -name '*.cpp' -o -name '*.h' | while read f; do
-            diff <(clang-format "$f") "$f" || echo "NOT FORMATTED: $f"
-          done
-          echo "Format check complete"
+          sudo apt-get install -y clang-format-18
+          find src include -name '*.cpp' -o -name '*.h' | xargs clang-format-18 --dry-run --Werror
