@@ -176,11 +176,22 @@ endif()
 
 # macOS: Icon ins App Bundle einbetten
 if(APPLE)
-    set(MACOSX_BUNDLE_ICON_FILE flipsicolor.icns)
-    set(ICON_FILE "${CMAKE_SOURCE_DIR}/resources/icons/flipsicolor.icns")
-    set_source_files_properties(${ICON_FILE} PROPERTIES MACOSX_PACKAGE_LOCATION "Resources")
-    target_sources(flipsicolor PRIVATE ${ICON_FILE})
+    # .icns aus .iconset generieren falls nicht vorhanden
+    set(ICONSET_DIR "${CMAKE_SOURCE_DIR}/resources/icons/flipsicolor.iconset")
+    set(ICON_ICNS "${CMAKE_SOURCE_DIR}/resources/icons/flipsicolor.icns")
+    if(NOT EXISTS "${ICON_ICNS}" AND EXISTS "${ICONSET_DIR}")
+        execute_process(COMMAND iconutil -c icns -o "${ICON_ICNS}" "${ICONSET_DIR}")
+    endif()
+    if(EXISTS "${ICON_ICNS}")
+        set(MACOSX_BUNDLE_ICON_FILE flipsicolor.icns)
+        set(ICON_FILE "${ICON_ICNS}")
+        set_source_files_properties(${ICON_FILE} PROPERTIES MACOSX_PACKAGE_LOCATION "Resources")
+        target_sources(flipsicolor PRIVATE ${ICON_FILE})
+    else()
+        message(WARNING "flipsicolor.icns nicht gefunden und konnte nicht generiert werden. App Bundle hat kein Icon.")
+    endif()
     set_target_properties(flipsicolor PROPERTIES MACOSX_BUNDLE_ICON_FILE flipsicolor.icns)
+endif()
 endif()
 
 # DEB Optionen
