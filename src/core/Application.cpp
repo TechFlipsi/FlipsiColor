@@ -18,6 +18,8 @@ Application::Application(QObject* parent)
 {
 }
 
+Application::~Application() = default;
+
 void Application::initialisieren()
 {
     qDebug() << "FlipsiColor — App-Initialisierung gestartet";

@@ -23,6 +23,7 @@ class Application : public QObject
 
 public:
     explicit Application(QObject* parent = nullptr);
+    ~Application(); // Destruktor im .cpp (unique_ptr<AutoUpdater> braucht vollständigen Typ)
 
     void initialisieren();
 

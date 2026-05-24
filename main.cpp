@@ -4,8 +4,10 @@
 
 #include <QGuiApplication>
 #include <QQmlApplicationEngine>
+#include <QQmlContext>
 #include <QQuickStyle>
 #include <QIcon>
+#include <QSettings>
 #include <QTranslator>
 #include <QLibraryInfo>
 #include <QDir>
