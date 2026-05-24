@@ -8,11 +8,12 @@
     "libraw",
     "lcms",
     "libexif",
+    "lensfun",
     {
       "name": "ffmpeg",
       "features": ["avcodec", "avformat", "swscale", "swresample"]
     }
   ],
   "overrides": [],
-  "builtin-baseline": ""
+  "builtin-baseline": "aa40adda5352e87655b8583cfb2451d5e9e276fd"
 }

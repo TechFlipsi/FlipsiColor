@@ -56,11 +56,9 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Clang-Format installieren
-        run: sudo apt-get update && sudo apt-get install -y clang-format-18
-
       - name: Clang-Format prüfen
         run: |
+          sudo apt-get update && sudo apt-get install -y clang-format-18
           find src include -name '*.cpp' -o -name '*.h' | xargs clang-format-18 --dry-run --Werror 2>&1 || echo "Format-Fehler gefunden. Führe 'clang-format-18 -i' aus."
 
   build-windows:
@@ -76,7 +74,12 @@ jobs:
           modules: 'qtdeclarative qttools'
           cache: true
 
-      - name: Konfigurieren (ohne vcpkg)
+      - name: vcpkg Abhängigkeiten installieren
+        uses: lukka/run-vcpkg@v11
+        with:
+          vcpkgJsonGlob: 'vcpkg.json'
+
+      - name: Konfigurieren
         run: cmake -B build -DCMAKE_BUILD_TYPE=Release -DFLIPSICOLOR_BUILD_TESTS=OFF
         env:
           CMAKE_PREFIX_PATH: "${{ steps.install-qt.outputs.Qt_Path_Dir }}"
@@ -87,13 +90,14 @@ jobs:
       - uses: actions/checkout@v4
 
       - name: Abhängigkeiten installieren
-        run: |
-          brew install qt6 opencv onnxruntime libraw little-cms2 ffmpeg libexif lensfun molten-vk
+        run: brew install qt6 opencv onnxruntime libraw little-cms2 ffmpeg libexif lensfun molten-vk pkg-config
 
       - name: Konfigurieren
         run: |
+          BREW_PREFIX="$(brew --prefix)"
           cmake -B build -DCMAKE_BUILD_TYPE=Release \
-            -DCMAKE_PREFIX_PATH="$(brew --prefix qt6);$(brew --prefix opencv);$(brew --prefix onnxruntime);$(brew --prefix libraw);$(brew --prefix lensfun);$(brew --prefix little-cms2);$(brew --prefix ffmpeg)" \
+            -DCMAKE_PREFIX_PATH="${BREW_PREFIX}/qt6;${BREW_PREFIX}/opencv;${BREW_PREFIX}/onnxruntime;${BREW_PREFIX}/libraw;${BREW_PREFIX}/lensfun;${BREW_PREFIX}/little-cms2;${BREW_PREFIX}/ffmpeg;${BREW_PREFIX}/libexif" \
+            -DPKG_CONFIG_PATH="${BREW_PREFIX}/lib/pkgconfig:${BREW_PREFIX}/ffmpeg/lib/pkgconfig" \
             -DFLIPSICOLOR_BUILD_TESTS=OFF
 
       - name: Kompilieren
