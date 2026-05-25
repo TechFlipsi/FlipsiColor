@@ -49,14 +49,22 @@ public sealed class ColorManager : IDisposable
         if (eingabe.Empty())
             return eingabe;
 
-        // ProPhoto RGB = linearer RGB Farbraum mit gamut > sRGB
-        // OpenCV: Konvertierung über sRGB-Zwischenschritt
         var result = new Mat();
         if (eingabe.Channels() == 3)
         {
-            // Annahme: Eingabe ist BGR (OpenCV Standard)
-            // TODO: LCMS2 basierte Konvertierung via P/Invoke für korrekte ICC-Transform
-            eingabe.CopyTo(result);
+            // BGR → ProPhoto RGB (approximiert via BGR→XYZ→RGB mit breitem Gamut)
+            // Echte ICC-Transformation via LCMS2 P/Invoke ist TODO
+            // Aktuell: BGR → XYZ (D65) als Annäherung an linearen Arbeitsfarbraum
+            Cv2.CvtColor(eingabe, result, ColorConversionCodes.BGR2XYZ);
+        }
+        else if (eingabe.Channels() == 4)
+        {
+            // BGRA: BGR→XYZ für die Farbkanäle, Alpha beibehalten
+            var bgr = new Mat();
+            Cv2.CvtColor(eingabe, bgr, ColorConversionCodes.BGRA2BGR);
+            Cv2.CvtColor(bgr, result, ColorConversionCodes.BGR2XYZ);
+            bgr.Dispose();
+            // TODO: Alpha-Kanal mappen
         }
         else
         {

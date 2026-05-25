@@ -44,10 +44,9 @@ public class SceneDetector
                 if (vorherigesFrame != null)
                 {
                     // Histogramm-Vergleich
-                    double diff = Cv2.CompareHist(
-                        HistogrammBerechnen(vorherigesFrame),
-                        HistogrammBerechnen(grau),
-                        HistCompMethods.Correl);
+                    using var hist1 = HistogrammBerechnen(vorherigesFrame);
+                    using var hist2 = HistogrammBerechnen(grau);
+                    double diff = Cv2.CompareHist(hist1, hist2, HistCompMethods.Correl);
 
                     // Niedrige Korrelation = Szenenwechsel
                     if (diff < (1.0 - schwelle / 100.0))

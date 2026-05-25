@@ -21,6 +21,8 @@ public sealed class VideoPipeline : IDisposable
     private double _fps;
     private int _frameAnzahl;
     private double _dauer;
+    private readonly AI.ModelManager _modelManager;
+    private readonly Color.ColorManager _colorManager;
 
     public event EventHandler? VideoGeladen;
     public event EventHandler? PipelineAbgeschlossen;
@@ -30,6 +32,12 @@ public sealed class VideoPipeline : IDisposable
     public double Fps => _fps;
     public int FrameAnzahl => _frameAnzahl;
     public double Dauer => _dauer;
+
+    public VideoPipeline(AI.ModelManager modelManager, Color.ColorManager colorManager)
+    {
+        _modelManager = modelManager;
+        _colorManager = colorManager;
+    }
 
     /// <summary>
     /// Lädt ein Video und liest Metadaten via FFMPEG ffprobe
@@ -134,8 +142,7 @@ public sealed class VideoPipeline : IDisposable
             Log.Information("{Anzahl} Frames extrahiert", frameFiles.Length);
 
             // Jeden Frame durch ImagePipeline schicken
-            using var imagePipeline = new Image.ImagePipeline(
-                new AI.ModelManager(), new Color.ColorManager());
+            using var imagePipeline = new Image.ImagePipeline(_modelManager, _colorManager);
 
             for (int i = 0; i < frameFiles.Length; i++)
             {

@@ -1,6 +1,8 @@
 using System;
 using System.Collections.ObjectModel;
+using System.Threading.Tasks;
 using System.Windows;
+using System.Windows.Media.Imaging;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 
@@ -8,6 +10,7 @@ using FlipsiColor.AI;
 using FlipsiColor.Color;
 using FlipsiColor.Core;
 using FlipsiColor.Image;
+using FlipsiColor.Video;
 
 namespace FlipsiColor.UI;
 
@@ -21,7 +24,7 @@ public partial class MainViewModel : ObservableObject, IDisposable
     private readonly ImagePipeline _imagePipeline;
     private readonly AutoUpdater _autoUpdater;
 
-    [ObservableProperty] private string _title = "FlipsiColor v0.2.0";
+    [ObservableProperty] private string _title = "FlipsiColor v0.1.0";
     [ObservableProperty] private bool _gpuVerfuegbar;
     [ObservableProperty] private string _gpuName = "";
     [ObservableProperty] private bool _updateVerfuegbar;
@@ -30,6 +33,17 @@ public partial class MainViewModel : ObservableObject, IDisposable
     [ObservableProperty] private bool _bildGeladen;
     [ObservableProperty] private string _bildPfad = "";
     [ObservableProperty] private string _statusText = "Bereit";
+    [ObservableProperty] private bool _pipelineLaeuft;
+    [ObservableProperty] private BitmapSource? _pipelineBild;
+
+    // DJI Auto-Merge
+    private readonly DjiAutoMerge _djiAutoMerge = new();
+    [ObservableProperty] private ObservableCollection<DjiAutoMerge.ClipGruppe> _clipGruppen = [];
+    [ObservableProperty] private bool _djiAutoMergeAktiv;
+    [ObservableProperty] private bool _djiMergeLaeuft;
+    [ObservableProperty] private double _djiMergeFortschritt;
+    [ObservableProperty] private string _djiOrdner = "";
+    [ObservableProperty] private DjiAutoMerge.ClipGruppe? _ausgewaehlteGruppe;
 
     // Pipeline Controls
     [ObservableProperty] private float _belichtung;
@@ -62,6 +76,17 @@ public partial class MainViewModel : ObservableObject, IDisposable
 
         _colorManager.Initialisieren();
 
+        // Restore saved theme
+        try
+        {
+            var settings = Settings.Laden();
+            AktuellesTheme = settings.Theme;
+        }
+        catch
+        {
+            AktuellesTheme = "Dark";
+        }
+
         // Auto-Updater Events
         _autoUpdater.UpdateVerfuegbarChanged += (_, verfuegbar) =>
             Application.Current.Dispatcher.Invoke(() => UpdateVerfuegbar = verfuegbar);
@@ -69,36 +94,62 @@ public partial class MainViewModel : ObservableObject, IDisposable
             Application.Current.Dispatcher.Invoke(() => NeueVersion = version);
     }
 
-    [RelayCommand]
-    private void BildOeffnen()
+    /// <summary>Öffentliche Methode für Drag&Drop (von Code-Behind)</summary>
+    public bool LoadBild(string pfad)
     {
-        var dialog = new Microsoft.Win32.OpenFileDialog
+        try
         {
-            Filter = "Bilddateien|*.jpg;*.jpeg;*.png;*.tif;*.tiff;*.bmp;*.cr2;*.cr3;*.nef;*.arw;*.dng;*.orf;*.rw2|Alle Dateien|*.*",
-            Title = "Bild öffnen"
-        };
-
-        if (dialog.ShowDialog() == true)
-        {
-            if (_imagePipeline.BildLaden(dialog.FileName))
+            if (_imagePipeline.BildLaden(pfad))
             {
-                BildPfad = dialog.FileName;
+                BildPfad = pfad;
                 BildGeladen = true;
-                StatusText = $"Geladen: {System.IO.Path.GetFileName(dialog.FileName)}";
+                PipelineBild = null; // Original wird erst nach Pipeline angezeigt
+                StatusText = $"Geladen: {System.IO.Path.GetFileName(pfad)}";
+                return true;
             }
             else
             {
                 MessageBox.Show("Bild konnte nicht geladen werden.", "Fehler", MessageBoxButton.OK, MessageBoxImage.Error);
+                return false;
             }
+        }
+        catch (Exception ex)
+        {
+            MessageBox.Show($"Fehler beim Laden: {ex.Message}", "Fehler", MessageBoxButton.OK, MessageBoxImage.Error);
+            return false;
         }
     }
 
     [RelayCommand]
-    private void PipelineAusfuehren()
+    private void BildOeffnen()
     {
-        if (!BildGeladen) return;
+        try
+        {
+            var dialog = new Microsoft.Win32.OpenFileDialog
+            {
+                Filter = "Bilddateien|*.jpg;*.jpeg;*.png;*.tif;*.tiff;*.bmp;*.cr2;*.cr3;*.nef;*.arw;*.dng;*.orf;*.rw2|Alle Dateien|*.*",
+                Title = "Bild öffnen"
+            };
 
+            if (dialog.ShowDialog() == true)
+            {
+                LoadBild(dialog.FileName);
+            }
+        }
+        catch (Exception ex)
+        {
+            MessageBox.Show($"Fehler: {ex.Message}", "Fehler", MessageBoxButton.OK, MessageBoxImage.Error);
+        }
+    }
+
+    [RelayCommand]
+    private async Task PipelineAusfuehrenAsync()
+    {
+        if (!BildGeladen || PipelineLaeuft) return;
+
+        PipelineLaeuft = true;
         StatusText = "Pipeline läuft...";
+
         var param = new PipelineParams
         {
             Belichtung = Belichtung,
@@ -113,33 +164,231 @@ public partial class MainViewModel : ObservableObject, IDisposable
             ObjektivkorrekturAktiv = Objektivkorrektur
         };
 
-        _imagePipeline.PipelineAusfuehren(param);
-        StatusText = "Pipeline abgeschlossen";
+        try
+        {
+            await Task.Run(() => _imagePipeline.PipelineAusfuehren(param));
+
+            // Convert Mat → BitmapSource on UI thread
+            var mat = _imagePipeline.Ergebnis;
+            if (mat != null && !mat.Empty())
+            {
+                PipelineBild = MatToBitmapSourceConverter.ConvertMat(mat);
+            }
+            StatusText = "Pipeline abgeschlossen";
+        }
+        catch (Exception ex)
+        {
+            StatusText = $"Pipeline-Fehler: {ex.Message}";
+            MessageBox.Show($"Pipeline fehlgeschlagen: {ex.Message}", "Fehler", MessageBoxButton.OK, MessageBoxImage.Error);
+        }
+        finally
+        {
+            PipelineLaeuft = false;
+        }
     }
 
     [RelayCommand]
     private void Zuruecksetzen()
     {
-        Belichtung = 0; Kontrast = 0; Saettigung = 0; Vibranz = 0;
-        Lichter = 0; Schatten = 0; Schaerfe = 0; RauschenLuma = 0; RauschenChroma = 0;
-        Objektivkorrektur = true;
-        StatusText = "Parameter zurückgesetzt";
+        try
+        {
+            Belichtung = 0; Kontrast = 0; Saettigung = 0; Vibranz = 0;
+            Lichter = 0; Schatten = 0; Schaerfe = 0; RauschenLuma = 0; RauschenChroma = 0;
+            Objektivkorrektur = true;
+            StatusText = "Parameter zurückgesetzt";
+        }
+        catch (Exception ex)
+        {
+            StatusText = $"Fehler: {ex.Message}";
+        }
     }
 
     [RelayCommand]
-    private void UpdatePruefen() => _autoUpdater.Pruefen();
+    private void UpdatePruefen()
+    {
+        try { _autoUpdater.Pruefen(); }
+        catch (Exception ex) { StatusText = $"Update-Prüfung fehlgeschlagen: {ex.Message}"; }
+    }
 
     [RelayCommand]
-    private void UpdateStarten() => _autoUpdater.UpdateStarten();
+    private void UpdateStarten()
+    {
+        try { _autoUpdater.UpdateStarten(); }
+        catch (Exception ex) { StatusText = $"Update fehlgeschlagen: {ex.Message}"; }
+    }
 
     [RelayCommand]
-    private void UpdateIgnorieren() => _autoUpdater.Ignorieren();
+    private void UpdateIgnorieren()
+    {
+        try { _autoUpdater.Ignorieren(); }
+        catch (Exception ex) { StatusText = $"Fehler: {ex.Message}"; }
+    }
 
     [RelayCommand]
     private void ThemeWechseln(string theme)
     {
-        AktuellesTheme = theme;
-        ThemeManager.ApplyTheme(theme);
+        try
+        {
+            AktuellesTheme = theme;
+            ThemeManager.ApplyTheme(theme);
+
+            // Theme in Settings speichern
+            var settings = Settings.Laden();
+            settings.Theme = theme;
+            settings.Speichern();
+        }
+        catch (Exception ex)
+        {
+            StatusText = $"Theme-Fehler: {ex.Message}";
+        }
+    }
+
+    // ===== DJI Auto-Merge Commands =====
+
+    [RelayCommand]
+    private void DjiOrdnerOeffnen()
+    {
+        try
+        {
+            var dialog = new System.Windows.Forms.FolderBrowserDialog
+            {
+                Description = "Ordner mit DJI Video-Clips auswählen",
+                UseDescriptionForTitle = true
+            };
+
+            if (dialog.ShowDialog() == System.Windows.Forms.DialogResult.OK)
+            {
+                DjiOrdner = dialog.SelectedPath;
+                ClipGruppen = new ObservableCollection<DjiAutoMerge.ClipGruppe>(
+                    _djiAutoMerge.ClipsGruppieren(DjiOrdner));
+                StatusText = $"{ClipGruppen.Count} Clip-Gruppen erkannt in {DjiOrdner}";
+            }
+        }
+        catch (Exception ex)
+        {
+            StatusText = $"Fehler beim Scannen: {ex.Message}";
+        }
+    }
+
+    [RelayCommand]
+    private async Task DjiMergeAusfuehrenAsync()
+    {
+        if (AusgewaehlteGruppe == null || DjiMergeLaeuft) return;
+
+        DjiMergeLaeuft = true;
+        StatusText = $"Füge {AusgewaehlteGruppe.ClipAnzahl} Clips zusammen...";
+
+        var fortschritt = new Progress<double>(p => DjiMergeFortschritt = p);
+
+        try
+        {
+            var ausgabeOrdner = System.IO.Path.Combine(DjiOrdner, "FlipsiColor_Merged");
+
+            if (DjiAutoMergeAktiv)
+            {
+                // Zusammenfügen + Farbkorrektur
+                var param = new PipelineParams
+                {
+                    Belichtung = Belichtung,
+                    Kontrast = Kontrast,
+                    Saettigung = Saettigung,
+                    Vibranz = Vibranz,
+                    Lichter = Lichter,
+                    Schatten = Schatten,
+                    SchaerfeBetrag = Schaerfe,
+                    LuminanzRauschen = RauschenLuma,
+                    ChrominanzRauschen = RauschenChroma,
+                    ObjektivkorrekturAktiv = Objektivkorrektur
+                };
+
+                var ergebnis = await _djiAutoMerge.ClipsZusammenfuegenMitFarbkorrekturAsync(
+                    AusgewaehlteGruppe, ausgabeOrdner, _imagePipeline, param, fortschritt);
+
+                if (ergebnis != null)
+                    StatusText = $"Fertig: {System.IO.Path.GetFileName(ergebnis)} (Farbkorrektur angewendet)";
+                else
+                    StatusText = "Zusammenfügen mit Farbkorrektur fehlgeschlagen";
+            }
+            else
+            {
+                // Nur Zusammenfügen
+                var ergebnis = await _djiAutoMerge.ClipsZusammenfuegenAsync(
+                    AusgewaehlteGruppe, ausgabeOrdner, fortschritt);
+
+                if (ergebnis != null)
+                    StatusText = $"Fertig: {System.IO.Path.GetFileName(ergebnis)} (ohne Farbkorrektur)";
+                else
+                    StatusText = "Zusammenfügen fehlgeschlagen";
+            }
+        }
+        catch (Exception ex)
+        {
+            StatusText = $"DJI Merge Fehler: {ex.Message}";
+        }
+        finally
+        {
+            DjiMergeLaeuft = false;
+        }
+    }
+
+    [RelayCommand]
+    private async Task DjiAlleMergenAsync()
+    {
+        if (ClipGruppen.Count == 0 || DjiMergeLaeuft) return;
+
+        DjiMergeLaeuft = true;
+        var erledigt = 0;
+        var gesamt = ClipGruppen.Count;
+        StatusText = $"Verarbeite {gesamt} Clip-Gruppen...";
+
+        try
+        {
+            var ausgabeOrdner = System.IO.Path.Combine(DjiOrdner, "FlipsiColor_Merged");
+            var param = new PipelineParams
+            {
+                Belichtung = Belichtung,
+                Kontrast = Kontrast,
+                Saettigung = Saettigung,
+                Vibranz = Vibranz,
+                Lichter = Lichter,
+                Schatten = Schatten,
+                SchaerfeBetrag = Schaerfe,
+                LuminanzRauschen = RauschenLuma,
+                ChrominanzRauschen = RauschenChroma,
+                ObjektivkorrekturAktiv = Objektivkorrektur
+            };
+
+            foreach (var gruppe in ClipGruppen)
+            {
+                if (DjiAutoMergeAktiv)
+                {
+                    var fortschritt = new Progress<double>(p =>
+                        DjiMergeFortschritt = (erledigt + p) / gesamt);
+                    await _djiAutoMerge.ClipsZusammenfuegenMitFarbkorrekturAsync(
+                        gruppe, ausgabeOrdner, _imagePipeline, param, fortschritt);
+                }
+                else
+                {
+                    var fortschritt = new Progress<double>(p =>
+                        DjiMergeFortschritt = (erledigt + p) / gesamt);
+                    await _djiAutoMerge.ClipsZusammenfuegenAsync(
+                        gruppe, ausgabeOrdner, fortschritt);
+                }
+
+                erledigt++;
+                DjiMergeFortschritt = (double)erledigt / gesamt;
+            }
+
+            StatusText = $"Alle {gesamt} Gruppen verarbeitet (Ausgabe: {ausgabeOrdner})";
+        }
+        catch (Exception ex)
+        {
+            StatusText = $"Fehler bei Bulk-Merge: {ex.Message}";
+        }
+        finally
+        {
+            DjiMergeLaeuft = false;
+        }
     }
 
     public void Dispose()
@@ -147,5 +396,6 @@ public partial class MainViewModel : ObservableObject, IDisposable
         _imagePipeline.Dispose();
         _modelManager.Dispose();
         _autoUpdater.Dispose();
+        _djiAutoMerge.Dispose();
     }
 }
