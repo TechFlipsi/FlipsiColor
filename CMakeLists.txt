@@ -102,12 +102,22 @@ target_link_libraries(flipsicolor PRIVATE
 )
 
 # ── MSVC C++20 <ctime>-Bug-Workaround ──────────────────────────────────────
-# MSVC 14.44 produziert C2039/C2873 in <ctime> bei C++20, wenn Headers
-# wie Qt/OpenCV/ONNX bereits std-Namespace-Symbole definiert haben.
-# CMake setzt /std:c++20 via CMAKE_CXX_STANDARD — wir überschreiben
-# das Target auf C++17, da der Bug nur mit C++20 auftritt.
-# GCC/Clang behalten C++20 (kein Bug dort).
+# MSVC 14.44 produziert C2039/C2873 in <ctime>, wenn Drittanbieter-Header
+# (Qt, OpenCV, ONNX Runtime) vor <ctime> geladen werden und Symbole im
+# std-Namespace definieren. <ctime>'s using-Deklarationen schlagen dann fehl.
+#
+# Fix: /FI force-included einen Header, der <time.h> VOR allem anderen lädt.
+# CMake muss den absoluten Pfad via configure_file generieren, da /FI mit
+# ${CMAKE_CURRENT_SOURCE_DIR} auf Windows-Runnern Pfad-Probleme hat.
+# GCC/Clang sind nicht betroffen (kein Bug dort).
 if(MSVC)
+    configure_file(
+        "${CMAKE_CURRENT_SOURCE_DIR}/include/flipsicolor/pch.h"
+        "${CMAKE_CURRENT_BINARY_DIR}/flipsicolor_msvc_pch.h"
+        COPYONLY
+    )
+    target_compile_options(flipsicolor PRIVATE /FI"${CMAKE_CURRENT_BINARY_DIR}/flipsicolor_msvc_pch.h")
+    target_include_directories(flipsicolor PRIVATE "${CMAKE_CURRENT_BINARY_DIR}")
     set_target_properties(flipsicolor PROPERTIES CXX_STANDARD 17)
     target_compile_options(flipsicolor PRIVATE /std:c++17)
 endif()
