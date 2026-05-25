@@ -95,6 +95,8 @@ jobs:
         shell: pwsh
         run: |
           cd C:\vcpkg
+          git fetch --unshallow 2>$null
+          git pull
           .\bootstrap-vcpkg.bat
           echo "VCPKG_ROOT=C:\vcpkg" >> $env:GITHUB_ENV
 
