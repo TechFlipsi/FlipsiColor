@@ -1,0 +1,55 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <Platforms>x64</Platforms>
+    <RuntimeIdentifiers>win-x64</RuntimeIdentifiers>
+    <WindowsPackageType>None</WindowsPackageType>
+    <ApplicationManifest>app.manifest</ApplicationManifest>
+    <IncludeNativeLibrariesForSelfExtract>true</IncludeNativeLibrariesForSelfExtract>
+    <PublishReadyToRun>true</PublishReadyToRun>
+    <Version>0.2.0</Version>
+    <AssemblyVersion>0.2.0.0</AssemblyVersion>
+    <FileVersion>0.2.0.0</FileVersion>
+    <RootNamespace>FlipsiColor</RootNamespace>
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>net9.0-windows</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <UseWPF>true</UseWPF>
+    <ApplicationIcon>Assets\icon.ico</ApplicationIcon>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <!-- ONNX Runtime: DirectML for GPU, Managed for API types -->
+    <PackageReference Include="Microsoft.ML.OnnxRuntime.DirectML" Version="1.23.0" />
+    <PackageReference Include="Microsoft.ML.OnnxRuntime" Version="1.23.2">
+      <ExcludeAssets>all</ExcludeAssets>
+    </PackageReference>
+
+    <!-- Image Processing -->
+    <PackageReference Include="OpenCvSharp4" Version="4.10.0.*" />
+    <PackageReference Include="OpenCvSharp4.runtime.win" Version="4.10.0.*" />
+    <PackageReference Include="OpenCvSharp4.Extensions" Version="4.10.0.*" />
+
+    <!-- EXIF & Metadata -->
+    <PackageReference Include="MetadataExtractor" Version="2.*" />
+
+    <!-- Logging -->
+    <PackageReference Include="Serilog" Version="4.*" />
+    <PackageReference Include="Serilog.Sinks.File" Version="6.*" />
+    <PackageReference Include="Serilog.Sinks.Console" Version="6.*" />
+    <PackageReference Include="Serilog.Extensions.Logging" Version="8.*" />
+
+    <!-- MVVM -->
+    <PackageReference Include="CommunityToolkit.Mvvm" Version="8.*" />
+
+    <!-- Color Management -->
+    <PackageReference Include="System.Drawing.Common" Version="8.*" />
+
+    <!-- JSON -->
+    <PackageReference Include="System.Text.Json" Version="9.*" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Content Include="Assets\**" />
+  </ItemGroup>
+</Project>

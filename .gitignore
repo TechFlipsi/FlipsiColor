@@ -1,63 +1,32 @@
-# C++ / Qt / CMake
-build/
-cmake-build-*/
+## .NET
+bin/
+obj/
+publish/
 *.user
-*.user.*
-CMakeLists.txt.user
-CMakeCache.txt
-CMakeFiles/
-cmake_install.cmake
-Makefile
-*.cmake.in
+*.suo
+*.cache
+*.vs/
 
-# Compiled
-*.o
-*.obj
-*.so
-*.so.*
-*.dylib
-*.dll
-*.a
-*.lib
+## NuGet
+*.nupkg
+packages/
+
+## Build
+installer-output/
 *.exe
-*.out
-*.app
+*.msi
 
-# Qt
-moc_*.cpp
-ui_*.h
-qrc_*.cpp
-*.qm
-*.qrc.cxx
-
-# IDE
+## IDE
 .vscode/
 .idea/
 *.swp
-*.swo
-*~
+
+## OS
 .DS_Store
 Thumbs.db
 
-# ONNX models (large, lazy-downloaded)
-resources/models/*.onnx
+## Models (too large for git)
+Models/*.onnx
 
-# FlipsiColor project files (user data)
-*.flipsicolor
-*.flipsicolor-style
-
-# Logs
+## Logs
 *.log
-
-# OS
-.DS_Store
-.DS_Store?
-._*
-.Spotlight-V100
-.Trashes
-ehthumbs.db
-Desktop.ini
-
-# Dependencies (built separately)
-vcpkg/
-conan/
