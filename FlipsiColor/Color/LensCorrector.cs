@@ -13,7 +13,6 @@ public sealed class LensCorrector : IDisposable
 {
     private static readonly Serilog.ILogger Log = Serilog.Log.ForContext<LensCorrector>();
     private bool _disposed;
-    private string? _letztesObjektiv;
     private IntPtr _lensfunDb;
     private IntPtr _lensfunCam;
     private IntPtr _lensfunLens;
