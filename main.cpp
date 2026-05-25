@@ -42,7 +42,7 @@ int main(int argc, char* argv[])
     app.setOrganizationName("TechFlipsi");
     app.setOrganizationDomain("techflipsi.com");
     app.setApplicationName("FlipsiColor");
-    app.setApplicationVersion("0.1.0");
+    app.setApplicationVersion("0.2.0");
 
     // ── App-Icon setzen (plattformübergreifend) ─────────────────────────────
     QIcon appIcon;

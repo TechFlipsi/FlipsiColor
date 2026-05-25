@@ -211,8 +211,18 @@ Dialog {
                 ComboBox {
                     id: themeCombo
                     Layout.fillWidth: true
-                    model: [qsTr("Dark"), qsTr("Darker"), qsTr("High Contrast")]
-                    currentIndex: 0
+                    model: [qsTr("Light"), qsTr("Dark"), qsTr("System")]
+                    currentIndex: 1
+
+                    onActivated: {
+                        AppTheme.setThemeMode(currentIndex)
+                    }
+
+                    Component.onCompleted: {
+                        if (typeof AppTheme !== "undefined" && AppTheme.themeMode !== undefined) {
+                            currentIndex = AppTheme.themeMode
+                        }
+                    }
 
                     background: Rectangle {
                         color: AppTheme.bgInput
@@ -649,7 +659,7 @@ Dialog {
                     }
 
                     Label {
-                        text: "v0.1.0"
+                        text: "v0.2.0"
                         font.pixelSize: AppTheme.fontSizeSm
                         font.family: AppTheme.fontMono
                         color: AppTheme.accentPrimary
@@ -705,7 +715,7 @@ Dialog {
                         }
 
                         Label {
-                            text: "v0.1.0"
+                            text: "v0.2.0"
                             font.pixelSize: AppTheme.fontSizeSm
                             font.family: AppTheme.fontMono
                             color: AppTheme.textPrimary
