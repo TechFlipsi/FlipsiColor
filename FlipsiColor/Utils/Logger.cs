@@ -69,7 +69,7 @@ public static class Crypto
 /// </summary>
 public static class FileSystem
 {
-    private static readonly Serilog.ILogger Log = Serilog.Log.ForContext("FileSystem");
+    private static readonly Serilog.ILogger Log = Serilog.Log.ForContext("SourceContext", "FileSystem");
 
     /// <summary>
     /// Sichert dass ein Verzeichnis existiert

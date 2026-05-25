@@ -33,7 +33,7 @@ public class ExifReader
                 foreach (var tag in dir.Tags)
                 {
                     var key = $"{dir.Name}/{tag.Name}";
-                    result[key] = tag.Description ?? tag.RawValue?.ToString() ?? "";
+                    result[key] = tag.Description ?? tag.ToString() ?? "";
                 }
             }
 
