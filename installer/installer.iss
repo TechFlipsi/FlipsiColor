@@ -22,7 +22,6 @@ WizardStyle=modern
 ArchitecturesAllowed=x64compatible
 ArchitecturesInstallIn64BitMode=x64compatible
 PrivilegesRequired=lowest
-SetupIconFile=..\FlipsiColor\Assets\icon.ico
 UninstallDisplayIcon={app}\{#AppExeName}
 
 [Languages]
