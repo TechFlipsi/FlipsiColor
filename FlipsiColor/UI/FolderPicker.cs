@@ -91,7 +91,6 @@ public static class FolderPicker
         [PreserveSig] int SetClientGuid(ref Guid guid);
         [PreserveSig] int ClearClientData();
         [PreserveSig] int SetFilter(IntPtr pFilter);
-        [PreserveSig] int GetCurrentSelection(out IShellItem ppsi);
     }
 
     [ComImport]
