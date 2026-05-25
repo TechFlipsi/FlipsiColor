@@ -121,24 +121,46 @@ jobs:
         working-directory: build
         shell: pwsh
         run: |
-          # vcpkg DLLs
+          $dest = ".\Release\"
+          if (-not (Test-Path $dest)) { New-Item -ItemType Directory -Path $dest | Out-Null }
+          
+          # vcpkg DLLs (raw.dll, lcms2.dll, lensfun.dll, libexif.dll, zlib.dll etc.)
           $vcpkgDlls = "C:\vcpkg\installed\x64-windows\bin"
           if (Test-Path $vcpkgDlls) {
-            Get-ChildItem "$vcpkgDlls\*.dll" | Copy-Item -Destination ".\Release\" -ErrorAction SilentlyContinue
+            $copied = (Get-ChildItem "$vcpkgDlls\*.dll" | Copy-Item -Destination $dest -PassThru).Count
+            Write-Host "vcpkg: $copied DLLs kopiert"
+          } else {
+            Write-Host "WARNUNG: vcpkg bin-Verzeichnis nicht gefunden: $vcpkgDlls"
           }
+          
           # FFMPEG DLLs
           if (Test-Path "${{ env.FFMPEG_BIN }}") {
-            Get-ChildItem "${{ env.FFMPEG_BIN }}\*.dll" | Copy-Item -Destination ".\Release\" -ErrorAction SilentlyContinue
+            $copied = (Get-ChildItem "${{ env.FFMPEG_BIN }}\*.dll" | Copy-Item -Destination $dest -PassThru).Count
+            Write-Host "FFMPEG: $copied DLLs kopiert"
           }
+          
           # ONNX Runtime DLL
           $ortDll = "${{ env.ONNXRUNTIME_DIR }}\lib\onnxruntime.dll"
           if (Test-Path $ortDll) {
-            Copy-Item $ortDll -Destination ".\Release\" -ErrorAction SilentlyContinue
+            Copy-Item $ortDll -Destination $dest
+            Write-Host "ONNX Runtime: onnxruntime.dll kopiert"
           }
+          
           # OpenCV DLLs
           $ocvDlls = "${{ env.OpenCV_ROOT }}\x64\vc17\bin"
           if (Test-Path $ocvDlls) {
-            Get-ChildItem "$ocvDlls\opencv_*.dll" | Copy-Item -Destination ".\Release\" -ErrorAction SilentlyContinue
+            $copied = (Get-ChildItem "$ocvDlls\opencv_*.dll" | Copy-Item -Destination $dest -PassThru).Count
+            Write-Host "OpenCV: $copied DLLs kopiert"
+          }
+          
+          # Verifizieren: Alle benötigten DLLs vorhanden?
+          $requiredDlls = @("raw.dll", "onnxruntime.dll", "lcms2.dll")
+          foreach ($dll in $requiredDlls) {
+            if (Test-Path "$dest$dll") {
+              Write-Host "✓ $dll gefunden"
+            } else {
+              Write-Host "✗ $dll FEHLT!"
+            }
           }
 
       - name: NSIS-Installer bauen
