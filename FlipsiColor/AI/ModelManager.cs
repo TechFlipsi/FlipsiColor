@@ -8,7 +8,6 @@ using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.ML.OnnxRuntime;
-using Microsoft.ML.OnnxRuntime.Inference;
 
 using FlipsiColor.Utils;
 

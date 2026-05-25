@@ -15,15 +15,11 @@
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
     <UseWPF>true</UseWPF>
-    <ApplicationIcon>Assets\icon.ico</ApplicationIcon>
   </PropertyGroup>
 
   <ItemGroup>
-    <!-- ONNX Runtime: DirectML for GPU, Managed for API types -->
+    <!-- ONNX Runtime: DirectML for GPU + API -->
     <PackageReference Include="Microsoft.ML.OnnxRuntime.DirectML" Version="1.23.0" />
-    <PackageReference Include="Microsoft.ML.OnnxRuntime" Version="1.23.2">
-      <ExcludeAssets>all</ExcludeAssets>
-    </PackageReference>
 
     <!-- Image Processing -->
     <PackageReference Include="OpenCvSharp4" Version="4.10.0.*" />
