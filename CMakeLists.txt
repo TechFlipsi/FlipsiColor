@@ -65,6 +65,7 @@ qt_add_resources(RESOURCES resources/resources.qrc)
 
 # ── Ausführbare Datei ──────────────────────────────────────────────────────
 qt_add_executable(flipsicolor
+    WIN32
     main.cpp
     ${SOURCES}
     ${HEADERS}
