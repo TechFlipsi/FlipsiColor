@@ -5,7 +5,12 @@ project(FlipsiColor
     LANGUAGES CXX
 )
 
-set(CMAKE_CXX_STANDARD 20)
+# ── C++ Standard ─────────────────────────────────────────────────────────────
+# MSVC 14.44 hat einen Bug: <ctime> wirft C2039/C2873 mit C++20, wenn Qt/OpenCV/
+# ONNX-Header vor <ctime> geladen werden. C++17 ist nicht betroffen.
+# FlipsiColor nutzt keine C++20-Features, daher ist C++17 sicher.
+# GCC/Clang würden C++20 vertragen, aber C++17 reicht für alle Features.
+set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
@@ -25,6 +30,17 @@ option(FLIPSICOLOR_STATIC_LINK "Bibliotheken statisch verknüpfen" OFF)
 # ── Qt ───────────────────────────────────────────────────────────────────────
 find_package(Qt6 REQUIRED COMPONENTS Core Gui Quick QuickControls2 Widgets LinguistTools Network Test)
 qt_standard_project_setup(REQUIRES 6.5)
+
+# ── qt_standard_project_setup kann CMAKE_CXX_STANDARD überschreiben! ──────
+# Daher NACH dem Qt-Setup erneut setzen, um unseren Standard zu erzwingen.
+if(MSVC)
+    # MSVC braucht C++17 wegen <ctime>-Bug (C2039/C2873 bei C++20)
+    set(CMAKE_CXX_STANDARD 17 CACHE STRING "C++ standard" FORCE)
+else()
+    # GCC/Clang können ruhig C++20 nutzen — kein Bug dort
+    set(CMAKE_CXX_STANDARD 20 CACHE STRING "C++ standard" FORCE)
+endif()
+set(CMAKE_CXX_STANDARD_REQUIRED ON CACHE BOOL "Require C++ standard" FORCE)
 
 # ── Abhängigkeiten ───────────────────────────────────────────────────────────
 find_package(OpenCV REQUIRED)
@@ -100,27 +116,6 @@ target_link_libraries(flipsicolor PRIVATE
     LCMS2::LCMS2
     LibExif::LibExif
 )
-
-# ── MSVC C++20 <ctime>-Bug-Workaround ──────────────────────────────────────
-# MSVC 14.44 produziert C2039/C2873 in <ctime>, wenn Drittanbieter-Header
-# (Qt, OpenCV, ONNX Runtime) vor <ctime> geladen werden und Symbole im
-# std-Namespace definieren. <ctime>'s using-Deklarationen schlagen dann fehl.
-#
-# Fix: /FI force-included einen Header, der <time.h> VOR allem anderen lädt.
-# CMake muss den absoluten Pfad via configure_file generieren, da /FI mit
-# ${CMAKE_CURRENT_SOURCE_DIR} auf Windows-Runnern Pfad-Probleme hat.
-# GCC/Clang sind nicht betroffen (kein Bug dort).
-if(MSVC)
-    configure_file(
-        "${CMAKE_CURRENT_SOURCE_DIR}/include/flipsicolor/pch.h"
-        "${CMAKE_CURRENT_BINARY_DIR}/flipsicolor_msvc_pch.h"
-        COPYONLY
-    )
-    target_compile_options(flipsicolor PRIVATE /FI"${CMAKE_CURRENT_BINARY_DIR}/flipsicolor_msvc_pch.h")
-    target_include_directories(flipsicolor PRIVATE "${CMAKE_CURRENT_BINARY_DIR}")
-    set_target_properties(flipsicolor PROPERTIES CXX_STANDARD 17)
-    target_compile_options(flipsicolor PRIVATE /std:c++17)
-endif()
 
 # ── Installation ────────────────────────────────────────────────────────────
 install(TARGETS flipsicolor
