@@ -1,7 +1,6 @@
 # FlipsiColor — Clang-Format Konfiguration
 # Basierend auf WebKit/Mozilla-Style mit deutschem Flavor
 BasedOnStyle: LLVM
-LanguageStd: Cpp20
 
 # Einrückung & Spacing
 IndentWidth: 4
