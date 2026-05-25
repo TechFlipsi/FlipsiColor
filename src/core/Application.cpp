@@ -6,7 +6,7 @@
 #include "flipsicolor/ai/ModelManager.h"
 #include "flipsicolor/utils/AutoUpdater.h"
 
-#include <QDebug>
+#include "flipsicolor/utils/Logger.h"
 #include <QSettings>
 
 #include <onnxruntime_cxx_api.h>
@@ -20,7 +20,7 @@ namespace flipsicolor
 
     void Application::initialisieren()
     {
-        qDebug() << "FlipsiColor — App-Initialisierung gestartet";
+        fcInfo("App") << "App-Initialisierung gestartet";
         gpuErkennen();
         einstellungenLaden();
         kiInitialisieren();
@@ -30,9 +30,9 @@ namespace flipsicolor
         connect(m_updater.get(), &AutoUpdater::updateVerfuegbarChanged, this, &Application::updateVerfuegbarChanged);
         connect(m_updater.get(), &AutoUpdater::neueVersionChanged, this, &Application::neueVersionChanged);
         // Prüfung startet automatisch nach 30s
-        qDebug() << "FlipsiColor — Auto-Updater initialisiert (prüft automatisch)";
+        fcInfo("App") << "Auto-Updater initialisiert (prüft automatisch)";
 
-        qDebug() << "FlipsiColor — App-Initialisierung abgeschlossen";
+        fcInfo("App") << "App-Initialisierung abgeschlossen";
     }
 
     bool Application::updateVerfuegbar() const
@@ -76,12 +76,12 @@ namespace flipsicolor
             {
                 QString s = QString::fromStdString(p);
                 verfuegbareProvider << s;
-                qDebug() << "ONNX Runtime Provider gefunden:" << s;
+                fcDebug("App") << "ONNX Runtime Provider gefunden:" << s;
             }
         }
         catch ( const std::exception& e )
         {
-            qWarning() << "Provider-Prüfung fehlgeschlagen:" << e.what();
+            fcWarn("App") << "Provider-Prüfung fehlgeschlagen:" << e.what();
         }
 
         // GPU-Verfügbarkeit anhand CUDA-Provider prüfen
@@ -111,7 +111,7 @@ namespace flipsicolor
             m_gpuName = "CPU (keine GPU-Beschleunigung)";
         }
 
-        qDebug() << "GPU verfügbar:" << m_gpuVerfuegbar << "—" << m_gpuName;
+        fcInfo("App") << "GPU verfügbar:" << m_gpuVerfuegbar << "—" << m_gpuName;
         emit gpuVerfuegbarChanged();
     }
 
@@ -122,7 +122,7 @@ namespace flipsicolor
         // Feedback-Anzahl aus gespeicherten Einstellungen laden
         m_feedbackAnzahl = s.value("lernen/feedbackAnzahl", 0).toInt();
 
-        qDebug() << "Einstellungen geladen. Feedback-Anzahl:" << m_feedbackAnzahl;
+        fcInfo("App") << "Einstellungen geladen. Feedback-Anzahl:" << m_feedbackAnzahl;
 
         // Migrationslogik für zukünftige Versionen kann hier eingefügt werden
     }
@@ -134,8 +134,8 @@ namespace flipsicolor
         m_modelManager = std::make_unique<ModelManager>(this);
         m_modelManager->manifestLaden();
 
-        qDebug() << "KI-Initialisierung abgeschlossen. Core-Modelle Gesamtgröße:" << m_modelManager->coreGroesseGesamt()
-                 << "Bytes";
+        fcInfo("App") << "KI-Initialisierung abgeschlossen. Core-Modelle Gesamtgröße:"
+                      << m_modelManager->coreGroesseGesamt() << "Bytes";
     }
 
 }  // namespace flipsicolor

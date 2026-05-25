@@ -2,6 +2,7 @@
 // Copyright (C) 2026 Fabian Kirchweger (TechFlipsi)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
+#include "flipsicolor/utils/Logger.h"
 #include <flipsicolor/image/RawDecoder.h>
 #include <libraw/libraw.h>
 #include <opencv2/core.hpp>
@@ -30,14 +31,14 @@ namespace flipsicolor
         m_impl->rawData = libraw_init(0);
         if ( !m_impl->rawData )
         {
-            qWarning() << "LibRaw konnte nicht initialisiert werden";
+            fcWarn("RAW") << "LibRaw konnte nicht initialisiert werden";
             return false;
         }
 
         int ergebnis = libraw_open_file(m_impl->rawData, pfad.toUtf8().constData());
         if ( ergebnis != LIBRAW_SUCCESS )
         {
-            qWarning() << "LibRaw Fehler beim Öffnen:" << libraw_strerror(ergebnis);
+            fcWarn("RAW") << "LibRaw Fehler beim Öffnen:" << libraw_strerror(ergebnis);
             libraw_close(m_impl->rawData);
             m_impl->rawData = nullptr;
             return false;
@@ -46,13 +47,13 @@ namespace flipsicolor
         ergebnis = libraw_unpack(m_impl->rawData);
         if ( ergebnis != LIBRAW_SUCCESS )
         {
-            qWarning() << "LibRaw Fehler beim Entpacken:" << libraw_strerror(ergebnis);
+            fcWarn("RAW") << "LibRaw Fehler beim Entpacken:" << libraw_strerror(ergebnis);
             libraw_close(m_impl->rawData);
             m_impl->rawData = nullptr;
             return false;
         }
 
-        qDebug() << "RAW-Datei geladen:" << pfad;
+        fcInfo("RAW") << "RAW-Datei geladen:" << pfad;
         emit geladen(pfad);
         return true;
     }

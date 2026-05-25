@@ -4,8 +4,8 @@
 
 #include "flipsicolor/ai/ModelManager.h"
 
+#include "flipsicolor/utils/Logger.h"
 #include <QCryptographicHash>
-#include <QDebug>
 #include <QDir>
 #include <QFile>
 #include <QFileInfo>
@@ -113,7 +113,7 @@ namespace flipsicolor
 
     void ModelManager::manifestLaden()
     {
-        qDebug() << "ModelManager: Manifest wird geladen...";
+        fcInfo("KI-Manager") << "ModelManager: Manifest wird geladen...";
 
         const QString basisPfad   = QStandardPaths::writableLocation(QStandardPaths::AppDataLocation);
         const QString modellePfad = basisPfad + "/models";
@@ -131,7 +131,7 @@ namespace flipsicolor
             if ( fi.exists() && fi.size() == info.groesseBytes )
             {
                 it->heruntergeladen = true;
-                qDebug() << "  Modell bereits vorhanden:" << info.id;
+                fcDebug("KI-Manager") << "  Modell bereits vorhanden:" << info.id;
             }
         }
 
@@ -140,23 +140,23 @@ namespace flipsicolor
         {
             if ( it.value().erforderlich && !it.value().heruntergeladen )
             {
-                qDebug() << "  Core-Modell fehlt:" << it.value().id << "— starte Download...";
+                fcInfo("KI-Manager") << "  Core-Modell fehlt:" << it.value().id << "— starte Download...";
                 modellHerunterladen(it.key());
             }
             else if ( !it.value().erforderlich )
             {
-                qDebug() << "  Optionales Modell:" << it.value().id << "— Lazy-Load";
+                fcDebug("KI-Manager") << "  Optionales Modell:" << it.value().id << "— Lazy-Load";
             }
         }
 
-        qDebug() << "ModelManager: Manifest geladen." << m_modelle.size() << "Modelle registriert.";
+        fcInfo("KI-Manager") << "ModelManager: Manifest geladen." << m_modelle.size() << "Modelle registriert.";
     }
 
     bool ModelManager::modellSicherstellen(ModellId id)
     {
         if ( !m_modelle.contains(id) )
         {
-            qWarning() << "ModelManager: Unbekannte Modell-ID:" << static_cast<int>(id);
+            fcWarn("KI-Manager") << "ModelManager: Unbekannte Modell-ID:" << static_cast<int>(id);
             return false;
         }
 
@@ -171,7 +171,7 @@ namespace flipsicolor
         // Herunterladen falls nötig
         if ( !info.heruntergeladen )
         {
-            qDebug() << "ModelManager: Modell" << info.id << "muss heruntergeladen werden.";
+            fcInfo("KI-Manager") << "ModelManager: Modell" << info.id << "muss heruntergeladen werden.";
             modellHerunterladen(id);
             if ( !info.heruntergeladen )
             {
@@ -188,7 +188,7 @@ namespace flipsicolor
     {
         if ( !m_sessions.contains(id) )
         {
-            qWarning() << "ModelManager: Keine Session für Modell" << static_cast<int>(id);
+            fcWarn("KI-Manager") << "ModelManager: Keine Session für Modell" << static_cast<int>(id);
             return nullptr;
         }
         return m_sessions[id];
@@ -244,7 +244,7 @@ namespace flipsicolor
             return;
         }
 
-        qDebug() << "ModelManager: Lade herunter:" << info.id << "von" << info.url;
+        fcInfo("KI-Manager") << "ModelManager: Lade herunter:" << info.id << "von" << info.url;
 
         auto*           nam = new QNetworkAccessManager(this);
         QNetworkRequest request(QUrl(info.url));
@@ -262,7 +262,7 @@ namespace flipsicolor
             if ( reply->error() != QNetworkReply::NoError )
             {
                 QString fehler = QString("Download-Fehler für %1: %2").arg(info.id, reply->errorString());
-                qWarning() << "ModelManager:" << fehler;
+                fcWarn("KI-Manager") << "ModelManager:" << fehler;
                 emit downloadFehler(id, fehler);
                 reply->deleteLater();
                 return;
@@ -278,7 +278,7 @@ namespace flipsicolor
             if ( !info.sha256.contains("placeholder") && berechneterHash != info.sha256.toLower() )
             {
                 QString fehler = QString("SHA256-Prüfung fehlgeschlagen für %1").arg(info.id);
-                qCritical() << "ModelManager:" << fehler;
+                fcErr("KI-Manager") << "ModelManager:" << fehler;
                 emit downloadFehler(id, fehler);
                 reply->deleteLater();
                 return;
@@ -289,7 +289,7 @@ namespace flipsicolor
             if ( !datei.open(QIODevice::WriteOnly) )
             {
                 QString fehler = QString("Kann Datei nicht schreiben: %1").arg(zielPfad);
-                qWarning() << "ModelManager:" << fehler;
+                fcWarn("KI-Manager") << "ModelManager:" << fehler;
                 emit downloadFehler(id, fehler);
                 reply->deleteLater();
                 return;
@@ -299,7 +299,7 @@ namespace flipsicolor
             datei.close();
 
             info.heruntergeladen = true;
-            qDebug() << "ModelManager:" << info.id << "heruntergeladen (" << daten.size() << "Bytes)";
+            fcInfo("KI-Manager") << "ModelManager:" << info.id << "heruntergeladen (" << daten.size() << "Bytes)";
 
             modellLaden(id);
             emit modellBereit(id);
@@ -311,7 +311,7 @@ namespace flipsicolor
     {
         if ( !m_modelle.contains(id) || !m_modelle[id].heruntergeladen )
         {
-            qWarning() << "ModelManager: Modell nicht heruntergeladen:" << static_cast<int>(id);
+            fcWarn("KI-Manager") << "ModelManager: Modell nicht heruntergeladen:" << static_cast<int>(id);
             return;
         }
 
@@ -328,7 +328,7 @@ namespace flipsicolor
         if ( status )
         {
             const char* msg = ort()->GetErrorMessage(status);
-            qCritical() << "ModelManager: CreateEnv fehlgeschlagen:" << msg;
+            fcErr("KI-Manager") << "ModelManager: CreateEnv fehlgeschlagen:" << msg;
             ort()->ReleaseStatus(status);
             return;
         }
@@ -352,11 +352,11 @@ namespace flipsicolor
         if ( status )
         {
             ort()->ReleaseStatus(status);
-            qDebug() << "ModelManager: CUDA nicht verfügbar — verwende CPU";
+            fcInfo("KI-Manager") << "ModelManager: CUDA nicht verfügbar — verwende CPU";
         }
         else
         {
-            qDebug() << "ModelManager: CUDA Execution Provider aktiviert";
+            fcInfo("KI-Manager") << "ModelManager: CUDA Execution Provider aktiviert";
         }
 
         // Session erstellen
@@ -374,7 +374,7 @@ namespace flipsicolor
         if ( status )
         {
             const char* msg = ort()->GetErrorMessage(status);
-            qCritical() << "ModelManager: CreateSession fehlgeschlagen für" << m_modelle[id].id << ":" << msg;
+            fcErr("KI-Manager") << "ModelManager: CreateSession fehlgeschlagen für" << m_modelle[id].id << ":" << msg;
             ort()->ReleaseStatus(status);
             ort()->ReleaseEnv(env);
             return;
@@ -385,8 +385,8 @@ namespace flipsicolor
 
         m_sessions[id] = static_cast<void*>(session);
 
-        qDebug() << "ModelManager: Session erstellt für" << m_modelle[id].id << "("
-                 << m_modelle[id].groesseBytes / (1024 * 1024) << "MB)";
+        fcInfo("KI-Manager") << "ModelManager: Session erstellt für" << m_modelle[id].id << "("
+                             << m_modelle[id].groesseBytes / (1024 * 1024) << "MB)";
     }
 
 }  // namespace flipsicolor

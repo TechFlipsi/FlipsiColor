@@ -4,8 +4,8 @@
 
 #include "flipsicolor/color/ColorManager.h"
 
+#include "flipsicolor/utils/Logger.h"
 #include <lcms2.h>
-#include <QDebug>
 #include <QDir>
 #include <QFileInfo>
 
@@ -75,7 +75,7 @@ namespace flipsicolor
         m_impl->arbeitsbereichZuSRGB = cmsCreateTransform(
             m_impl->proPhotoProfil, TYPE_RGB_16, m_impl->sRGBProfil, TYPE_RGB_16, INTENT_RELATIVE_COLORIMETRIC, 0);
 
-        qDebug() << "Farbmanagement initialisiert: Arbeitsfarbraum =" << ARBEITSFARBRAUM;
+        fcInfo("Farbe") << "Farbmanagement initialisiert: Arbeitsfarbraum =" << ARBEITSFARBRAUM;
     }
 
     QString ColorManager::monitorProfilErkennen() const

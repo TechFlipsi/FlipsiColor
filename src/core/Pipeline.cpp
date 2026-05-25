@@ -3,6 +3,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 #include "flipsicolor/core/Pipeline.h"
+#include "flipsicolor/utils/Logger.h"
 #include <QDebug>
 #include <QHash>
 
@@ -14,13 +15,14 @@ namespace flipsicolor
     void Pipeline::setIntensitaet(Intensitaet stufe)
     {
         m_intensitaet = stufe;
-        qDebug() << "Intensität gesetzt auf:" << static_cast<int>(stufe) << "(Leicht=0, Mittel=1, Stark=2)";
+        fcDebug("Pipeline") << "Intensität gesetzt auf:" << static_cast<int>(stufe) << "(Leicht=0, Mittel=1, Stark=2)";
     }
 
     void Pipeline::setModus(BetriebsModus modus)
     {
         m_modus = modus;
-        qDebug() << "Betriebsmodus gesetzt auf:" << static_cast<int>(modus) << "(Ask=0, SmartLearn=1, Turbo=2)";
+        fcDebug("Pipeline") << "Betriebsmodus gesetzt auf:" << static_cast<int>(modus)
+                            << "(Ask=0, SmartLearn=1, Turbo=2)";
     }
 
     PipelineParams Pipeline::standardParamsFuerSzene(const QString& szenenTyp) const

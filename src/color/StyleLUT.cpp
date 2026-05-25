@@ -4,9 +4,9 @@
 
 #include "flipsicolor/color/StyleLUT.h"
 
+#include "flipsicolor/utils/Logger.h"
 #include <opencv2/core.hpp>
 #include <opencv2/imgproc.hpp>
-#include <QDebug>
 #include <QDir>
 #include <QFile>
 #include <QStandardPaths>
@@ -46,7 +46,7 @@ namespace flipsicolor
         // Vielfalt-Check
         if ( brauchtVielfalt() )
         {
-            qDebug() << "Lernphase: Bitte verschiedene Szenen bewerten!";
+            fcDebug("StyleLUT") << "Lernphase: Bitte verschiedene Szenen bewerten!";
         }
     }
 
