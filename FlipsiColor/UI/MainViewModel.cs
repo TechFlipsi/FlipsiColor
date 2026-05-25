@@ -250,15 +250,11 @@ public partial class MainViewModel : ObservableObject, IDisposable
     {
         try
         {
-            var dialog = new System.Windows.Forms.FolderBrowserDialog
-            {
-                Description = "Ordner mit DJI Video-Clips auswählen",
-                UseDescriptionForTitle = true
-            };
+            var ordner = FolderPicker.OpenFolder("Ordner mit DJI Video-Clips auswählen");
 
-            if (dialog.ShowDialog() == System.Windows.Forms.DialogResult.OK)
+            if (!string.IsNullOrEmpty(ordner))
             {
-                DjiOrdner = dialog.SelectedPath;
+                DjiOrdner = ordner;
                 ClipGruppen = new ObservableCollection<DjiAutoMerge.ClipGruppe>(
                     _djiAutoMerge.ClipsGruppieren(DjiOrdner));
                 StatusText = $"{ClipGruppen.Count} Clip-Gruppen erkannt in {DjiOrdner}";
@@ -302,7 +298,7 @@ public partial class MainViewModel : ObservableObject, IDisposable
                 };
 
                 var ergebnis = await _djiAutoMerge.ClipsZusammenfuegenMitFarbkorrekturAsync(
-                    AusgewaehlteGruppe, ausgabeOrdner, _imagePipeline, param, fortschritt);
+                    AusgewaehlteGruppe, ausgabeOrdner, _modelManager, _colorManager, param, fortschritt);
 
                 if (ergebnis != null)
                     StatusText = $"Fertig: {System.IO.Path.GetFileName(ergebnis)} (Farbkorrektur angewendet)";
@@ -365,7 +361,7 @@ public partial class MainViewModel : ObservableObject, IDisposable
                     var fortschritt = new Progress<double>(p =>
                         DjiMergeFortschritt = (erledigt + p) / gesamt);
                     await _djiAutoMerge.ClipsZusammenfuegenMitFarbkorrekturAsync(
-                        gruppe, ausgabeOrdner, _imagePipeline, param, fortschritt);
+                        gruppe, ausgabeOrdner, _modelManager, _colorManager, param, fortschritt);
                 }
                 else
                 {

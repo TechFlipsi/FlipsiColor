@@ -16,21 +16,21 @@ public partial class MainWindow : Window
     /// <summary>DragEnter: Accept image file drops</summary>
     private void OnDragEnter(object sender, System.Windows.DragEventArgs e)
     {
-        if (e.Data.GetDataPresent(DataFormats.FileDrop))
+        if (e.Data.GetDataPresent(System.Windows.DataFormats.FileDrop))
         {
-            var files = e.Data.GetData(DataFormats.FileDrop) as string[];
+            var files = e.Data.GetData(System.Windows.DataFormats.FileDrop) as string[];
             if (files is { Length: 1 } && IsImageFile(files[0]))
             {
-                e.Effects = DragDropEffects.Copy;
+                e.Effects = System.Windows.DragDropEffects.Copy;
             }
             else
             {
-                e.Effects = DragDropEffects.None;
+                e.Effects = System.Windows.DragDropEffects.None;
             }
         }
         else
         {
-            e.Effects = DragDropEffects.None;
+            e.Effects = System.Windows.DragDropEffects.None;
         }
         e.Handled = true;
     }
@@ -38,9 +38,9 @@ public partial class MainWindow : Window
     /// <summary>Drop: Load image file into ViewModel</summary>
     private void OnDrop(object sender, System.Windows.DragEventArgs e)
     {
-        if (e.Data.GetDataPresent(DataFormats.FileDrop) && DataContext is MainViewModel vm)
+        if (e.Data.GetDataPresent(System.Windows.DataFormats.FileDrop) && DataContext is MainViewModel vm)
         {
-            var files = e.Data.GetData(DataFormats.FileDrop) as string[];
+            var files = e.Data.GetData(System.Windows.DataFormats.FileDrop) as string[];
             if (files is { Length: > 0 } && IsImageFile(files[0]))
             {
                 vm.LoadBild(files[0]);
