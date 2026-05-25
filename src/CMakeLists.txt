@@ -84,8 +84,5 @@ set(HEADERS
     include/flipsicolor/utils/FileSystem.h
     include/flipsicolor/utils/AutoUpdater.h
 
-    # Präcompiler-Header (MSVC C++20 <ctime>-Fix)
-    include/flipsicolor/pch.h
-
     PARENT_SCOPE
 )

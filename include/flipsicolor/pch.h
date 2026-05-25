@@ -1,26 +1,40 @@
-// FlipsiColor — Präcompiler-Header (MSVC C++20 <ctime>-Fix)
+// FlipsiColor — MSVC <ctime>-Fix
 // Copyright (C) 2026 Fabian Kirchweger (TechFlipsi)
 // SPDX-License-Identifier: GPL-3.0-or-later
 //
-// MSVC C++20-Workaround: <ctime> MUSS vor Qt/ONNX-Headern geladen werden.
-// Auf MSVC schlägt <ctime> fehl, wenn vorher schon C++-Header geladen wurden,
-// die Symbole in den std-Namespace bringen (Qt, OpenCV, ONNX Runtime).
-// Wir inkludieren <time.h> (C-Header) direkt — das umgeht den Bug, da
-// <time.h> die Symbole korrekt in den globalen Namespace bringt, und
-// <ctime> danach nur noch using-Deklarationen versucht (die aber durch
-// die bereits existierenden Symbole im globalen Namespace nun klappen).
+// MSVC C++20-Bug: <ctime> schlägt mit C2039/C2873 fehl, wenn vorher
+// schon Symbole (durch Qt/OpenCV/ONNX) in den std-Namespace gebracht
+// wurden. <ctime> versucht dann using-Deklarationen, die fehlschlagen,
+// weil die Symbole bereits im std-Namespace existieren.
+//
+// Lösung: <time.h> (C-Header) inkludieren, der die Symbole korrekt im
+// globalen Namespace definiert. Danach kann <ctime> die using-Deklarationen
+// erfolgreich durchführen, da die Symbole im globalen Namespace bereits
+// existieren und nicht nochmal importiert werden müssen.
+//
+// Dieser Header MUSS vor allen Qt/OpenCV/ONNX-Headern inkludiert werden.
+// Auf MSVC wird er per /FI-Flag vor jede Übersetzungseinheit gezwungen.
+//
+// Auf nicht-MSVC-Systemen ist dieser Header ein no-op (leer).
 
 #ifndef FLIPSICOLOR_PCH_H
 #define FLIPSICOLOR_PCH_H
 
-// C-Header VOR C++-Headern — umgeht MSVC <ctime>-Bug
-// <time.h> definiert Symbole im globalen Namespace (wo sie hingehören)
-// <ctime> versucht sie dann via using ins std:: zu verschieben — klappt jetzt
+#ifdef _MSC_VER
+// C-Header VOR C++-Headern — definiert clock_t/time_t/tm im globalen Namespace
 #include <time.h>
 #include <errno.h>
 #include <math.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+// <ctime> muss NACH <time.h> kommen — jetzt funktionieren die using-Deklarationen
+#include <ctime>
+#include <cstdio>
+#include <cstdlib>
+#include <cstring>
+#include <cmath>
+#include <cerrno>
+#endif
 
 #endif // FLIPSICOLOR_PCH_H

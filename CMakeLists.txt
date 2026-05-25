@@ -8,6 +8,17 @@ project(FlipsiColor
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
+
+# ── MSVC C++20 <ctime>-Workaround ──────────────────────────────────────────
+# MSVC 14.44 hat einen Bug: <ctime> schlägt mit C2039/C2873 fehl, wenn es
+# nach C++-Headern geladen wird, die bereits Symbole in den std-Namespace
+# bringen (Qt, ONNX Runtime, OpenCV). <time.h> via /FI zu force-includen
+# funktioniert nicht zuverlässig (Pfad-Problematik auf Windows).
+# Lösung: MSVC auf C++17 setzen — der Bug existiert nur mit C++20.
+# GCC/Clang behalten C++20.
+if(MSVC)
+    set(CMAKE_CXX_STANDARD 17)
+endif()
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
 # ── CMake Module Path (FindLibRaw, FindLensfun, FindLibExif etc.) ──────────
@@ -101,19 +112,7 @@ target_link_libraries(flipsicolor PRIVATE
     LibExif::LibExif
 )
 
-# ── MSVC C++20 <ctime>-Workaround ──────────────────────────────────────────
-# MSVC 14.44 wirft C2039/C2873 "<ctime>-Symbol cannot be used in a
-# using-declaration" wenn <ctime> nach C++-Headern geladen wird, die bereits
-# Symbole in den std-Namespace bringen (Qt, ONNX Runtime, OpenCV).
-#
-# Fix: /FI erzwingt force-include des C-Headers <time.h> VOR ALLEM —
-#     <time.h> definiert clock_t/time_t/tm im globalen Namespace,
-#     danach klappt <ctime>'s using-Deklaration wieder.
-#     PCH funktioniert NICHT, da MSVC die PCH mit denselben
-#     Include-Pfaden kompiliert und der Bug in cmake_pch.cxx auftritt.
-if(MSVC)
-    target_compile_options(flipsicolor PRIVATE /FI"${CMAKE_CURRENT_SOURCE_DIR}/include/flipsicolor/pch.h")
-endif()
+
 
 # ── Installation ────────────────────────────────────────────────────────────
 install(TARGETS flipsicolor
