@@ -41,6 +41,9 @@
     <!-- Color Management -->
     <PackageReference Include="System.Drawing.Common" Version="8.*" />
 
+    <!-- WMI for GPU detection -->
+    <PackageReference Include="System.Management" Version="8.*" />
+
     <!-- JSON -->
     <PackageReference Include="System.Text.Json" Version="9.*" />
   </ItemGroup>

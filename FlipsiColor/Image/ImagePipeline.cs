@@ -52,7 +52,7 @@ public sealed class ImagePipeline : IDisposable
             }
             else
             {
-                _aktuellesBild = Cv2.ImRead(pfad, ImReadModes.Color);
+                _aktuellesBild = Cv2.ImRead(pfad, ImreadModes.Color);
             }
 
             if (_aktuellesBild == null || _aktuellesBild.Empty())
@@ -215,7 +215,7 @@ public sealed class ImagePipeline : IDisposable
 
         // S-Kanal anpassen
         var sDelta = saettigung * 0.5f + vibranz * 0.25f;
-        channels[1] += sDelta * 50;
+        channels[1] = channels[1] + new Scalar(sDelta * 50, sDelta * 50, sDelta * 50, 0);
         Cv2.Merge(channels, hsv);
         foreach (var c in channels) c.Dispose();
 

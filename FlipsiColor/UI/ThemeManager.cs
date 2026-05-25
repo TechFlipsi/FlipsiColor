@@ -6,7 +6,7 @@ namespace FlipsiColor.UI;
 /// <summary>
 /// Theme-Manager — Dark/Light/System Theme-Unterstützung
 /// </summary>
-public static class ThemeManager
+public class ThemeManager
 {
     private static readonly Serilog.ILogger Log = Serilog.Log.ForContext<ThemeManager>();
 

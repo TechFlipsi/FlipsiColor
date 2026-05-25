@@ -10,7 +10,7 @@ namespace FlipsiColor.Image;
 /// <summary>
 /// RAW-Decoder via LibRaw.Native — unterstützt CR2, CR3, NEF, ARW, DNG, ORF, RW2
 /// </summary>
-public static class RawDecoder
+public class RawDecoder
 {
     private static readonly Serilog.ILogger Log = Serilog.Log.ForContext<RawDecoder>();
 
@@ -62,7 +62,7 @@ public static class RawDecoder
             // Fallback: OpenCV probieren
             try
             {
-                return Cv2.ImRead(pfad, ImReadModes.Color);
+                return Cv2.ImRead(pfad, ImreadModes.Color);
             }
             catch
             {
