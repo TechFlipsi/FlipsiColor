@@ -88,10 +88,32 @@ find_package_handle_standard_args(onnxruntime
 
 if(onnxruntime_FOUND AND NOT TARGET onnxruntime)
   add_library(onnxruntime SHARED IMPORTED)
-  set_target_properties(onnxruntime PROPERTIES
-    IMPORTED_LOCATION "${onnxruntime_LIBRARY}"
-    INTERFACE_INCLUDE_DIRECTORIES "${onnxruntime_INCLUDE_DIR}"
-  )
+
+  # On Windows, find_library returns the .lib import library.
+  # IMPORTED_LOCATION must point to the .dll, IMPORTED_IMPLIB to the .lib.
+  if(WIN32 AND onnxruntime_LIBRARY MATCHES "\\.lib$")
+    # .lib is the import library — find the corresponding .dll
+    find_file(onnxruntime_DLL
+      NAMES "onnxruntime.dll"
+      HINTS "${onnxruntime_INCLUDE_DIR}/.." "${ONNXRUNTIME_DIR}/lib" "${ONNXRUNTIME_DIR}/bin"
+      PATH_SUFFIXES lib bin
+      NO_DEFAULT_PATH
+    )
+    set_target_properties(onnxruntime PROPERTIES
+      IMPORTED_IMPLIB "${onnxruntime_LIBRARY}"
+      IMPORTED_LOCATION "${onnxruntime_DLL}"
+      INTERFACE_INCLUDE_DIRECTORIES "${onnxruntime_INCLUDE_DIR}"
+    )
+    if(NOT onnxruntime_DLL)
+      message(WARNING "Findonnxruntime: Found .lib but not .dll — onnxruntime_dll_path missing")
+    endif()
+  else()
+    # Linux/macOS: IMPORTED_LOCATION is the shared library itself
+    set_target_properties(onnxruntime PROPERTIES
+      IMPORTED_LOCATION "${onnxruntime_LIBRARY}"
+      INTERFACE_INCLUDE_DIRECTORIES "${onnxruntime_INCLUDE_DIR}"
+    )
+  endif()
 endif()
 
 mark_as_advanced(onnxruntime_INCLUDE_DIR onnxruntime_LIBRARY onnxruntime_VERSION)
