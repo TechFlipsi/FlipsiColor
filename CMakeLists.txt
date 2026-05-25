@@ -8,17 +8,6 @@ project(FlipsiColor
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
-
-# ── MSVC C++20 <ctime>-Workaround ──────────────────────────────────────────
-# MSVC 14.44 hat einen Bug: <ctime> schlägt mit C2039/C2873 fehl, wenn es
-# nach C++-Headern geladen wird, die bereits Symbole in den std-Namespace
-# bringen (Qt, ONNX Runtime, OpenCV). <time.h> via /FI zu force-includen
-# funktioniert nicht zuverlässig (Pfad-Problematik auf Windows).
-# Lösung: MSVC auf C++17 setzen — der Bug existiert nur mit C++20.
-# GCC/Clang behalten C++20.
-if(MSVC)
-    set(CMAKE_CXX_STANDARD 17)
-endif()
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
 # ── CMake Module Path (FindLibRaw, FindLensfun, FindLibExif etc.) ──────────
@@ -112,7 +101,16 @@ target_link_libraries(flipsicolor PRIVATE
     LibExif::LibExif
 )
 
-
+# ── MSVC C++20 <ctime>-Bug-Workaround ──────────────────────────────────────
+# MSVC 14.44 produziert C2039/C2873 in <ctime> bei C++20, wenn Headers
+# wie Qt/OpenCV/ONNX bereits std-Namespace-Symbole definiert haben.
+# CMake setzt /std:c++20 via CMAKE_CXX_STANDARD — wir überschreiben
+# das Target auf C++17, da der Bug nur mit C++20 auftritt.
+# GCC/Clang behalten C++20 (kein Bug dort).
+if(MSVC)
+    set_target_properties(flipsicolor PROPERTIES CXX_STANDARD 17)
+    target_compile_options(flipsicolor PRIVATE /std:c++17)
+endif()
 
 # ── Installation ────────────────────────────────────────────────────────────
 install(TARGETS flipsicolor
