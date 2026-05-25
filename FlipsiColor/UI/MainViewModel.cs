@@ -24,7 +24,7 @@ public partial class MainViewModel : ObservableObject, IDisposable
     private readonly ImagePipeline _imagePipeline;
     private readonly AutoUpdater _autoUpdater;
 
-    [ObservableProperty] private string _title = "FlipsiColor v0.1.0";
+    [ObservableProperty] private string _title = "FlipsiColor v0.2.1";
     [ObservableProperty] private bool _gpuVerfuegbar;
     [ObservableProperty] private string _gpuName = "";
     [ObservableProperty] private bool _updateVerfuegbar;
