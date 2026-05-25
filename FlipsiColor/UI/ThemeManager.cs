@@ -25,7 +25,7 @@ public class ThemeManager
             effectiveTheme = DetectSystemTheme();
         }
 
-        var app = Application.Current;
+        var app = System.Windows.Application.Current;
         if (app == null) return;
 
         var darkDict = new ResourceDictionary
