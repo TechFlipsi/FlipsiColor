@@ -102,12 +102,17 @@ target_link_libraries(flipsicolor PRIVATE
 )
 
 # ── MSVC C++20 <ctime>-Workaround ──────────────────────────────────────────
-# MSVC bringt <ctime>-Symbole durcheinander, wenn C++-Header VOR <ctime>
-# geladen werden. PCH erzwingt C-Compat-Header als ALLERSTERES.
+# MSVC 14.44 wirft C2039/C2873 "<ctime>-Symbol cannot be used in a
+# using-declaration" wenn <ctime> nach C++-Headern geladen wird, die bereits
+# Symbole in den std-Namespace bringen (Qt, ONNX Runtime, OpenCV).
+#
+# Fix: /FI erzwingt force-include des C-Headers <time.h> VOR ALLEM —
+#     <time.h> definiert clock_t/time_t/tm im globalen Namespace,
+#     danach klappt <ctime>'s using-Deklaration wieder.
+#     PCH funktioniert NICHT, da MSVC die PCH mit denselben
+#     Include-Pfaden kompiliert und der Bug in cmake_pch.cxx auftritt.
 if(MSVC)
-    target_precompile_headers(flipsicolor PRIVATE
-        "$<$<COMPILE_LANGUAGE:CXX>:${CMAKE_CURRENT_SOURCE_DIR}/include/flipsicolor/pch.h>"
-    )
+    target_compile_options(flipsicolor PRIVATE /FI"${CMAKE_CURRENT_SOURCE_DIR}/include/flipsicolor/pch.h")
 endif()
 
 # ── Installation ────────────────────────────────────────────────────────────
