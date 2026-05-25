@@ -2,6 +2,7 @@
 // Copyright (C) 2026 Fabian Kirchweger (TechFlipsi)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
+#include "flipsicolor/utils/Logger.h"
 #include <flipsicolor/image/ExifReader.h>
 #include <libexif/exif-data.h>
 #include <QDebug>
@@ -37,7 +38,7 @@ namespace flipsicolor
         ExifData* exifData = exif_data_new_from_file(pfad.toUtf8().constData());
         if ( !exifData )
         {
-            qDebug() << "Keine EXIF-Daten in:" << pfad;
+            fcDebug("EXIF") << "Keine EXIF-Daten in:" << pfad;
             return m_impl->daten;
         }
 

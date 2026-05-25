@@ -2,11 +2,11 @@
 // Copyright (C) 2026 Fabian Kirchweger (TechFlipsi)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
+#include "flipsicolor/utils/Logger.h"
 #include <flipsicolor/color/LensCorrector.h>
 #include <lensfun.h>
 #include <opencv2/core.hpp>
 #include <opencv2/imgproc.hpp>
-#include <QDebug>
 
 namespace flipsicolor
 {
@@ -32,10 +32,10 @@ namespace flipsicolor
         m_impl->db = lf_db_new();
         if ( lf_db_load(m_impl->db) != LF_NO_ERROR )
         {
-            qWarning() << "Lensfun Datenbank konnte nicht geladen werden";
+            fcWarn("Objektiv") << "Lensfun Datenbank konnte nicht geladen werden";
             return false;
         }
-        qDebug() << "Lensfun geladen:" << lf_db_get_cameras(m_impl->db) << "Kameras";
+        fcInfo("Objektiv") << "Lensfun geladen:" << lf_db_get_cameras(m_impl->db) << "Kameras";
         return true;
     }
 
@@ -50,7 +50,7 @@ namespace flipsicolor
         if ( kameras && kameras[0] )
         {
             m_impl->kamera = kameras[0];
-            qDebug() << "Kamera gesetzt:" << kameras[0]->Maker << kameras[0]->Model;
+            fcDebug("Objektiv") << "Kamera gesetzt:" << kameras[0]->Maker << kameras[0]->Model;
             lf_free(kameras);
             return true;
         }
@@ -76,7 +76,7 @@ namespace flipsicolor
         if ( objektive && objektive[0] )
         {
             m_impl->objektiv = objektive[0];
-            qDebug() << "Objektiv gesetzt:" << objektive[0]->Maker << objektive[0]->Model;
+            fcDebug("Objektiv") << "Objektiv gesetzt:" << objektive[0]->Maker << objektive[0]->Model;
             lf_free(objektive);
             return true;
         }

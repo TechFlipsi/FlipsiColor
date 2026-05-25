@@ -2,6 +2,7 @@
 // Copyright (C) 2026 Fabian Kirchweger (TechFlipsi)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
+#include "flipsicolor/utils/Logger.h"
 #include <flipsicolor/video/SceneDetector.h>
 #include <QDebug>
 
@@ -16,7 +17,7 @@ namespace flipsicolor
         {
             m_szenenWechsel.append(frameNummer);
             emit szenenWechselErkannt(frameNummer);
-            qDebug() << "Szenenwechsel bei Frame" << frameNummer << "(Aehnlichkeit:" << aehnlichkeit << ")";
+            fcDebug("Szene") << "Szenenwechsel bei Frame" << frameNummer << "(Aehnlichkeit:" << aehnlichkeit << ")";
         }
     }
 

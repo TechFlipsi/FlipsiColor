@@ -2,8 +2,8 @@
 // Copyright (C) 2026 Fabian Kirchweger (TechFlipsi)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
+#include "flipsicolor/utils/Logger.h"
 #include <flipsicolor/ai/ModelDownloader.h>
-#include <QDebug>
 #include <QDir>
 #include <QFile>
 #include <QNetworkAccessManager>
@@ -70,7 +70,7 @@ namespace flipsicolor
 
             // TODO: SHA256 prüfen gegen erwarteterSha256
 
-            qDebug() << "Modell heruntergeladen:" << modellId;
+            fcInfo("KI-Download") << "Modell heruntergeladen:" << modellId;
             emit herunterladenFertig(modellId, zielPfad);
         });
     }

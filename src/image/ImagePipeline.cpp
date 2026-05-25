@@ -5,6 +5,7 @@
 #include "flipsicolor/color/ColorManager.h"
 #include "flipsicolor/color/StyleLUT.h"
 #include "flipsicolor/core/Pipeline.h"
+#include "flipsicolor/utils/Logger.h"
 #include <flipsicolor/image/ImagePipeline.h>
 #include <opencv2/core/core.hpp>
 #include <opencv2/imgcodecs.hpp>
@@ -34,7 +35,7 @@ namespace flipsicolor
         cv::Mat bild = cv::imread(pfad.toStdString(), cv::IMREAD_UNCHANGED);
         if ( bild.empty() )
         {
-            qWarning() << "Bild konnte nicht geladen werden:" << pfad;
+            fcWarn("Bild") << "Bild konnte nicht geladen werden:" << pfad;
             return false;
         }
 

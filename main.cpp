@@ -14,6 +14,7 @@
 #include <QDebug>
 
 #include "flipsicolor/core/Application.h"
+#include "flipsicolor/utils/Logger.h"
 
 // Verfügbare Sprachen (ISO-Code → Anzeigename)
 static const QStringList VERFUEGBARE_SPRACHEN = {
@@ -43,6 +44,12 @@ int main(int argc, char* argv[])
     app.setOrganizationDomain("techflipsi.com");
     app.setApplicationName("FlipsiColor");
     app.setApplicationVersion("0.2.0");
+
+    // ── Logger & Message-Handler installieren ──────────────────────────────
+    // Fängt ALLE qDebug/qWarning/qCritical/qFatal Aufrufe ab
+    // (auch Qt-intern, ONNX Runtime, etc.) und schreibt sie in Log-Datei
+    qInstallMessageHandler(flipsicolor::Logger::messageHandler);
+    flipsicolor::Logger::instanz();  // Singleton initialisieren + Log-Datei öffnen
 
     // ── App-Icon setzen (plattformübergreifend) ─────────────────────────────
     QIcon appIcon;
