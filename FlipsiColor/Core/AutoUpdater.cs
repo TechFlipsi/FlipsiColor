@@ -19,7 +19,7 @@ public sealed class AutoUpdater : IDisposable
 {
     private static readonly Serilog.ILogger Log = Serilog.Log.ForContext<AutoUpdater>();
     private readonly HttpClient _http = new();
-    private Timer? _pruefTimer;
+    private System.Threading.Timer? _pruefTimer;
     private bool _disposed;
 
     private const string GitHubApiUrl = "https://api.github.com/repos/TechFlipsi/FlipsiColor/releases";

@@ -89,9 +89,9 @@ public partial class MainViewModel : ObservableObject, IDisposable
 
         // Auto-Updater Events
         _autoUpdater.UpdateVerfuegbarChanged += (_, verfuegbar) =>
-            Application.Current.Dispatcher.Invoke(() => UpdateVerfuegbar = verfuegbar);
+            System.Windows.Application.Current.Dispatcher.Invoke(() => UpdateVerfuegbar = verfuegbar);
         _autoUpdater.NeueVersionChanged += (_, version) =>
-            Application.Current.Dispatcher.Invoke(() => NeueVersion = version);
+            System.Windows.Application.Current.Dispatcher.Invoke(() => NeueVersion = version);
     }
 
     /// <summary>Öffentliche Methode für Drag&Drop (von Code-Behind)</summary>
@@ -109,13 +109,13 @@ public partial class MainViewModel : ObservableObject, IDisposable
             }
             else
             {
-                MessageBox.Show("Bild konnte nicht geladen werden.", "Fehler", MessageBoxButton.OK, MessageBoxImage.Error);
+                System.Windows.MessageBox.Show("Bild konnte nicht geladen werden.", "Fehler", MessageBoxButton.OK, MessageBoxImage.Error);
                 return false;
             }
         }
         catch (Exception ex)
         {
-            MessageBox.Show($"Fehler beim Laden: {ex.Message}", "Fehler", MessageBoxButton.OK, MessageBoxImage.Error);
+            System.Windows.MessageBox.Show($"Fehler beim Laden: {ex.Message}", "Fehler", MessageBoxButton.OK, MessageBoxImage.Error);
             return false;
         }
     }
@@ -138,7 +138,7 @@ public partial class MainViewModel : ObservableObject, IDisposable
         }
         catch (Exception ex)
         {
-            MessageBox.Show($"Fehler: {ex.Message}", "Fehler", MessageBoxButton.OK, MessageBoxImage.Error);
+            System.Windows.MessageBox.Show($"Fehler: {ex.Message}", "Fehler", MessageBoxButton.OK, MessageBoxImage.Error);
         }
     }
 
@@ -179,7 +179,7 @@ public partial class MainViewModel : ObservableObject, IDisposable
         catch (Exception ex)
         {
             StatusText = $"Pipeline-Fehler: {ex.Message}";
-            MessageBox.Show($"Pipeline fehlgeschlagen: {ex.Message}", "Fehler", MessageBoxButton.OK, MessageBoxImage.Error);
+            System.Windows.MessageBox.Show($"Pipeline fehlgeschlagen: {ex.Message}", "Fehler", MessageBoxButton.OK, MessageBoxImage.Error);
         }
         finally
         {
