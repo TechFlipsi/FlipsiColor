@@ -112,10 +112,37 @@ jobs:
         shell: pwsh
         run: |
           $exePath = Get-ChildItem -Recurse -Filter "flipsicolor.exe" | Select-Object -First 1
-          if ($exePath) {
-            $deployQt = Join-Path $env:QT_ROOT_DIR "bin\windeployqt.exe"
-            & $deployQt --release --no-translations --no-opengl-sw --dir "." $exePath.FullName
+          if (-not $exePath) { Write-Error "flipsicolor.exe nicht gefunden!"; exit 1 }
+          
+          # windeployqt finden — mehrere Fallback-Methoden
+          $deployQt = $null
+          if ($env:QT_ROOT_DIR) {
+            $candidate = Join-Path $env:QT_ROOT_DIR "bin\windeployqt.exe"
+            if (Test-Path $candidate) { $deployQt = $candidate }
           }
+          if (-not $deployQt) {
+            # Versuch via PATH
+            $deployQt = (Get-Command windeployqt -ErrorAction SilentlyContinue).Source
+          }
+          if (-not $deployQt) {
+            # Fallback: suche im Install-Dir der Action
+            $candidates = Get-ChildItem -Path "D:\a" -Recurse -Filter "windeployqt.exe" -ErrorAction SilentlyContinue | Select-Object -First 1
+            if ($candidates) { $deployQt = $candidates.FullName }
+          }
+          
+          if (-not $deployQt) {
+            Write-Error "windeployqt.exe nicht gefunden! QT_ROOT_DIR=$env:QT_ROOT_DIR"
+            exit 1
+          }
+          
+          Write-Host "windeployqt: $deployQt"
+          Write-Host "Target EXE: $($exePath.FullName)"
+          & $deployQt --release --no-translations --no-opengl-sw --dir "." $exePath.FullName
+          if ($LASTEXITCODE -ne 0) {
+            Write-Error "windeployqt fehlgeschlagen mit Exit-Code $LASTEXITCODE"
+            exit 1
+          }
+          Write-Host "windeployqt erfolgreich — Qt-DLLs deployt"
 
       - name: DLLs kopieren
         working-directory: build
