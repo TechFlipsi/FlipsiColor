@@ -5,12 +5,7 @@ project(FlipsiColor
     LANGUAGES CXX
 )
 
-# ── C++ Standard ─────────────────────────────────────────────────────────────
-# MSVC 14.44 hat einen Bug: <ctime> wirft C2039/C2873 mit C++20, wenn Qt/OpenCV/
-# ONNX-Header vor <ctime> geladen werden. C++17 ist nicht betroffen.
-# FlipsiColor nutzt keine C++20-Features, daher ist C++17 sicher.
-# GCC/Clang würden C++20 vertragen, aber C++17 reicht für alle Features.
-set(CMAKE_CXX_STANDARD 17)
+set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
@@ -30,17 +25,6 @@ option(FLIPSICOLOR_STATIC_LINK "Bibliotheken statisch verknüpfen" OFF)
 # ── Qt ───────────────────────────────────────────────────────────────────────
 find_package(Qt6 REQUIRED COMPONENTS Core Gui Quick QuickControls2 Widgets LinguistTools Network Test)
 qt_standard_project_setup(REQUIRES 6.5)
-
-# ── qt_standard_project_setup kann CMAKE_CXX_STANDARD überschreiben! ──────
-# Daher NACH dem Qt-Setup erneut setzen, um unseren Standard zu erzwingen.
-if(MSVC)
-    # MSVC braucht C++17 wegen <ctime>-Bug (C2039/C2873 bei C++20)
-    set(CMAKE_CXX_STANDARD 17 CACHE STRING "C++ standard" FORCE)
-else()
-    # GCC/Clang können ruhig C++20 nutzen — kein Bug dort
-    set(CMAKE_CXX_STANDARD 20 CACHE STRING "C++ standard" FORCE)
-endif()
-set(CMAKE_CXX_STANDARD_REQUIRED ON CACHE BOOL "Require C++ standard" FORCE)
 
 # ── Abhängigkeiten ───────────────────────────────────────────────────────────
 find_package(OpenCV REQUIRED)
