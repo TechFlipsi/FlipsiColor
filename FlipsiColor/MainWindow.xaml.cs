@@ -14,7 +14,7 @@ public partial class MainWindow : Window
     }
 
     /// <summary>DragEnter: Accept image file drops</summary>
-    private void OnDragEnter(object sender, DragEventArgs e)
+    private void OnDragEnter(object sender, System.Windows.DragEventArgs e)
     {
         if (e.Data.GetDataPresent(DataFormats.FileDrop))
         {
@@ -36,7 +36,7 @@ public partial class MainWindow : Window
     }
 
     /// <summary>Drop: Load image file into ViewModel</summary>
-    private void OnDrop(object sender, DragEventArgs e)
+    private void OnDrop(object sender, System.Windows.DragEventArgs e)
     {
         if (e.Data.GetDataPresent(DataFormats.FileDrop) && DataContext is MainViewModel vm)
         {

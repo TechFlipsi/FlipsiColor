@@ -47,7 +47,7 @@ public sealed class AutoUpdater : IDisposable
         // TODO: Aus Settings laden
 
         // Erste Prüfung in 30s, dann alle 24h
-        _pruefTimer = new Timer(_ => Pruefen(), null, TimeSpan.FromSeconds(30), TimeSpan.FromHours(24));
+        _pruefTimer = new System.Threading.Timer(_ => Pruefen(), null, TimeSpan.FromSeconds(30), TimeSpan.FromHours(24));
         Log.Information("AutoUpdater initialisiert. Aktuell: v{Version}. Prüfung in 30s.", _aktuelleVersion);
     }
 
