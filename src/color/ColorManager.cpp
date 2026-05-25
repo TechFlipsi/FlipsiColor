@@ -89,13 +89,13 @@ QString ColorManager::monitorProfilErkennen() const
 #elif defined(Q_OS_MACOS)
     // macOS: /Library/ColorSync/Profiles/
     return {};
-#else
+#elif defined(Q_OS_LINUX)
     // Linux: ~/.local/share/icc/ oder /usr/share/color/icc/
     QFileInfo linuxProfile(QDir::homePath() + "/.local/share/icc/sRGB.icc");
     if (linuxProfile.exists())
         return linuxProfile.absoluteFilePath();
-    return {};
 #endif
+    return {};
 }
 
 } // namespace flipsicolor
