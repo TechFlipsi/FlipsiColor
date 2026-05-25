@@ -11,7 +11,7 @@
     <FileVersion>0.2.0.0</FileVersion>
     <RootNamespace>FlipsiColor</RootNamespace>
     <OutputType>WinExe</OutputType>
-    <TargetFramework>net9.0-windows</TargetFramework>
+    <TargetFramework>net10.0-windows</TargetFramework>
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
     <UseWPF>true</UseWPF>
