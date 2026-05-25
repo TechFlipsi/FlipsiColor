@@ -342,8 +342,14 @@ void ModelManager::modellLaden(ModellId id)
 
     // Session erstellen
     OrtSession* session = nullptr;
+#ifdef Q_OS_WIN
+    // ONNX Runtime erwartet wchar_t* auf Windows (UNICODE)
+    status = ort()->CreateSession(env, reinterpret_cast<const wchar_t*>(vollerPfad.toStdWString().c_str()),
+                                   opts, &session);
+#else
     status = ort()->CreateSession(env, vollerPfad.toStdString().c_str(),
                                    opts, &session);
+#endif
 
     ort()->ReleaseSessionOptions(opts);
 

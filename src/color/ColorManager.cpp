@@ -83,18 +83,18 @@ void ColorManager::initialisieren()
 QString ColorManager::monitorProfilErkennen() const
 {
     // Versuche ICC-Profil vom Betriebssystem zu finden
-#ifdef Q_OS_WIN
+#if defined(Q_OS_WIN)
     // Windows: %SystemRoot%\System32\spool\drivers\color\
-    return QString();
+    return {};
 #elif defined(Q_OS_MACOS)
     // macOS: /Library/ColorSync/Profiles/
-    return QString();
+    return {};
 #else
     // Linux: ~/.local/share/icc/ oder /usr/share/color/icc/
     QFileInfo linuxProfile(QDir::homePath() + "/.local/share/icc/sRGB.icc");
     if (linuxProfile.exists())
         return linuxProfile.absoluteFilePath();
-    return QString();
+    return {};
 #endif
 }
 
