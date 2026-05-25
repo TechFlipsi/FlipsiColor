@@ -43,13 +43,10 @@ jobs:
       - name: sccache installieren
         shell: pwsh
         run: |
-          $sccacheVer = "0.9.1"
-          # Fallback: cargo install
           choco install sccache -y --no-progress 2>$null
           $sccache = Get-Command sccache -ErrorAction SilentlyContinue
           if (-not $sccache) {
-            # Download release directly
-            $url = "https://github.com/mozilla/sccache/releases/download/v$sccacheVer/sccache-v$sccacheVer-x86_64-pc-windows-msvc.zip"
+            $url = "https://github.com/mozilla/sccache/releases/download/v0.9.1/sccache-v0.9.1-x86_64-pc-windows-msvc.zip"
             Invoke-WebRequest -Uri $url -OutFile sccache.zip -MaximumRetryCount 3
             Expand-Archive -Path sccache.zip -DestinationPath C:\sccache -Force
             $sccacheExe = Get-ChildItem C:\sccache -Recurse -Filter "sccache.exe" | Select-Object -First 1
@@ -82,15 +79,15 @@ jobs:
           choco install ninja -y --no-progress 2>$null
           ninja --version
 
-      # ── vcpkg: Binary Caching via GHA ──
-      - name: vcpkg Cache (Binary Cache via GHA)
+      # ── vcpkg: Binary Caching via GitHub Actions Cache ──
+      - name: vcpkg Cache
         uses: actions/cache@v4
         with:
           path: |
             C:\vcpkg\installed
             C:\vcpkg\packages
             C:\vcpkg\downloads
-          key: vcpkg-x64-${{ hashFiles('vcpkg.json') }}-v2
+          key: vcpkg-x64-${{ hashFiles('vcpkg.json') }}-v3
           restore-keys: |
             vcpkg-x64-
 
@@ -98,13 +95,14 @@ jobs:
         shell: pwsh
         run: |
           cd C:\vcpkg
-          git fetch --unshallow 2>$null; git pull
           .\bootstrap-vcpkg.bat
           echo "VCPKG_ROOT=C:\vcpkg" >> $env:GITHUB_ENV
 
       - name: vcpkg Abhängigkeiten installieren
         shell: pwsh
-        run: C:\vcpkg\vcpkg install --triplet x64-windows
+        run: |
+          C:\vcpkg\vcpkg install --triplet x64-windows --clean-after-build
+          Write-Host "vcpkg install completed"
         env:
           VCPKG_BINARY_SOURCES: "clear;x-gha,readwrite"
 
@@ -117,7 +115,7 @@ jobs:
             C:\ffmpeg
             C:\onnxruntime
             C:\opencv
-          key: deps-v1-ffmpeg71-onnx1200-opencv410
+          key: deps-v2-ffmpeg71-onnx1200-opencv410
 
       - name: FFMPEG herunterladen
         if: steps.deps-cache.outputs.cache-hit != 'true'
@@ -172,9 +170,9 @@ jobs:
           FFMPEG_LIBRARY_DIR: "${{ env.FFMPEG_LIB }}"
           ONNXRUNTIME_DIR: "${{ env.ONNXRUNTIME_DIR }}"
 
-      # ── Build ──
+      # ── Build (parallel) ──
       - name: Kompilieren
-        run: cmake --build --preset windows-ci
+        run: cmake --build --preset windows-ci -- -j${{ steps.cmake.outputs.parallelJobs || '4' }}
 
       - name: sccache Statistiken
         if: always()
@@ -188,7 +186,7 @@ jobs:
         run: |
           $exePath = Get-ChildItem -Recurse -Filter "flipsicolor.exe" | Select-Object -First 1
           if (-not $exePath) { Write-Error "flipsicolor.exe nicht gefunden!"; exit 1 }
-          
+
           $deployQt = $null
           if ($env:QT_ROOT_DIR) {
             $candidate = Join-Path $env:QT_ROOT_DIR "bin\windeployqt.exe"
@@ -201,12 +199,12 @@ jobs:
             $candidates = Get-ChildItem -Path "D:\a" -Recurse -Filter "windeployqt.exe" -ErrorAction SilentlyContinue | Select-Object -First 1
             if ($candidates) { $deployQt = $candidates.FullName }
           }
-          
+
           if (-not $deployQt) {
             Write-Error "windeployqt.exe nicht gefunden! QT_ROOT_DIR=$env:QT_ROOT_DIR"
             exit 1
           }
-          
+
           Write-Host "windeployqt: $deployQt"
           Write-Host "Target EXE: $($exePath.FullName)"
           & $deployQt --release --no-translations --no-opengl-sw --dir ".\Release\" $exePath.FullName
@@ -222,24 +220,24 @@ jobs:
         run: |
           $dest = ".\Release\"
           if (-not (Test-Path $dest)) { New-Item -ItemType Directory -Path $dest | Out-Null }
-          
+
           $vcpkgDlls = "C:\vcpkg\installed\x64-windows\bin"
           if (Test-Path $vcpkgDlls) {
             $copied = (Get-ChildItem "$vcpkgDlls\*.dll" | Copy-Item -Destination $dest -PassThru).Count
             Write-Host "vcpkg: $copied DLLs kopiert"
           }
-          
+
           if (Test-Path "${{ env.FFMPEG_BIN }}") {
             $copied = (Get-ChildItem "${{ env.FFMPEG_BIN }}\*.dll" | Copy-Item -Destination $dest -PassThru).Count
             Write-Host "FFMPEG: $copied DLLs kopiert"
           }
-          
+
           $ortDll = "${{ env.ONNXRUNTIME_DIR }}\lib\onnxruntime.dll"
           if (Test-Path $ortDll) {
             Copy-Item $ortDll -Destination $dest
             Write-Host "ONNX Runtime: onnxruntime.dll kopiert"
           }
-          
+
           $ocvRoot = "${{ env.OpenCV_ROOT }}"
           $ocvCopied = $false
           foreach ($vc in @("vc17", "vc16", "vc15")) {
@@ -263,7 +261,7 @@ jobs:
           if (-not $ocvCopied) {
             Write-Host "WARNUNG: Keine OpenCV DLLs gefunden unter $ocvRoot"
           }
-          
+
           $requiredDlls = @(
             "raw.dll", "onnxruntime.dll", "lcms2.dll", "lensfun.dll",
             "libexif.dll", "opencv_world4100.dll",
@@ -291,13 +289,13 @@ jobs:
           Compress-Archive -Path "Release\*" -DestinationPath $zipName
           $zipSize = (Get-Item $zipName).Length
           Write-Host "Portable ZIP erstellt: $zipName ($([math]::Round($zipSize/1MB, 1)) MB)"
-          
+
           Write-Host "ZIP-Inhalt (erste 20 Einträge):"
           Add-Type -AssemblyName System.IO.Compression.FileSystem
           $zip = [System.IO.Compression.ZipFile]::OpenRead((Join-Path (Get-Location) $zipName))
           $zip.Entries | Select-Object -First 20 | ForEach-Object { Write-Host "  $($_.Name)" }
           $zip.Dispose()
-          
+
           choco install nsis -y --no-progress 2>$null
           cpack -G NSIS
           if ($LASTEXITCODE -eq 0) {
