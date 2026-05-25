@@ -100,8 +100,20 @@ if(NOT OpenCV_FOUND AND DEFINED ENV{OpenCV_ROOT})
         set(OpenCV_INCLUDE_DIRS "${OpenCV_INCLUDE_DIR}")
         set(OpenCV_LIBRARIES "${_OpenCV_LIBS}")
 
+        # Mapping: internal module name → exported target name (CamelCase)
+        set(_OpenCV_MODULE_MAP
+            "core:Core"
+            "imgproc:ImgProc"
+            "imgcodecs:ImgCodecs"
+            "photo:Photo"
+            "video:Video"
+        )
+
         # Create IMPORTED INTERFACE targets for each module
-        foreach(_mod ${_OpenCV_MODULES})
+        foreach(_entry ${_OpenCV_MODULE_MAP})
+            string(REGEX REPLACE ":.*$" "" _mod "${_entry}")
+            string(REGEX REPLACE "^.*:" "" _target_name "${_entry}")
+
             if(OpenCV_${_mod}_IMPLIB)
                 # Find corresponding DLL for runtime
                 find_file(OpenCV_${_mod}_DLL
@@ -113,13 +125,13 @@ if(NOT OpenCV_FOUND AND DEFINED ENV{OpenCV_ROOT})
                     NO_DEFAULT_PATH
                 )
 
-                add_library(OpenCV::${_mod} SHARED IMPORTED)
-                set_target_properties(OpenCV::${_mod} PROPERTIES
+                add_library(OpenCV::${_target_name} SHARED IMPORTED)
+                set_target_properties(OpenCV::${_target_name} PROPERTIES
                     IMPORTED_IMPLIB "${OpenCV_${_mod}_IMPLIB}"
                     INTERFACE_INCLUDE_DIRECTORIES "${OpenCV_INCLUDE_DIR}"
                 )
                 if(OpenCV_${_mod}_DLL)
-                    set_target_properties(OpenCV::${_mod} PROPERTIES
+                    set_target_properties(OpenCV::${_target_name} PROPERTIES
                         IMPORTED_LOCATION "${OpenCV_${_mod}_DLL}"
                     )
                 endif()
@@ -136,15 +148,17 @@ if(NOT OpenCV_FOUND AND DEFINED ENV{OpenCV_ROOT})
                     "${_OpenCV_ROOT}/bin"
                 NO_DEFAULT_PATH
             )
-            foreach(_mod ${_OpenCV_MODULES})
-                if(NOT TARGET OpenCV::${_mod})
-                    add_library(OpenCV::${_mod} SHARED IMPORTED)
-                    set_target_properties(OpenCV::${_mod} PROPERTIES
+            foreach(_entry ${_OpenCV_MODULE_MAP})
+                string(REGEX REPLACE ":.*$" "" _mod "${_entry}")
+                string(REGEX REPLACE "^.*:" "" _target_name "${_entry}")
+                if(NOT TARGET OpenCV::${_target_name})
+                    add_library(OpenCV::${_target_name} SHARED IMPORTED)
+                    set_target_properties(OpenCV::${_target_name} PROPERTIES
                         IMPORTED_IMPLIB "${OpenCV_WORLD_IMPLIB}"
                         INTERFACE_INCLUDE_DIRECTORIES "${OpenCV_INCLUDE_DIR}"
                     )
                     if(OpenCV_WORLD_DLL)
-                        set_target_properties(OpenCV::${_mod} PROPERTIES
+                        set_target_properties(OpenCV::${_target_name} PROPERTIES
                             IMPORTED_LOCATION "${OpenCV_WORLD_DLL}"
                         )
                     endif()
