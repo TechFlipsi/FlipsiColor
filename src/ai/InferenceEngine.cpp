@@ -73,10 +73,10 @@ namespace flipsicolor
         std::vector<int64_t> inputShape(form.begin(), form.end());
         auto                 memoryInfo  = Ort::MemoryInfo::CreateCpu(OrtArenaAllocator, OrtMemTypeDefault);
         auto                 inputTensor = Ort::Value::CreateTensor<float>(memoryInfo,
-                                                                           const_cast<float*>(eingabe.data()),
-                                                                           eingabe.size() * sizeof(float),
-                                                                           inputShape.data(),
-                                                                           inputShape.size());
+                                                           const_cast<float*>(eingabe.data()),
+                                                           eingabe.size() * sizeof(float),
+                                                           inputShape.data(),
+                                                           inputShape.size());
 
         const char* inputNamen[]  = {"input"};
         const char* outputNamen[] = {"output"};
