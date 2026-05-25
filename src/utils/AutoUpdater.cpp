@@ -70,7 +70,7 @@ namespace flipsicolor
 
         // Erste Prüfung nach 30 Sekunden (App muss erst laden)
         m_impl->pruefTimer.start(30000);
-        Logger::instanz()->loggen(Logger::Stufe::Info, "AutoUpdater", "Initialisiert. Prüfung in 30s, dann alle 24h.");
+        fcInfo("Updater") << "Initialisiert. Prüfung in 30s, dann alle 24h.";
     }
 
     AutoUpdater::~AutoUpdater() = default;
@@ -101,9 +101,7 @@ namespace flipsicolor
 
             if ( antwort->error() != QNetworkReply::NoError )
             {
-                Logger::instanz()->loggen(Logger::Stufe::Warnung,
-                                          "AutoUpdater",
-                                          QString("Prüfung fehlgeschlagen: %1").arg(antwort->errorString()));
+                fcWarn("Updater") << QString("Prüfung fehlgeschlagen: %1").arg(antwort->errorString());
                 // Nächste Prüfung in 1h
                 pruefTimer.start(3600000);
                 emit q->fehler(antwort->errorString());
@@ -116,8 +114,7 @@ namespace flipsicolor
 
             if ( !doc.isArray() )
             {
-                Logger::instanz()->loggen(
-                    Logger::Stufe::Warnung, "AutoUpdater", "Unerwartetes JSON-Format von GitHub API");
+                fcWarn("Updater") << "Unerwartetes JSON-Format von GitHub API";
                 pruefTimer.start(3600000);
                 emit q->fehler("Unerwartetes JSON-Format von GitHub API");
                 emit q->pruefungFertig(false, {});
@@ -152,11 +149,9 @@ namespace flipsicolor
                 // ═══════════════════════════════════════════════════════════════
                 if ( releaseVersion < aktuelleVersion )
                 {
-                    Logger::instanz()->loggen(Logger::Stufe::Warnung,
-                                              "AutoUpdater",
-                                              QString("DOWNGRADE BLOCKIERT: v%1 < v%2 (aktuell). "
-                                                      "Update auf ältere Version verweigert.")
-                                                  .arg(tag, aktuelleVersion.toString()));
+                    fcWarn("Updater")
+                        << QString("DOWNGRADE BLOCKIERT: v%1 < v%2 (aktuell). Update auf ältere Version verweigert.")
+                               .arg(tag, aktuelleVersion.toString());
                     continue;  // Ältere Version = komplett ignorieren
                 }
 
@@ -167,9 +162,7 @@ namespace flipsicolor
                 // Ignorierte Version überspringen (User hat "Überspringen" geklickt)
                 if ( tag == ignorierteVersion )
                 {
-                    Logger::instanz()->loggen(Logger::Stufe::Info,
-                                              "AutoUpdater",
-                                              QString("Version v%1 wird ignoriert (User-Entscheidung).").arg(tag));
+                    fcInfo("Updater") << QString("Version v%1 wird ignoriert (User-Entscheidung).").arg(tag);
                     continue;
                 }
 
@@ -206,10 +199,8 @@ namespace flipsicolor
                 downloadUrlStr     = releaseUrl;
                 downloadGroesseVal = groesse;
 
-                Logger::instanz()->loggen(
-                    Logger::Stufe::Info,
-                    "AutoUpdater",
-                    QString("Update gefunden: v%1 (aktuell: v%2)").arg(tag, aktuelleVersion.toString()));
+                fcInfo("Updater")
+                    << QString("Update gefunden: v%1 (aktuell: v%2)").arg(tag, aktuelleVersion.toString());
 
                 emit q->updateVerfuegbarChanged(true);
                 emit q->neueVersionChanged(tag);
@@ -225,7 +216,7 @@ namespace flipsicolor
             if ( !gefunden )
             {
                 updateVerfuegbar = false;
-                Logger::instanz()->loggen(Logger::Stufe::Info, "AutoUpdater", "Kein Update verfügbar.");
+                fcInfo("Updater") << "Kein Update verfügbar.";
                 emit q->updateVerfuegbarChanged(false);
                 emit q->pruefungFertig(false, {});
             }
@@ -255,10 +246,8 @@ namespace flipsicolor
             emit fehler(QString("DOWNGRADE BLOCKIERT: v%1 ≤ v%2 (aktuell). "
                                 "Update auf ältere oder gleiche Version verweigert.")
                             .arg(m_impl->neueVersionStr, m_impl->aktuelleVersion.toString()));
-            Logger::instanz()->loggen(Logger::Stufe::Warnung,
-                                      "AutoUpdater",
-                                      QString("DOWNGRADE-VERSUCH BLOCKIERT: Ziel v%1 <= aktuell v%2")
-                                          .arg(m_impl->neueVersionStr, m_impl->aktuelleVersion.toString()));
+            fcWarn("Updater") << QString("DOWNGRADE-VERSUCH BLOCKIERT: Ziel v%1 <= aktuell v%2")
+                                     .arg(m_impl->neueVersionStr, m_impl->aktuelleVersion.toString());
             return;
         }
 
@@ -307,9 +296,7 @@ namespace flipsicolor
                     verifyDatei.close();
                     // TODO: SHA256 mit GitHub Release-Asset vergleichen wenn verfügbar
                     // Aktuell: Nur Loggen, keine Blockierung
-                    Logger::instanz()->loggen(Logger::Stufe::Info,
-                                              "AutoUpdater",
-                                              QString("Download SHA256: %1").arg(QString(hash.result().toHex())));
+                    fcInfo("Updater") << QString("Download SHA256: %1").arg(QString(hash.result().toHex()));
                 }
 
                 emit downloadFertig(m_impl->downloadPfad);
@@ -340,7 +327,7 @@ namespace flipsicolor
         m_impl->updateVerfuegbar = false;
         m_impl->pruefTimer.start(14400000);  // 4h
         emit updateVerfuegbarChanged(false);
-        Logger::instanz()->loggen(Logger::Stufe::Info, "AutoUpdater", "Erinnerung in 4 Stunden.");
+        fcInfo("Updater") << "Erinnerung in 4 Stunden.";
     }
 
     void AutoUpdater::ignorieren()
@@ -350,8 +337,7 @@ namespace flipsicolor
         m_impl->ignorierteVersion = m_impl->neueVersionStr;
         m_impl->updateVerfuegbar  = false;
         emit updateVerfuegbarChanged(false);
-        Logger::instanz()->loggen(
-            Logger::Stufe::Info, "AutoUpdater", QString("Version v%1 wird ignoriert.").arg(m_impl->neueVersionStr));
+        fcInfo("Updater") << QString("Version v%1 wird ignoriert.").arg(m_impl->neueVersionStr);
     }
 
     bool AutoUpdater::updateVerfuegbar() const
