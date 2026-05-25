@@ -101,6 +101,26 @@ target_link_libraries(flipsicolor PRIVATE
     LibExif::LibExif
 )
 
+
+# ── MSVC <ctime>-Bug-Workaround ─────────────────────────────────────────────
+# MSVC 14.44: <ctime> wirft C2039/C2873, wenn Qt/OpenCV/ONNX-Header Symbole
+# in den std-Namespace bringen, bevor <ctime>'s using-Deklarationen laufen.
+# Fix: /FI force-included msvc_ctime_fix.h VOR allen anderen Headern.
+# Der Header lädt <time.h>, importiert Symbole nach std und definiert
+# _CTIME_ (den Include-Guard von <ctime>), sodass <ctime> nie geladen wird.
+# WICHTIG: CMAKE_CXX_FLAGS statt target_compile_options, damit der Flag auch
+# AUTOMOC-generierte Übersetzungseinheiten (mocs_compilation_Release.cpp) erfasst.
+if(MSVC)
+    configure_file(
+        "${CMAKE_CURRENT_SOURCE_DIR}/include/flipsicolor/msvc_ctime_fix.h"
+        "${CMAKE_CURRENT_BINARY_DIR}/msvc_ctime_fix.h"
+        COPYONLY
+    )
+    string(CONCAT CTIME_FIX_FLAG "/FI" "\"${CMAKE_CURRENT_BINARY_DIR}/msvc_ctime_fix.h\"")
+    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${CTIME_FIX_FLAG}")
+endif()
+
+
 # ── Installation ────────────────────────────────────────────────────────────
 install(TARGETS flipsicolor
     RUNTIME DESTINATION bin

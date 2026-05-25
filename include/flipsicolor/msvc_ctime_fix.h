@@ -10,26 +10,31 @@
 // manuell in den std-Namespace importieren, OHNE <ctime> zu inkludieren.
 // Auf GCC/Clang inkludiert dieser Header einfach <ctime> (kein Bug dort).
 //
-// Dieser Header MUSS vor allen Qt/OpenCV/ONNX-Headern inkludiert werden.
-// Auf MSVC wird er per /FI-Flag vor jede Übersetzungseinheit gezwungen.
-// In .cpp-Dateien wird er automatisch per MSVC_FIX include geladen.
+// Dieser Header wird per /FI-Flag VOR allen anderen Headern gezwungen
+// und wirkt auf ALLE Übersetzungseinheiten inkl. AUTOMOC-generierte Dateien.
 
 #ifndef FLIPSICOLOR_CTIME_FIX_H
 #define FLIPSICOLOR_CTIME_FIX_H
 
 #ifdef _MSC_VER
-// C-Header inkludieren — definiert clock_t, time_t, tm, timespec etc.
-// im globalen Namespace. Danach manuell in std importieren.
+
+// ── C-Header inkludieren ──────────────────────────────────────────────────
+// <time.h> definiert clock_t, time_t, tm, timespec etc. im globalen Namespace.
 #include <time.h>
 
-// Manuelle using-Deklarationen — ersetzt <ctime>'s fehlgeschlagene
-// using-Deklarationen, die bei MSVC C2039/C2873 werfen.
+// ── Manuelle using-Deklarationen ───────────────────────────────────────────
+// <ctime> würde diese via using-Deklaration importieren, schlägt aber mit
+// C2039/C2873 fehl. Wir machen es manuell.
 namespace std {
+    // Typen
     using ::clock_t;
     using ::time_t;
     using ::tm;
-    using ::size_t;
-    // C-Funktionen in std importieren
+#if _HAS_CXX17
+    using ::timespec;
+#endif
+
+    // Funktionen
     using ::clock;
     using ::difftime;
     using ::mktime;
@@ -39,13 +44,12 @@ namespace std {
     using ::gmtime;
     using ::localtime;
     using ::strftime;
-#if _HAS_CXX17
-    using ::timespec;
-#endif
 }
 
-// VERHINDERE, dass <ctime> später inkludiert wird und die Fehler wirft.
-// _CTIME_ definieren, sodass <ctime>'s Include-Guard den Header überspringt.
+// ── <ctime> Include-Guard setzen ────────────────────────────────────────────
+// _CTIME_ ist der interne Include-Guard von MSVC's <ctime>.
+// Durch Definieren wird verhindert, dass <ctime> jemals inkludiert wird
+// (und die fehlerhaften using-Deklarationen auslöst).
 #ifndef _CTIME_
 #define _CTIME_
 #endif
