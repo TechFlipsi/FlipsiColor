@@ -20,8 +20,8 @@ public:
     explicit InferenceEngine(QObject* parent = nullptr);
     ~InferenceEngine();
 
-    bool modellLaden(const QString& modellId, const QString& dateiPfad);
-    QVector<float> inferenz(const QString& modellId, const QVector<float>& eingabe, const QVector<int64_t>& form);
+    [[nodiscard]] bool modellLaden(const QString& modellId, const QString& dateiPfad);
+    [[nodiscard]] QVector<float> inferenz(const QString& modellId, const QVector<float>& eingabe, const QVector<int64_t>& form);
 
 private:
     struct Impl;

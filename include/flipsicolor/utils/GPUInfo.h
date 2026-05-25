@@ -19,10 +19,10 @@ public:
 
     explicit GPUInfo(QObject* parent = nullptr);
 
-    QString gpuName() const;
-    bool istVerfuegbar() const;
-    int vramMB() const;
-    Backend bestesBackend() const;
+    [[nodiscard]] QString gpuName() const;
+    [[nodiscard]] bool istVerfuegbar() const;
+    [[nodiscard]] int vramMB() const;
+    [[nodiscard]] Backend bestesBackend() const;
 };
 
 } // namespace flipsicolor

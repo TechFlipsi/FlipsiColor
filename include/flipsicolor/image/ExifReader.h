@@ -19,7 +19,7 @@ public:
     explicit ExifReader(QObject* parent = nullptr);
     ~ExifReader();
 
-    QVariantMap lesen(const QString& pfad);
+    [[nodiscard]] QVariantMap lesen(const QString& pfad);
 
 private:
     struct Impl;

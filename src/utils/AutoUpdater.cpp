@@ -34,7 +34,7 @@ public:
     QString aenderungenStr;
     QString downloadUrlStr;
     qint64 downloadGroesseVal = 0;
-    UpdateKanal kanal = Stable;
+    UpdateKanal kanal = UpdateKanal::Stable;
 
     // GitHub API URL
     static constexpr const char* GITHUB_API_URL =
@@ -88,7 +88,7 @@ void AutoUpdater::pruefen()
 void AutoUpdater::Impl::pruefungStarten()
 {
     QString url = GITHUB_API_URL;
-    if (kanal == Beta) {
+    if (kanal == UpdateKanal::Beta) {
         url += "?per_page=10"; // Pre-releases einschließen
     }
 
@@ -133,7 +133,7 @@ void AutoUpdater::Impl::pruefungStarten()
 
                 // Beta-Kanal: auch Pre-releases
                 bool istPreRelease = release["prerelease"].toBool();
-                if (kanal == Stable && istPreRelease) {
+                if (kanal == UpdateKanal::Stable && istPreRelease) {
                     continue;
                 }
 

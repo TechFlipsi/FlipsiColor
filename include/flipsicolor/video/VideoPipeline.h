@@ -19,7 +19,7 @@ public:
     explicit VideoPipeline(QObject* parent = nullptr);
     ~VideoPipeline();
 
-    bool videoLaden(const QString& pfad);
+    [[nodiscard]] bool videoLaden(const QString& pfad);
     void pipelineAusfuehren(const PipelineParams& params);
 
 signals:

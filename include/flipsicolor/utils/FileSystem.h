@@ -16,10 +16,10 @@ class FileSystem : public QObject
 public:
     explicit FileSystem(QObject* parent = nullptr);
 
-    static QString modellVerzeichnis();
-    static QString cacheVerzeichnis();
-    static qint64 verzeichnisGroesse(const QString& pfad);
-    static bool verzeichnisLeeren(const QString& pfad);
+    [[nodiscard]] static QString modellVerzeichnis();
+    [[nodiscard]] static QString cacheVerzeichnis();
+    [[nodiscard]] static qint64 verzeichnisGroesse(const QString& pfad);
+    [[nodiscard]] static bool verzeichnisLeeren(const QString& pfad);
 };
 
 } // namespace flipsicolor

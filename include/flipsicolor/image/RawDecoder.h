@@ -19,7 +19,7 @@ public:
     explicit RawDecoder(QObject* parent = nullptr);
     ~RawDecoder();
 
-    bool laden(const QString& pfad);
+    [[nodiscard]] bool laden(const QString& pfad);
     void schliessen();
     QVariantMap metadaten() const;
 

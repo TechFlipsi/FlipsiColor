@@ -119,11 +119,11 @@ void Application::kiInitialisieren()
 {
     // ModelManager-Initialisierung auslösen
     // Der ModelManager lädt das Manifest und stellt sicher, dass Core-Modelle verfügbar sind
-    auto* manager = new ModelManager(this);
-    manager->manifestLaden();
+    m_modelManager = std::make_unique<ModelManager>(this);
+    m_modelManager->manifestLaden();
 
     qDebug() << "KI-Initialisierung abgeschlossen. Core-Modelle Gesamtgröße:"
-             << manager->coreGroesseGesamt() << "Bytes";
+             << m_modelManager->coreGroesseGesamt() << "Bytes";
 }
 
 } // namespace flipsicolor

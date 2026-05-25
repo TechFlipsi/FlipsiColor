@@ -63,7 +63,7 @@ QVariantMap ExifReader::lesen(const QString& pfad)
     eintrag = exifEintragSuchen(exifData, EXIF_IFD_EXIF, EXIF_TAG_FOCAL_LENGTH);
     if (eintrag) {
         ExifRational rat = exif_get_rational(eintrag->data, ordnung);
-        double brennweite = (double)rat.numerator / (double)rat.denominator;
+        double brennweite = static_cast<double>(rat.numerator) / static_cast<double>(rat.denominator);
         m_impl->daten["brennweite"] = brennweite;
     }
 
@@ -79,7 +79,7 @@ QVariantMap ExifReader::lesen(const QString& pfad)
     eintrag = exifEintragSuchen(exifData, EXIF_IFD_EXIF, EXIF_TAG_EXPOSURE_TIME);
     if (eintrag) {
         ExifRational rat = exif_get_rational(eintrag->data, ordnung);
-        double zeit = (double)rat.numerator / (double)rat.denominator;
+        double zeit = static_cast<double>(rat.numerator) / static_cast<double>(rat.denominator);
         m_impl->daten["belichtungszeit"] = zeit;
     }
 
@@ -87,7 +87,7 @@ QVariantMap ExifReader::lesen(const QString& pfad)
     eintrag = exifEintragSuchen(exifData, EXIF_IFD_EXIF, EXIF_TAG_FNUMBER);
     if (eintrag) {
         ExifRational rat = exif_get_rational(eintrag->data, ordnung);
-        double blende = (double)rat.numerator / (double)rat.denominator;
+        double blende = static_cast<double>(rat.numerator) / static_cast<double>(rat.denominator);
         m_impl->daten["blende"] = blende;
     }
 

@@ -6,6 +6,10 @@ on:
   pull_request:
     branches: [main]
 
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 env:
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
 
@@ -18,7 +22,9 @@ jobs:
       - name: Clang-Format prüfen
         run: |
           sudo apt-get update && sudo apt-get install -y clang-format-18
-          find src include -name '*.cpp' -o -name '*.h' | xargs clang-format-18 --dry-run --Werror 2>&1 || echo "Format-Fehler gefunden. Führe 'clang-format-18 -i' aus."
+          files=$(find src include -name '*.cpp' -o -name '*.h')
+          if [ -z "$files" ]; then echo "Keine Quelldateien gefunden"; exit 0; fi
+          echo "$files" | xargs clang-format-18 --dry-run --Werror --style=file
 
   build-windows:
     runs-on: windows-2022
@@ -57,9 +63,9 @@ jobs:
         uses: actions/cache@v4
         with:
           path: ~\AppData\Local\Mozilla\sccache\cache
-          key: sccache-win-${{ github.sha }}
+          key: sccache-win-${{ runner.os }}-${{ hashFiles('src/**', 'include/**', 'CMakeLists.txt', 'src/CMakeLists.txt') }}
           restore-keys: |
-            sccache-win-
+            sccache-win-${{ runner.os }}-
 
       # ── Qt ──
       - name: Qt installieren

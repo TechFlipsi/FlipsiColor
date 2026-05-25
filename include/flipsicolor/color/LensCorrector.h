@@ -20,9 +20,9 @@ public:
     explicit LensCorrector(QObject* parent = nullptr);
     ~LensCorrector();
 
-    bool initialisieren();
-    bool kameraSetzen(const QString& hersteller, const QString& modell);
-    bool objektivSetzen(const QString& hersteller, const QString& modell);
+    [[nodiscard]] bool initialisieren();
+    [[nodiscard]] bool kameraSetzen(const QString& hersteller, const QString& modell);
+    [[nodiscard]] bool objektivSetzen(const QString& hersteller, const QString& modell);
     cv::Mat korrigieren(const cv::Mat& bild, float brennweite, float blende) const;
 
 private:

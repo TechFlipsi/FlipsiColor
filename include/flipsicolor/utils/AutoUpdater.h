@@ -27,7 +27,7 @@ class AutoUpdater : public QObject {
 
 public:
     /// Update-Kanal für Beta-Tester
-    enum UpdateKanal {
+    enum class UpdateKanal {
         Stable = 0,    ///< Nur stabile Releases
         Beta = 1       ///< Auch Pre-releases
     };
