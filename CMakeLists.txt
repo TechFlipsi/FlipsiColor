@@ -101,6 +101,15 @@ target_link_libraries(flipsicolor PRIVATE
     LibExif::LibExif
 )
 
+# ── MSVC C++20 <ctime>-Workaround ──────────────────────────────────────────
+# MSVC bringt <ctime>-Symbole durcheinander, wenn C++-Header VOR <ctime>
+# geladen werden. PCH erzwingt C-Compat-Header als ALLERSTERES.
+if(MSVC)
+    target_precompile_headers(flipsicolor PRIVATE
+        "$<$<COMPILE_LANGUAGE:CXX>:${CMAKE_CURRENT_SOURCE_DIR}/include/flipsicolor/pch.h>"
+    )
+endif()
+
 # ── Installation ────────────────────────────────────────────────────────────
 install(TARGETS flipsicolor
     RUNTIME DESTINATION bin
