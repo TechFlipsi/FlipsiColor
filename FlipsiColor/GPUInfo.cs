@@ -1,5 +1,6 @@
 using System;
 using System.Diagnostics;
+using System.Management;
 using System.Runtime.InteropServices;
 
 using FlipsiColor.Utils;
@@ -9,7 +10,7 @@ namespace FlipsiColor;
 /// <summary>
 /// GPU-Erkennung — ONNX Runtime Provider-Check (CUDA, DirectML, TensorRT)
 /// </summary>
-public static class GPUInfo
+public class GPUInfo
 {
     private static readonly Serilog.ILogger Log = Serilog.Log.ForContext<GPUInfo>();
 

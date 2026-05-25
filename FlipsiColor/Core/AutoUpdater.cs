@@ -5,6 +5,7 @@ using System.Net.Http;
 using System.Reflection;
 using System.Text.Json;
 using System.Threading;
+using System.Security.Cryptography;
 using System.Threading.Tasks;
 
 using FlipsiColor.Utils;

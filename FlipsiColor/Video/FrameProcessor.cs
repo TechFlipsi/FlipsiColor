@@ -50,7 +50,7 @@ public sealed class FrameProcessor : IDisposable
                 var hsv = new Mat();
                 Cv2.CvtColor(result, hsv, ColorConversionCodes.BGR2HSV);
                 var channels = hsv.Split();
-                channels[1] += param.Saettigung * 50;
+                channels[1] = channels[1] + new Scalar(param.Saettigung * 50, param.Saettigung * 50, param.Saettigung * 50, 0);
                 Cv2.Merge(channels, hsv);
                 foreach (var c in channels) c.Dispose();
                 Cv2.CvtColor(hsv, result, ColorConversionCodes.HSV2BGR);

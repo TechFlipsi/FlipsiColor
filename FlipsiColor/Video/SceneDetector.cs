@@ -8,7 +8,7 @@ namespace FlipsiColor.Video;
 /// <summary>
 /// Szenenwechsel-Erkennung — Frame-Ähnlichkeitsanalyse
 /// </summary>
-public static class SceneDetector
+public class SceneDetector
 {
     private static readonly Serilog.ILogger Log = Serilog.Log.ForContext<SceneDetector>();
 

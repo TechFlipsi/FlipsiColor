@@ -13,7 +13,7 @@ namespace FlipsiColor.Image;
 /// <summary>
 /// EXIF-Leser via MetadataExtractor (reines .NET — besser als libexif)
 /// </summary>
-public static class ExifReader
+public class ExifReader
 {
     private static readonly Serilog.ILogger Log = Serilog.Log.ForContext<ExifReader>();
 

@@ -11,7 +11,7 @@ namespace FlipsiColor.Utils;
 /// <summary>
 /// Strukturiertes Logging mit Serilog — Datei-Rotation + Console
 /// </summary>
-public static class Logger
+public class Logger
 {
     private const long MaxFileSize = 5 * 1024 * 1024; // 5 MB
     private const int MaxFiles = 5;

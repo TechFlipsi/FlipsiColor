@@ -1,3 +1,4 @@
+using OpenCvSharp;
 using System;
 using System.Diagnostics;
 using System.IO;
@@ -71,7 +72,8 @@ public sealed class VideoPipeline : IDisposable
                     if (parts[2].Contains('/'))
                     {
                         var fpsParts = parts[2].Split('/');
-                        if (fpsParts.Length == 2 && double.TryParse(fpsParts[1], out double denom))
+                        double denom = 0;
+                        if (fpsParts.Length == 2 && double.TryParse(fpsParts[1], out denom))
                             double.TryParse(fpsParts[0], out _fps);
                         if (denom > 0) _fps /= denom;
                     }
