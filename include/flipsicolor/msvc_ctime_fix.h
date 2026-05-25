@@ -2,13 +2,19 @@
 // Copyright (C) 2026 Fabian Kirchweger (TechFlipsi)
 // SPDX-License-Identifier: GPL-3.0-or-later
 //
-// MSVC 14.44 Bug: <ctime> wirft C2039/C2873, wenn Drittanbieter-Header
-// (Qt, OpenCV, ONNX Runtime) Symbole in den std-Namespace bringen, bevor
-// <ctime>'s using-Deklarationen ausgeführt werden können.
+// MSVC 14.44 C++20 Bug: Sowohl <time.h> als auch <ctime> definieren
+// clock_t, time_t, tm, asctime, ctime etc. NUR im std-Namespace,
+// NICHT im globalen Namespace. using-Deklarationen wie
+// "using ::clock_t" oder <ctime>'s interne using-Deklarationen
+// schlagen mit C2039/C2873 fehl weil die Symbole nicht im globalen
+// Namespace existieren.
 //
-// Lösung: <time.h> (C-Header) inkludieren und die benötigten Symbole
-// manuell in den std-Namespace importieren, OHNE <ctime> zu inkludieren.
-// Auf GCC/Clang inkludiert dieser Header einfach <ctime> (kein Bug dort).
+// Lösung: _CTIME_ definieren (MSVC's Include-Guard für <ctime>),
+// sodass <ctime> NIEMALS geladen wird. Die Symbole sind bereits
+// über <time.h> im std-Namespace verfügbar — std::clock_t, std::time_t
+// etc. funktionieren problemlos, nur der globale Namespace ist leer.
+//
+// Auf GCC/Clang: einfach <ctime> normal inkludieren (kein Bug dort).
 //
 // Dieser Header wird per /FI-Flag VOR allen anderen Headern gezwungen
 // und wirkt auf ALLE Übersetzungseinheiten inkl. AUTOMOC-generierte Dateien.
@@ -18,38 +24,16 @@
 
 #ifdef _MSC_VER
 
-// ── C-Header inkludieren ──────────────────────────────────────────────────
-// <time.h> definiert clock_t, time_t, tm, timespec etc. im globalen Namespace.
+// <time.h> inkludieren — definiert clock_t, time_t, tm, timespec etc.
+// ABER: Bei MSVC C++20 landen diese NUR im std-Namespace, nicht global!
+// D.h. ::clock_t gibt es NICHT, aber std::clock_t funktioniert.
 #include <time.h>
 
-// ── Manuelle using-Deklarationen ───────────────────────────────────────────
-// <ctime> würde diese via using-Deklaration importieren, schlägt aber mit
-// C2039/C2873 fehl. Wir machen es manuell.
-namespace std {
-    // Typen
-    using ::clock_t;
-    using ::time_t;
-    using ::tm;
-#if _HAS_CXX17
-    using ::timespec;
-#endif
-
-    // Funktionen
-    using ::clock;
-    using ::difftime;
-    using ::mktime;
-    using ::time;
-    using ::asctime;
-    using ::ctime;
-    using ::gmtime;
-    using ::localtime;
-    using ::strftime;
-}
-
-// ── <ctime> Include-Guard setzen ────────────────────────────────────────────
-// _CTIME_ ist der interne Include-Guard von MSVC's <ctime>.
-// Durch Definieren wird verhindert, dass <ctime> jemals inkludiert wird
-// (und die fehlerhaften using-Deklarationen auslöst).
+// _CTIME_ ist der Include-Guard von MSVC's <ctime>.
+// Durch Definieren wird verhindert, dass <ctime> jemals geladen wird,
+// da dessen using-Deklarationen (die aus dem globalen Namespace importieren
+// wollen) fehlschlagen würden. Die Symbole sind bereits via <time.h>
+// im std-Namespace verfügbar.
 #ifndef _CTIME_
 #define _CTIME_
 #endif
