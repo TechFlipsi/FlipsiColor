@@ -137,7 +137,7 @@ jobs:
           
           Write-Host "windeployqt: $deployQt"
           Write-Host "Target EXE: $($exePath.FullName)"
-          & $deployQt --release --no-translations --no-opengl-sw --dir "." $exePath.FullName
+          & $deployQt --release --no-translations --no-opengl-sw --dir ".\Release\" $exePath.FullName
           if ($LASTEXITCODE -ne 0) {
             Write-Error "windeployqt fehlgeschlagen mit Exit-Code $LASTEXITCODE"
             exit 1
@@ -174,17 +174,30 @@ jobs:
           }
           
           # OpenCV DLLs (world-Build oder einzelne Module-DLLs)
-          $ocvDlls = "${{ env.OpenCV_ROOT }}\x64\vc17\bin"
-          if (Test-Path $ocvDlls) {
-            # Kopiere ALLE OpenCV-DLLs (opencv_world4100.dll + opencv_*.dll)
-            $copied = (Get-ChildItem "$ocvDlls\*.dll" | Copy-Item -Destination $dest -PassThru).Count
-            Write-Host "OpenCV: $copied DLLs kopiert"
-            # Fallback: suche auch im build-Verzeichnis
-            $ocvBuildDlls = "${{ env.OpenCV_ROOT }}\build\x64\vc17\bin"
-            if (Test-Path $ocvBuildDlls) {
-              $copied2 = (Get-ChildItem "$ocvBuildDlls\*.dll" | Copy-Item -Destination $dest -PassThru).Count
-              Write-Host "OpenCV (build-dir): $copied2 DLLs kopiert"
+          # Pre-built OpenCV releases use different VC toolchain dirs: vc16 (VS2019), vc17 (VS2022), vc15 (VS2017)
+          $ocvRoot = "${{ env.OpenCV_ROOT }}"
+          $ocvCopied = $false
+          foreach ($vc in @("vc17", "vc16", "vc15")) {
+            foreach ($subdir in @("x64\$vc\bin", "build\x64\$vc\bin")) {
+              $candidateDir = Join-Path $ocvRoot $subdir
+              if (Test-Path $candidateDir) {
+                $copied = (Get-ChildItem "$candidateDir\*.dll" | Copy-Item -Destination $dest -PassThru).Count
+                Write-Host "OpenCV ($subdir): $copied DLLs kopiert"
+                $ocvCopied = $true
+              }
             }
+          }
+          if (-not $ocvCopied) {
+            # Ultimate fallback: recursive search for opencv_world*.dll
+            $dlls = Get-ChildItem -Path $ocvRoot -Recurse -Filter "opencv_world*.dll" -ErrorAction SilentlyContinue
+            if ($dlls) {
+              $copied = ($dlls | Copy-Item -Destination $dest -PassThru).Count
+              Write-Host "OpenCV (recursive fallback): $copied DLLs kopiert"
+              $ocvCopied = $true
+            }
+          }
+          if (-not $ocvCopied) {
+            Write-Host "WARNUNG: Keine OpenCV DLLs gefunden unter $ocvRoot"
           }
           
           # Verifizieren: Alle benötigten DLLs vorhanden?
@@ -206,15 +219,34 @@ jobs:
             Write-Host "WARNUNG: $missing DLLs fehlen — Programm wird nicht starten!"
           }
 
-      - name: NSIS-Installer bauen
+      - name: Paket erstellen (Portable ZIP + NSIS)
         working-directory: build
         shell: pwsh
         run: |
+          # Always create a portable ZIP first (most reliable — includes all DLLs)
+          Write-Host "Erstelle portable ZIP aus Release-Verzeichnis..."
+          $zipName = "FlipsiColor-Windows-Portable.zip"
+          Compress-Archive -Path "Release\*" -DestinationPath $zipName
+          $zipSize = (Get-Item $zipName).Length
+          Write-Host "Portable ZIP erstellt: $zipName ($([math]::Round($zipSize/1MB, 1)) MB)"
+          
+          # Verify ZIP contents
+          Write-Host "ZIP-Inhalt (erste 20 Einträge):"
+          Add-Type -AssemblyName System.IO.Compression.FileSystem
+          $zip = [System.IO.Compression.ZipFile]::OpenRead((Join-Path (Get-Location) $zipName))
+          $zip.Entries | Select-Object -First 20 | ForEach-Object { Write-Host "  $($_.Name)" }
+          $zip.Dispose()
+          
+          # Also attempt NSIS installer (optional — may not include all DLLs from manual copies)
           choco install nsis -y --no-progress 2>$null
           cpack -G NSIS
-          if ($LASTEXITCODE -ne 0) {
-            Write-Host "NSIS fehlgeschlagen, erstelle portable ZIP als Fallback"
-            Compress-Archive -Path "Release\*" -DestinationPath "FlipsiColor-Windows-Portable.zip"
+          if ($LASTEXITCODE -eq 0) {
+            $nsisFile = Get-ChildItem -Filter "*.exe" | Where-Object { $_.Name -like "*FlipsiColor*" } | Select-Object -First 1
+            if ($nsisFile) {
+              Write-Host "NSIS-Installer erstellt: $($nsisFile.Name)"
+            }
+          } else {
+            Write-Host "NSIS fehlgeschlagen (Exit-Code $LASTEXITCODE) — nur ZIP verfügbar"
           }
 
       - name: Artefakt hochladen (Windows)
