@@ -11,6 +11,7 @@
 namespace flipsicolor {
 
 class AutoUpdater;
+class ModelManager;
 
 class Application : public QObject
 {
@@ -52,6 +53,7 @@ private:
     QString m_gpuName;
     int m_feedbackAnzahl = 0;
     std::unique_ptr<AutoUpdater> m_updater;
+    std::unique_ptr<ModelManager> m_modelManager;
 };
 
 } // namespace flipsicolor

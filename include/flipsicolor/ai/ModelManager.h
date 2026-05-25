@@ -41,8 +41,8 @@ public:
     ~ModelManager();
 
     void manifestLaden();
-    bool modellSicherstellen(ModellId id);
-    void* session(ModellId id); // Gibt OrtSession* zurück (void* um ONNX-Header-Abhängigkeit zu vermeiden)
+    [[nodiscard]] bool modellSicherstellen(ModellId id);
+    [[nodiscard]] void* session(ModellId id); // Gibt OrtSession* zurück (void* um ONNX-Header-Abhängigkeit zu vermeiden)
 
     qint64 coreGroesseGesamt() const;
     qint64 optionalGroesseGesamt() const;

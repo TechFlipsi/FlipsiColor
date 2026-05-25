@@ -77,6 +77,8 @@ target_include_directories(flipsicolor PRIVATE
     ${CMAKE_CURRENT_BINARY_DIR}
 )
 
+target_compile_features(flipsicolor PRIVATE cxx_std_20)
+
 target_link_libraries(flipsicolor PRIVATE
     Qt6::Core
     Qt6::Gui
@@ -102,6 +104,52 @@ target_link_libraries(flipsicolor PRIVATE
     LibExif::LibExif
 )
 
+# ── Precompiled Headers (30-50% Build-Zeit-Einsparung) ─────────────────────
+target_precompile_headers(flipsicolor PRIVATE
+    # Qt6 — die am häufigsten inkludierten Header
+    <QObject>
+    <QString>
+    <QVector>
+    <QMap>
+    <QHash>
+    <QVariant>
+    <QPoint>
+    <QSize>
+    <QRect>
+    <QDebug>
+    <QLoggingCategory>
+    <QJsonDocument>
+    <QJsonObject>
+    <QSettings>
+    <QDir>
+    <QFile>
+    <QFileInfo>
+    <QThread>
+    <QTimer>
+    <QElapsedTimer>
+    <QMutex>
+    <QUrl>
+    <QNetworkAccessManager>
+    <QNetworkReply>
+    <QNetworkRequest>
+    # STL — stabile Header, selten geändert
+    <memory>
+    <string>
+    <vector>
+    <map>
+    <set>
+    <algorithm>
+    <functional>
+    <optional>
+    <variant>
+    <filesystem>
+    <cmath>
+    <cstdint>
+    <chrono>
+    <thread>
+    <mutex>
+    <atomic>
+)
 
 # ── MSVC <ctime>-Bug-Workaround ─────────────────────────────────────────────
 # MSVC 14.44: <ctime> wirft C2039/C2873, wenn Qt/OpenCV/ONNX-Header Symbole

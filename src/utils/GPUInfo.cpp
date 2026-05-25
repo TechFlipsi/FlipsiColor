@@ -22,7 +22,7 @@ QString GPUInfo::gpuName() const
 #ifdef Q_OS_WIN
     // DXGI Adapter Enumeration
     IDXGIFactory* factory = nullptr;
-    if (SUCCEEDED(CreateDXGIFactory(__uuidof(IDXGIFactory), (void**)&factory))) {
+    if (SUCCEEDED(CreateDXGIFactory(__uuidof(IDXGIFactory), reinterpret_cast<void**>(&factory)))) {
         IDXGIAdapter* adapter = nullptr;
         if (SUCCEEDED(factory->EnumAdapters(0, &adapter))) {
             DXGI_ADAPTER_DESC desc;

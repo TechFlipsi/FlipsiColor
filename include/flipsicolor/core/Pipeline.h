@@ -40,8 +40,8 @@ public:
     void setIntensitaet(Intensitaet stufe);
     void setModus(BetriebsModus modus);
 
-    PipelineParams standardParamsFuerSzene(const QString& szenenTyp) const;
-    float codeFormerFidelityWeight() const;
+    [[nodiscard]] PipelineParams standardParamsFuerSzene(const QString& szenenTyp) const;
+    [[nodiscard]] float codeFormerFidelityWeight() const;
 
 private:
     Intensitaet m_intensitaet = Intensitaet::Mittel;

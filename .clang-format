@@ -1,32 +1,64 @@
----
+# FlipsiColor — Clang-Format Konfiguration
+# Basierend auf WebKit/Mozilla-Style mit deutschem Flavor
 BasedOnStyle: LLVM
-Language: Cpp
-Standard: c++20
-ColumnLimit: 120
+LanguageStd: Cpp20
+
+# Einrückung & Spacing
 IndentWidth: 4
 TabWidth: 4
 UseTab: Never
 AccessModifierOffset: -4
+NamespaceIndentation: All
+
+# Zeilenbreite
+ColumnLimit: 120
+
+# Klammern
+BreakBeforeBraces: Custom
+BraceWrapping:
+  AfterFunction: true
+  AfterClass: true
+  AfterControlStatement: Always
+  AfterEnum: true
+  AfterNamespace: true
+  AfterStruct: true
+  BeforeCatch: true
+  BeforeElse: true
+  IndentBraces: false
+
+# Includes
+SortIncludes: CaseInsensitive
+IncludeBlocks: Preserve
+
+# Alignment
 AlignAfterOpenBracket: Align
-AlignEscapedNewlines: Left
+AlignConsecutiveAssignments: Consecutive
+AlignConsecutiveDeclarations: Consecutive
+AlignEscapedNewlines: Right
+AlignOperands: Align
+AlignTrailingComments: true
+
+# Short Forms
 AllowShortBlocksOnASingleLine: Empty
+AllowShortEnumsOnASingleLine: true
 AllowShortFunctionsOnASingleLine: Inline
-AllowShortIfStatementsOnASingleLine: WithoutElse
-AllowShortLoopsOnASingleLine: true
-BreakBeforeBraces: Attach
-BreakInheritanceList: AfterComma
-ConstructorInitializerIndentWidth: 8
-ContinuationIndentWidth: 4
+AllowShortIfStatementsOnASingleLine: Never
+AllowShortLoopsOnASingleLine: false
+
+# Anderes
+AlwaysBreakTemplateDeclarations: Yes
+BinPackArguments: false
+BinPackParameters: false
+BreakConstructorInitializers: BeforeComma
+ConstructorInitializerAllOnOneLineOrOnePerLine: true
+ConstructorInitializerIndentWidth: 4
 Cpp11BracedListStyle: true
 DerivePointerAlignment: false
-FixNamespaceComments: true
-IncludeBlocks: Regroup
-IndentPPDirectives: AfterHash
-NamespaceIndentation: None
 PointerAlignment: Left
 ReferenceAlignment: Left
-SortIncludes: CaseInsensitive
 SpaceAfterCStyleCast: false
+SpaceAfterLogicalNot: false
+SpaceAfterTemplateKeyword: true
 SpaceBeforeAssignmentOperators: true
 SpaceBeforeParens: ControlStatements
 SpaceInEmptyBlock: false
@@ -34,5 +66,6 @@ SpaceInEmptyParentheses: false
 SpacesBeforeTrailingComments: 2
 SpacesInAngles: Never
 SpacesInCStyleCastParentheses: false
-SpacesInContainerLiterals: false
+SpacesInConditionalStatement: true
 SpacesInParentheses: false
+Standard: c++20

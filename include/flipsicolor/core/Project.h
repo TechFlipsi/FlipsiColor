@@ -21,8 +21,8 @@ public:
     explicit Project(QObject* parent = nullptr);
     ~Project();
 
-    bool laden(const QString& pfad);
-    bool speichern();
+    [[nodiscard]] bool laden(const QString& pfad);
+    [[nodiscard]] bool speichern();
     void setGeaendert(bool geaendert);
     bool istGeaendert() const;
 

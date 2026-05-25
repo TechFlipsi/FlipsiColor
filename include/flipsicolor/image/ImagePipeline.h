@@ -21,7 +21,7 @@ public:
     explicit ImagePipeline(QObject* parent = nullptr);
     ~ImagePipeline();
 
-    bool bildLaden(const QString& pfad);
+    [[nodiscard]] bool bildLaden(const QString& pfad);
     void pipelineAusfuehren(const PipelineParams& params);
     cv::Mat ergebnis() const;
 
