@@ -12,6 +12,7 @@
             <!-- Globale Converter -->
             <local:BoolToVisibilityConverter x:Key="BoolToVis"/>
             <local:InverseBoolToVisibilityConverter x:Key="InverseBoolToVis"/>
+            <local:MatToBitmapSourceConverter x:Key="MatToBmp"/>
         </ResourceDictionary>
     </Application.Resources>
 </Application>

@@ -61,7 +61,7 @@ public sealed class ImagePipeline : IDisposable
                 return false;
             }
 
-            _aktuellesBild.CopyTo(_originalBild = new Mat());
+            _originalBild = _aktuellesBild.Clone();
             Log.Information("Bild geladen: {Pfad} ({Breite}x{Hoehe}, {Kanaele})",
                 pfad, _aktuellesBild.Width, _aktuellesBild.Height, _aktuellesBild.Channels());
             BildGeladen?.Invoke(this, EventArgs.Empty);
@@ -95,38 +95,84 @@ public sealed class ImagePipeline : IDisposable
             // 1. Weißabgleich
             if (Math.Abs(param.WeissabgleichTemp - 5500.0f) > 1 || Math.Abs(param.WeissabgleichTint) > 1)
             {
-                bild = WeissabgleichAnwenden(bild, param.WeissabgleichTemp, param.WeissabgleichTint);
+                var wbResult = _whiteBalance.AutoWb(bild);
+                var neuesBild = WeissabgleichAnwenden(bild, (float)wbResult.Temperatur, (float)wbResult.Tint);
+                bild.Dispose();
+                bild = neuesBild;
+            }
+            else
+            {
+                // AutoWB anwenden wenn keine manuelle Temperatur gesetzt
+                var wbResult = _whiteBalance.AutoWb(bild);
+                if (Math.Abs(wbResult.Temperatur - 5500.0) > 50 || Math.Abs(wbResult.Tint) > 1)
+                {
+                    var neuesBild = WeissabgleichAnwenden(bild, (float)wbResult.Temperatur, (float)wbResult.Tint);
+                    bild.Dispose();
+                    bild = neuesBild;
+                }
             }
 
             // 2. Belichtung
             if (Math.Abs(param.Belichtung) > 0.01f)
-                bild = BelichtungAnwenden(bild, param.Belichtung);
+            {
+                var neuesBild = BelichtungAnwenden(bild, param.Belichtung);
+                bild.Dispose();
+                bild = neuesBild;
+            }
 
             // 3. Kontrast
             if (Math.Abs(param.Kontrast) > 0.01f)
-                bild = KontrastAnwenden(bild, param.Kontrast);
+            {
+                var neuesBild = KontrastAnwenden(bild, param.Kontrast);
+                bild.Dispose();
+                bild = neuesBild;
+            }
 
             // 4. Lichter & Schatten
             if (Math.Abs(param.Lichter) > 0.01f)
-                bild = LichterSchattenAnwenden(bild, param.Lichter, true);
+            {
+                var neuesBild = LichterSchattenAnwenden(bild, param.Lichter, true);
+                bild.Dispose();
+                bild = neuesBild;
+            }
             if (Math.Abs(param.Schatten) > 0.01f)
-                bild = LichterSchattenAnwenden(bild, param.Schatten, false);
+            {
+                var neuesBild = LichterSchattenAnwenden(bild, param.Schatten, false);
+                bild.Dispose();
+                bild = neuesBild;
+            }
 
             // 5. Sättigung & Vibranz
             if (Math.Abs(param.Saettigung) > 0.01f || Math.Abs(param.Vibranz) > 0.01f)
-                bild = SaettigungAnwenden(bild, param.Saettigung, param.Vibranz);
+            {
+                var neuesBild = SaettigungAnwenden(bild, param.Saettigung, param.Vibranz);
+                bild.Dispose();
+                bild = neuesBild;
+            }
 
             // 6. Schärfe
             if (Math.Abs(param.SchaerfeBetrag) > 0.01f)
-                bild = SchaerfeAnwenden(bild, param.SchaerfeBetrag);
+            {
+                var neuesBild = SchaerfeAnwenden(bild, param.SchaerfeBetrag);
+                bild.Dispose();
+                bild = neuesBild;
+            }
 
             // 7. Rauschunterdrückung
             if (param.LuminanzRauschen > 0.01f || param.ChrominanzRauschen > 0.01f)
-                bild = RauschunterdrueckungAnwenden(bild, param.LuminanzRauschen, param.ChrominanzRauschen);
+            {
+                var neuesBild = RauschunterdrueckungAnwenden(bild, param.LuminanzRauschen, param.ChrominanzRauschen);
+                bild.Dispose();
+                bild = neuesBild;
+            }
 
             // 8. Objektivkorrektur
             if (param.ObjektivkorrekturAktiv)
-                bild = _lensCorrector.Korrigieren(bild, "Canon", "EF-S 18-55mm", 35f, 5.6f);
+            {
+                var neuesBild = _lensCorrector.Korrigieren(bild, "Canon", "EF-S 18-55mm", 35f, 5.6f);
+                bild.Dispose();
+                bild = neuesBild;
+            }
 
             _aktuellesBild?.Dispose();
             _aktuellesBild = bild;

@@ -22,26 +22,29 @@ public sealed class FrameProcessor : IDisposable
         if (frame.Empty()) return frame;
 
         var result = frame.Clone();
+        Mat? arbeit = null;
 
         try
         {
             // Belichtung
             if (Math.Abs(param.Belichtung) > 0.01f)
             {
-                var temp = new Mat();
-                result.ConvertTo(temp, -1, 1.0, param.Belichtung * 50);
+                arbeit = new Mat();
+                result.ConvertTo(arbeit, -1, 1.0, param.Belichtung * 50);
                 result.Dispose();
-                result = temp;
+                result = arbeit;
+                arbeit = null;
             }
 
             // Kontrast
             if (Math.Abs(param.Kontrast) > 0.01f)
             {
-                var temp = new Mat();
+                arbeit = new Mat();
                 var alpha = 1.0 + param.Kontrast * 0.5;
-                result.ConvertTo(temp, -1, alpha, 128 * (1 - alpha));
+                result.ConvertTo(arbeit, -1, alpha, 128 * (1 - alpha));
                 result.Dispose();
-                result = temp;
+                result = arbeit;
+                arbeit = null;
             }
 
             // Sättigung
@@ -53,12 +56,17 @@ public sealed class FrameProcessor : IDisposable
                 channels[1] = channels[1] + new Scalar(param.Saettigung * 50, param.Saettigung * 50, param.Saettigung * 50, 0);
                 Cv2.Merge(channels, hsv);
                 foreach (var c in channels) c.Dispose();
-                Cv2.CvtColor(hsv, result, ColorConversionCodes.HSV2BGR);
+                arbeit = new Mat();
+                Cv2.CvtColor(hsv, arbeit, ColorConversionCodes.HSV2BGR);
                 hsv.Dispose();
+                result.Dispose();
+                result = arbeit;
+                arbeit = null;
             }
         }
         catch (Exception ex)
         {
+            arbeit?.Dispose();
             Log.Warning(ex, "Frame-Verarbeitung fehlgeschlagen");
         }
 

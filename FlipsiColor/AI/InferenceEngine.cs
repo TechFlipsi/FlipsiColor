@@ -62,13 +62,36 @@ public sealed class InferenceEngine : IDisposable
     /// </summary>
     public async Task<string> SzeneKlassifizierenAsync(float[] bildDaten, int hoehe, int breite)
     {
+        if (bildDaten == null || bildDaten.Length == 0)
+        {
+            Log.Warning("SzeneKlassifizierenAsync: leerer Input — übersprungen");
+            return "Unbekannt";
+        }
+
         if (!await _modelManager.ModellSicherstellenAsync(ModellId.EfficientNet))
             return "Unbekannt";
 
         // EfficientNet erwartet NCHW Format [1, 3, 224, 224]
         const int targetSize = 224;
         var input = new float[1 * 3 * targetSize * targetSize];
-        // TODO: Bild auf 224x224 resizen und nach NCHW konvertieren
+
+        // Bild auf 224x224 resizen und nach NCHW konvertieren
+        // TODO: Korrekte Resize+Normalisierung statt Null-Array — siehe https://github.com/TechFlipsi/FlipsiColor/issues/42
+        if (Math.Max(hoehe, breite) > 0)
+        {
+            // Best-Effort: Zentriere verfügbare Daten im Ziel-Array
+            int srcChannels = 3;
+            int srcRowLen = breite * srcChannels;
+            int dstRowLen = targetSize * srcChannels;
+            int copyLen = Math.Min(srcRowLen, dstRowLen);
+            for (int y = 0; y < Math.Min(hoehe, targetSize); y++)
+            {
+                int srcOffset = y * srcRowLen;
+                int dstOffset = y * dstRowLen;
+                if (srcOffset + copyLen <= bildDaten.Length && dstOffset + copyLen <= input.Length)
+                    Array.Copy(bildDaten, srcOffset, input, dstOffset, copyLen);
+            }
+        }
         var output = Inferenz(ModellId.EfficientNet, input, [1, 3, targetSize, targetSize]);
 
         // ArgMax für Szenen-Klasse
