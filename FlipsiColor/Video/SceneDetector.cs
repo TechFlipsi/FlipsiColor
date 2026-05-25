@@ -82,8 +82,10 @@ public class SceneDetector
             new[] { 0 },
             null,
             hist,
+            1,
             new[] { 256 },
-            new[] { new Rangef(0, 256) });
+            new[] { new Rangef(0, 256) },
+            false);
         Cv2.Normalize(hist, hist);
         return hist;
     }
