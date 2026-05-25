@@ -14,7 +14,7 @@ ApplicationWindow {
     minimumWidth: 960
     minimumHeight: 600
     title: "FlipsiColor"
-    color: AppTheme.hintergrundPrimar
+    color: AppTheme.bgPrimary
     flags: Qt.Window | Qt.WindowMinMaxButtonsHint
 
     // 3-Panel Layout wie DaVinci Resolve
@@ -47,7 +47,7 @@ ApplicationWindow {
     // Statusleiste unten
     footer: Rectangle {
         height: 28
-        color: AppTheme.hintergrundSekundaer
+        color: AppTheme.bgSecondary
         Layout.fillWidth: true
 
         RowLayout {
@@ -59,7 +59,7 @@ ApplicationWindow {
             Label {
                 text: qsTr("Bereit")
                 font.pixelSize: 11
-                color: AppTheme.textSekundaer
+                color: AppTheme.textSecondary
                 Layout.fillWidth: true
             }
 
@@ -67,14 +67,14 @@ ApplicationWindow {
                 text: "GPU: —"
                 font.pixelSize: 11
                 font.family: "JetBrains Mono"
-                color: AppTheme.textSekundaer
+                color: AppTheme.textSecondary
             }
 
             Label {
-                text: "v0.1.0"
+                text: "v0.2.0"
                 font.pixelSize: 11
                 font.family: "JetBrains Mono"
-                color: AppTheme.textTertiar
+                color: AppTheme.textMuted
             }
         }
     }
