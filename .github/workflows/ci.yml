@@ -173,21 +173,37 @@ jobs:
             Write-Host "ONNX Runtime: onnxruntime.dll kopiert"
           }
           
-          # OpenCV DLLs
+          # OpenCV DLLs (world-Build oder einzelne Module-DLLs)
           $ocvDlls = "${{ env.OpenCV_ROOT }}\x64\vc17\bin"
           if (Test-Path $ocvDlls) {
-            $copied = (Get-ChildItem "$ocvDlls\opencv_*.dll" | Copy-Item -Destination $dest -PassThru).Count
+            # Kopiere ALLE OpenCV-DLLs (opencv_world4100.dll + opencv_*.dll)
+            $copied = (Get-ChildItem "$ocvDlls\*.dll" | Copy-Item -Destination $dest -PassThru).Count
             Write-Host "OpenCV: $copied DLLs kopiert"
+            # Fallback: suche auch im build-Verzeichnis
+            $ocvBuildDlls = "${{ env.OpenCV_ROOT }}\build\x64\vc17\bin"
+            if (Test-Path $ocvBuildDlls) {
+              $copied2 = (Get-ChildItem "$ocvBuildDlls\*.dll" | Copy-Item -Destination $dest -PassThru).Count
+              Write-Host "OpenCV (build-dir): $copied2 DLLs kopiert"
+            }
           }
           
           # Verifizieren: Alle benötigten DLLs vorhanden?
-          $requiredDlls = @("raw.dll", "onnxruntime.dll", "lcms2.dll")
+          $requiredDlls = @(
+            "raw.dll", "onnxruntime.dll", "lcms2.dll", "lensfun.dll",
+            "libexif.dll", "opencv_world4100.dll",
+            "Qt6Core.dll", "Qt6Gui.dll", "Qt6Widgets.dll", "Qt6QuickControls2.dll"
+          )
+          $missing = 0
           foreach ($dll in $requiredDlls) {
             if (Test-Path "$dest$dll") {
               Write-Host "✓ $dll gefunden"
             } else {
               Write-Host "✗ $dll FEHLT!"
+              $missing++
             }
+          }
+          if ($missing -gt 0) {
+            Write-Host "WARNUNG: $missing DLLs fehlen — Programm wird nicht starten!"
           }
 
       - name: NSIS-Installer bauen
