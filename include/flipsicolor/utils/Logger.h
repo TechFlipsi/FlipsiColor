@@ -4,28 +4,35 @@
 
 #pragma once
 
+#include <QFile>
 #include <QObject>
 #include <QString>
-#include <QFile>
 
-namespace flipsicolor {
-
-class Logger : public QObject
+namespace flipsicolor
 {
-    Q_OBJECT
 
-public:
-    enum class Stufe { Debug, Info, Warnung, Fehler };
+    class Logger : public QObject
+    {
+        Q_OBJECT
 
-    [[nodiscard]] static Logger* instanz();
+    public:
+        enum class Stufe
+        {
+            Debug,
+            Info,
+            Warnung,
+            Fehler
+        };
 
-    void loggen(Stufe stufe, const QString& modul, const QString& nachricht);
-    void setStufe(Stufe stufe) { m_stufe = stufe; }
+        [[nodiscard]] static Logger* instanz();
 
-private:
-    Logger();
-    Stufe m_stufe = Stufe::Info;
-    QFile m_datei;
-};
+        void loggen(Stufe stufe, const QString& modul, const QString& nachricht);
+        void setStufe(Stufe stufe) { m_stufe = stufe; }
 
-} // namespace flipsicolor
+    private:
+        Logger();
+        Stufe m_stufe = Stufe::Info;
+        QFile m_datei;
+    };
+
+}  // namespace flipsicolor

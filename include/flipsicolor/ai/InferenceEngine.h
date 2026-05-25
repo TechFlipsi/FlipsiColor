@@ -4,28 +4,30 @@
 
 #pragma once
 
+#include <map>
+#include <memory>
 #include <QObject>
 #include <QString>
 #include <QVector>
-#include <map>
-#include <memory>
 
-namespace flipsicolor {
-
-class InferenceEngine : public QObject
+namespace flipsicolor
 {
-    Q_OBJECT
 
-public:
-    explicit InferenceEngine(QObject* parent = nullptr);
-    ~InferenceEngine();
+    class InferenceEngine : public QObject
+    {
+        Q_OBJECT
 
-    [[nodiscard]] bool modellLaden(const QString& modellId, const QString& dateiPfad);
-    [[nodiscard]] QVector<float> inferenz(const QString& modellId, const QVector<float>& eingabe, const QVector<int64_t>& form);
+    public:
+        explicit InferenceEngine(QObject* parent = nullptr);
+        ~InferenceEngine();
 
-private:
-    struct Impl;
-    std::unique_ptr<Impl> m_impl;
-};
+        [[nodiscard]] bool modellLaden(const QString& modellId, const QString& dateiPfad);
+        [[nodiscard]] QVector<float>
+        inferenz(const QString& modellId, const QVector<float>& eingabe, const QVector<int64_t>& form);
 
-} // namespace flipsicolor
+    private:
+        struct Impl;
+        std::unique_ptr<Impl> m_impl;
+    };
+
+}  // namespace flipsicolor

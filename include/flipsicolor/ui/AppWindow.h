@@ -5,12 +5,14 @@
 
 #include <QObject>
 
-namespace flipsicolor {
+namespace flipsicolor
+{
 
-class AppWindow : public QObject {
-    Q_OBJECT
-public:
-    explicit AppWindow(QObject* parent = nullptr) : QObject(parent) {}
-};
+    class AppWindow : public QObject
+    {
+        Q_OBJECT
+    public:
+        explicit AppWindow(QObject* parent = nullptr) : QObject(parent) {}
+    };
 
-} // namespace flipsicolor
+}  // namespace flipsicolor

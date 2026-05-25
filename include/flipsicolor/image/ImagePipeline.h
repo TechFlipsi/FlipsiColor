@@ -4,34 +4,38 @@
 
 #pragma once
 
+#include "flipsicolor/core/Pipeline.h"
+#include <memory>
 #include <QObject>
 #include <QString>
-#include <memory>
-#include "flipsicolor/core/Pipeline.h"
 
-namespace cv { class Mat; }
-
-namespace flipsicolor {
-
-class ImagePipeline : public QObject
+namespace cv
 {
-    Q_OBJECT
+    class Mat;
+}
 
-public:
-    explicit ImagePipeline(QObject* parent = nullptr);
-    ~ImagePipeline();
+namespace flipsicolor
+{
 
-    [[nodiscard]] bool bildLaden(const QString& pfad);
-    void pipelineAusfuehren(const PipelineParams& params);
-    cv::Mat ergebnis() const;
+    class ImagePipeline : public QObject
+    {
+        Q_OBJECT
 
-signals:
-    void bildGeladen();
-    void pipelineAbgeschlossen();
+    public:
+        explicit ImagePipeline(QObject* parent = nullptr);
+        ~ImagePipeline();
 
-private:
-    struct Impl;
-    std::unique_ptr<Impl> m_impl;
-};
+        [[nodiscard]] bool bildLaden(const QString& pfad);
+        void               pipelineAusfuehren(const PipelineParams& params);
+        cv::Mat            ergebnis() const;
 
-} // namespace flipsicolor
+    signals:
+        void bildGeladen();
+        void pipelineAbgeschlossen();
+
+    private:
+        struct Impl;
+        std::unique_ptr<Impl> m_impl;
+    };
+
+}  // namespace flipsicolor

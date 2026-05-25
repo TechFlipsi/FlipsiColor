@@ -4,30 +4,34 @@
 
 #pragma once
 
+#include <memory>
 #include <QObject>
 #include <QString>
-#include <memory>
 
-namespace cv { class Mat; }
-
-namespace flipsicolor {
-
-class LensCorrector : public QObject
+namespace cv
 {
-    Q_OBJECT
+    class Mat;
+}
 
-public:
-    explicit LensCorrector(QObject* parent = nullptr);
-    ~LensCorrector();
+namespace flipsicolor
+{
 
-    [[nodiscard]] bool initialisieren();
-    [[nodiscard]] bool kameraSetzen(const QString& hersteller, const QString& modell);
-    [[nodiscard]] bool objektivSetzen(const QString& hersteller, const QString& modell);
-    cv::Mat korrigieren(const cv::Mat& bild, float brennweite, float blende) const;
+    class LensCorrector : public QObject
+    {
+        Q_OBJECT
 
-private:
-    struct Impl;
-    std::unique_ptr<Impl> m_impl;
-};
+    public:
+        explicit LensCorrector(QObject* parent = nullptr);
+        ~LensCorrector();
 
-} // namespace flipsicolor
+        [[nodiscard]] bool initialisieren();
+        [[nodiscard]] bool kameraSetzen(const QString& hersteller, const QString& modell);
+        [[nodiscard]] bool objektivSetzen(const QString& hersteller, const QString& modell);
+        cv::Mat            korrigieren(const cv::Mat& bild, float brennweite, float blende) const;
+
+    private:
+        struct Impl;
+        std::unique_ptr<Impl> m_impl;
+    };
+
+}  // namespace flipsicolor

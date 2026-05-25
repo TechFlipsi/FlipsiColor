@@ -22,19 +22,19 @@
 
 #ifdef _MSC_VER
 // C-Header VOR C++-Headern — definiert clock_t/time_t/tm im globalen Namespace
-#include <time.h>
 #include <errno.h>
 #include <math.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <time.h>
 // <ctime> muss NACH <time.h> kommen — jetzt funktionieren die using-Deklarationen
-#include <ctime>
+#include <cerrno>
+#include <cmath>
 #include <cstdio>
 #include <cstdlib>
 #include <cstring>
-#include <cmath>
-#include <cerrno>
+#include <ctime>
 #endif
 
-#endif // FLIPSICOLOR_PCH_H
+#endif  // FLIPSICOLOR_PCH_H

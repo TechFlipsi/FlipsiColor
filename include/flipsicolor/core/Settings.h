@@ -7,30 +7,31 @@
 #include <QObject>
 #include <QString>
 
-namespace flipsicolor {
-
-class Settings : public QObject
+namespace flipsicolor
 {
-    Q_OBJECT
 
-public:
-    explicit Settings(QObject* parent = nullptr);
+    class Settings : public QObject
+    {
+        Q_OBJECT
 
-    QString sprache() const;
-    void setSprache(const QString& sprache);
+    public:
+        explicit Settings(QObject* parent = nullptr);
 
-    QString thema() const;
-    void setThema(const QString& thema);
+        QString sprache() const;
+        void    setSprache(const QString& sprache);
 
-    bool kiAutoAnwenden() const;
-    void setKiAutoAnwenden(bool aktiv);
+        QString thema() const;
+        void    setThema(const QString& thema);
 
-    int schriftgroesse() const;
+        bool kiAutoAnwenden() const;
+        void setKiAutoAnwenden(bool aktiv);
 
-signals:
-    void spracheGeaendert(const QString& sprache);
-    void themaGeaendert(const QString& thema);
-    void kiAutoAnwendenGeaendert(bool aktiv);
-};
+        int schriftgroesse() const;
 
-} // namespace flipsicolor
+    signals:
+        void spracheGeaendert(const QString& sprache);
+        void themaGeaendert(const QString& thema);
+        void kiAutoAnwendenGeaendert(bool aktiv);
+    };
+
+}  // namespace flipsicolor

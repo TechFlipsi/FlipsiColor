@@ -4,48 +4,60 @@
 
 #pragma once
 
+#include <memory>
 #include <QObject>
 #include <QString>
-#include <memory>
 
-namespace flipsicolor {
-
-enum class Intensitaet { Leicht, Mittel, Stark };
-enum class BetriebsModus { Ask, SmartLearn, Turbo };
-
-struct PipelineParams {
-    float weissabgleichTemp = 5500.0f;
-    float weissabgleichTint = 0.0f;
-    float belichtung = 0.0f;
-    float kontrast = 0.0f;
-    float lichter = 0.0f;
-    float schatten = 0.0f;
-    float saettigung = 0.0f;
-    float vibranz = 0.0f;
-    float schaerfeBetrag = 0.0f;
-    float luminanzRauschen = 0.0f;
-    float chrominanzRauschen = 0.0f;
-    bool objektivkorrekturAktiv = true;
-    bool gesichtswiederherstellungAktiv = false;
-    int hochskalierenFaktor = 1;
-};
-
-class Pipeline : public QObject
+namespace flipsicolor
 {
-    Q_OBJECT
 
-public:
-    explicit Pipeline(QObject* parent = nullptr);
+    enum class Intensitaet
+    {
+        Leicht,
+        Mittel,
+        Stark
+    };
+    enum class BetriebsModus
+    {
+        Ask,
+        SmartLearn,
+        Turbo
+    };
 
-    void setIntensitaet(Intensitaet stufe);
-    void setModus(BetriebsModus modus);
+    struct PipelineParams
+    {
+        float weissabgleichTemp              = 5500.0f;
+        float weissabgleichTint              = 0.0f;
+        float belichtung                     = 0.0f;
+        float kontrast                       = 0.0f;
+        float lichter                        = 0.0f;
+        float schatten                       = 0.0f;
+        float saettigung                     = 0.0f;
+        float vibranz                        = 0.0f;
+        float schaerfeBetrag                 = 0.0f;
+        float luminanzRauschen               = 0.0f;
+        float chrominanzRauschen             = 0.0f;
+        bool  objektivkorrekturAktiv         = true;
+        bool  gesichtswiederherstellungAktiv = false;
+        int   hochskalierenFaktor            = 1;
+    };
 
-    [[nodiscard]] PipelineParams standardParamsFuerSzene(const QString& szenenTyp) const;
-    [[nodiscard]] float codeFormerFidelityWeight() const;
+    class Pipeline : public QObject
+    {
+        Q_OBJECT
 
-private:
-    Intensitaet m_intensitaet = Intensitaet::Mittel;
-    BetriebsModus m_modus = BetriebsModus::Ask;
-};
+    public:
+        explicit Pipeline(QObject* parent = nullptr);
 
-} // namespace flipsicolor
+        void setIntensitaet(Intensitaet stufe);
+        void setModus(BetriebsModus modus);
+
+        [[nodiscard]] PipelineParams standardParamsFuerSzene(const QString& szenenTyp) const;
+        [[nodiscard]] float          codeFormerFidelityWeight() const;
+
+    private:
+        Intensitaet   m_intensitaet = Intensitaet::Mittel;
+        BetriebsModus m_modus       = BetriebsModus::Ask;
+    };
+
+}  // namespace flipsicolor

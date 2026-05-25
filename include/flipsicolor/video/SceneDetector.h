@@ -4,31 +4,32 @@
 
 #pragma once
 
-#include <QObject>
 #include <QList>
+#include <QObject>
 
-namespace flipsicolor {
-
-class SceneDetector : public QObject
+namespace flipsicolor
 {
-    Q_OBJECT
 
-public:
-    explicit SceneDetector(QObject* parent = nullptr);
+    class SceneDetector : public QObject
+    {
+        Q_OBJECT
 
-    void frameAnalysieren(int frameNummer, double aehnlichkeit);
-    QList<int> szenenWechsel() const;
-    void zuruecksetzen();
+    public:
+        explicit SceneDetector(QObject* parent = nullptr);
 
-    void setSchwellwert(double wert) { m_schwellwert = wert; }
-    double schwellwert() const { return m_schwellwert; }
+        void       frameAnalysieren(int frameNummer, double aehnlichkeit);
+        QList<int> szenenWechsel() const;
+        void       zuruecksetzen();
 
-signals:
-    void szenenWechselErkannt(int frameNummer);
+        void   setSchwellwert(double wert) { m_schwellwert = wert; }
+        double schwellwert() const { return m_schwellwert; }
 
-private:
-    double m_schwellwert = 0.3;
-    QList<int> m_szenenWechsel;
-};
+    signals:
+        void szenenWechselErkannt(int frameNummer);
 
-} // namespace flipsicolor
+    private:
+        double     m_schwellwert = 0.3;
+        QList<int> m_szenenWechsel;
+    };
+
+}  // namespace flipsicolor

@@ -4,8 +4,9 @@
 
 #include "flipsicolor/ui/ImageEditor.h"
 
-namespace flipsicolor {
+namespace flipsicolor
+{
 
-// TODO: Implementierung
+    // TODO: Implementierung
 
-} // namespace flipsicolor
+}  // namespace flipsicolor

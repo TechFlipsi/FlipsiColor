@@ -1,34 +1,35 @@
-// FlipsiColor — RAW-Dekodierer  
+// FlipsiColor — RAW-Dekodierer
 // Copyright (C) 2026 Fabian Kirchweger (TechFlipsi)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 #pragma once
 
+#include <memory>
 #include <QObject>
 #include <QString>
 #include <QVariantMap>
-#include <memory>
 
-namespace flipsicolor {
-
-class RawDecoder : public QObject
+namespace flipsicolor
 {
-    Q_OBJECT
 
-public:
-    explicit RawDecoder(QObject* parent = nullptr);
-    ~RawDecoder();
+    class RawDecoder : public QObject
+    {
+        Q_OBJECT
 
-    [[nodiscard]] bool laden(const QString& pfad);
-    void schliessen();
-    QVariantMap metadaten() const;
+    public:
+        explicit RawDecoder(QObject* parent = nullptr);
+        ~RawDecoder();
 
-signals:
-    void geladen(const QString& pfad);
+        [[nodiscard]] bool laden(const QString& pfad);
+        void               schliessen();
+        QVariantMap        metadaten() const;
 
-private:
-    struct Impl;
-    std::unique_ptr<Impl> m_impl;
-};
+    signals:
+        void geladen(const QString& pfad);
 
-} // namespace flipsicolor
+    private:
+        struct Impl;
+        std::unique_ptr<Impl> m_impl;
+    };
+
+}  // namespace flipsicolor

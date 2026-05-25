@@ -3,59 +3,57 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 #include <flipsicolor/core/Settings.h>
-#include <QSettings>
 #include <QDebug>
+#include <QSettings>
 
-namespace flipsicolor {
-
-Settings::Settings(QObject* parent)
-    : QObject(parent)
+namespace flipsicolor
 {
-}
 
-QString Settings::sprache() const
-{
-    QSettings s;
-    return s.value("sprache", "de").toString();
-}
+    Settings::Settings(QObject* parent) : QObject(parent) {}
 
-void Settings::setSprache(const QString& sprache)
-{
-    QSettings s;
-    s.setValue("sprache", sprache);
-    emit spracheGeaendert(sprache);
-}
+    QString Settings::sprache() const
+    {
+        QSettings s;
+        return s.value("sprache", "de").toString();
+    }
 
-QString Settings::thema() const
-{
-    QSettings s;
-    return s.value("thema", "dunkel").toString();
-}
+    void Settings::setSprache(const QString& sprache)
+    {
+        QSettings s;
+        s.setValue("sprache", sprache);
+        emit spracheGeaendert(sprache);
+    }
 
-void Settings::setThema(const QString& thema)
-{
-    QSettings s;
-    s.setValue("thema", thema);
-    emit themaGeaendert(thema);
-}
+    QString Settings::thema() const
+    {
+        QSettings s;
+        return s.value("thema", "dunkel").toString();
+    }
 
-bool Settings::kiAutoAnwenden() const
-{
-    QSettings s;
-    return s.value("ki/autoAnwenden", true).toBool();
-}
+    void Settings::setThema(const QString& thema)
+    {
+        QSettings s;
+        s.setValue("thema", thema);
+        emit themaGeaendert(thema);
+    }
 
-void Settings::setKiAutoAnwenden(bool aktiv)
-{
-    QSettings s;
-    s.setValue("ki/autoAnwenden", aktiv);
-    emit kiAutoAnwendenGeaendert(aktiv);
-}
+    bool Settings::kiAutoAnwenden() const
+    {
+        QSettings s;
+        return s.value("ki/autoAnwenden", true).toBool();
+    }
 
-int Settings::schriftgroesse() const
-{
-    QSettings s;
-    return s.value("ui/schriftgroesse", 14).toInt();
-}
+    void Settings::setKiAutoAnwenden(bool aktiv)
+    {
+        QSettings s;
+        s.setValue("ki/autoAnwenden", aktiv);
+        emit kiAutoAnwendenGeaendert(aktiv);
+    }
 
-} // namespace flipsicolor
+    int Settings::schriftgroesse() const
+    {
+        QSettings s;
+        return s.value("ui/schriftgroesse", 14).toInt();
+    }
+
+}  // namespace flipsicolor

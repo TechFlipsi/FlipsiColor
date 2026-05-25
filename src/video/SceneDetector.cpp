@@ -5,31 +5,29 @@
 #include <flipsicolor/video/SceneDetector.h>
 #include <QDebug>
 
-namespace flipsicolor {
-
-SceneDetector::SceneDetector(QObject* parent)
-    : QObject(parent)
-    , m_schwellwert(0.3)
+namespace flipsicolor
 {
-}
 
-void SceneDetector::frameAnalysieren(int frameNummer, double aehnlichkeit)
-{
-    if (aehnlichkeit > m_schwellwert) {
-        m_szenenWechsel.append(frameNummer);
-        emit szenenWechselErkannt(frameNummer);
-        qDebug() << "Szenenwechsel bei Frame" << frameNummer << "(Aehnlichkeit:" << aehnlichkeit << ")";
+    SceneDetector::SceneDetector(QObject* parent) : QObject(parent), m_schwellwert(0.3) {}
+
+    void SceneDetector::frameAnalysieren(int frameNummer, double aehnlichkeit)
+    {
+        if ( aehnlichkeit > m_schwellwert )
+        {
+            m_szenenWechsel.append(frameNummer);
+            emit szenenWechselErkannt(frameNummer);
+            qDebug() << "Szenenwechsel bei Frame" << frameNummer << "(Aehnlichkeit:" << aehnlichkeit << ")";
+        }
     }
-}
 
-QList<int> SceneDetector::szenenWechsel() const
-{
-    return m_szenenWechsel;
-}
+    QList<int> SceneDetector::szenenWechsel() const
+    {
+        return m_szenenWechsel;
+    }
 
-void SceneDetector::zuruecksetzen()
-{
-    m_szenenWechsel.clear();
-}
+    void SceneDetector::zuruecksetzen()
+    {
+        m_szenenWechsel.clear();
+    }
 
-} // namespace flipsicolor
+}  // namespace flipsicolor

@@ -5,12 +5,14 @@
 
 #include <QObject>
 
-namespace flipsicolor {
+namespace flipsicolor
+{
 
-class ImageEditor : public QObject {
-    Q_OBJECT
-public:
-    explicit ImageEditor(QObject* parent = nullptr) : QObject(parent) {}
-};
+    class ImageEditor : public QObject
+    {
+        Q_OBJECT
+    public:
+        explicit ImageEditor(QObject* parent = nullptr) : QObject(parent) {}
+    };
 
-} // namespace flipsicolor
+}  // namespace flipsicolor
