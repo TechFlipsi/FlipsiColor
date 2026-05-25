@@ -4,26 +4,27 @@
 
 #pragma once
 
+#include <memory>
 #include <QObject>
 #include <QString>
 #include <QVariantMap>
-#include <memory>
 
-namespace flipsicolor {
-
-class ExifReader : public QObject
+namespace flipsicolor
 {
-    Q_OBJECT
 
-public:
-    explicit ExifReader(QObject* parent = nullptr);
-    ~ExifReader();
+    class ExifReader : public QObject
+    {
+        Q_OBJECT
 
-    [[nodiscard]] QVariantMap lesen(const QString& pfad);
+    public:
+        explicit ExifReader(QObject* parent = nullptr);
+        ~ExifReader();
 
-private:
-    struct Impl;
-    std::unique_ptr<Impl> m_impl;
-};
+        [[nodiscard]] QVariantMap lesen(const QString& pfad);
 
-} // namespace flipsicolor
+    private:
+        struct Impl;
+        std::unique_ptr<Impl> m_impl;
+    };
+
+}  // namespace flipsicolor

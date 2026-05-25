@@ -4,35 +4,36 @@
 
 #pragma once
 
+#include <memory>
 #include <QObject>
 #include <QString>
 #include <QStringList>
 #include <QVariantMap>
-#include <memory>
 
-namespace flipsicolor {
-
-class Project : public QObject
+namespace flipsicolor
 {
-    Q_OBJECT
-    Q_PROPERTY(bool geaendert READ istGeaendert NOTIFY geaendertChanged)
 
-public:
-    explicit Project(QObject* parent = nullptr);
-    ~Project();
+    class Project : public QObject
+    {
+        Q_OBJECT
+        Q_PROPERTY(bool geaendert READ istGeaendert NOTIFY geaendertChanged)
 
-    [[nodiscard]] bool laden(const QString& pfad);
-    [[nodiscard]] bool speichern();
-    void setGeaendert(bool geaendert);
-    bool istGeaendert() const;
+    public:
+        explicit Project(QObject* parent = nullptr);
+        ~Project();
 
-signals:
-    void projektGeladen();
-    void geaendertChanged();
+        [[nodiscard]] bool laden(const QString& pfad);
+        [[nodiscard]] bool speichern();
+        void               setGeaendert(bool geaendert);
+        bool               istGeaendert() const;
 
-private:
-    struct Impl;
-    std::unique_ptr<Impl> m_impl;
-};
+    signals:
+        void projektGeladen();
+        void geaendertChanged();
 
-} // namespace flipsicolor
+    private:
+        struct Impl;
+        std::unique_ptr<Impl> m_impl;
+    };
+
+}  // namespace flipsicolor

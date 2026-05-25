@@ -3,73 +3,75 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 #include <flipsicolor/core/Project.h>
-#include <QFile>
+#include <QDebug>
 #include <QDir>
+#include <QFile>
 #include <QJsonDocument>
 #include <QJsonObject>
-#include <QDebug>
 
-namespace flipsicolor {
-
-class Project::Impl {
-public:
-    QString name;
-    QString dateipfad;
-    QStringList bilder;
-    QStringList videos;
-    QVariantMap einstellungen;
-    bool geaendert = false;
-};
-
-Project::Project(QObject* parent)
-    : QObject(parent)
-    , m_impl(std::make_unique<Impl>())
+namespace flipsicolor
 {
-}
 
-Project::~Project() = default;
+    class Project::Impl
+    {
+    public:
+        QString     name;
+        QString     dateipfad;
+        QStringList bilder;
+        QStringList videos;
+        QVariantMap einstellungen;
+        bool        geaendert = false;
+    };
 
-bool Project::laden(const QString& pfad)
-{
-    QFile datei(pfad);
-    if (!datei.open(QIODevice::ReadOnly)) return false;
+    Project::Project(QObject* parent) : QObject(parent), m_impl(std::make_unique<Impl>()) {}
 
-    QJsonDocument doc = QJsonDocument::fromJson(datei.readAll());
-    if (doc.isNull()) return false;
+    Project::~Project() = default;
 
-    QJsonObject obj = doc.object();
-    m_impl->name = obj["name"].toString();
-    m_impl->dateipfad = pfad;
-    m_impl->geaendert = false;
-    emit projektGeladen();
-    return true;
-}
+    bool Project::laden(const QString& pfad)
+    {
+        QFile datei(pfad);
+        if ( !datei.open(QIODevice::ReadOnly) )
+            return false;
 
-bool Project::speichern()
-{
-    if (m_impl->dateipfad.isEmpty()) return false;
+        QJsonDocument doc = QJsonDocument::fromJson(datei.readAll());
+        if ( doc.isNull() )
+            return false;
 
-    QJsonObject obj;
-    obj["name"] = m_impl->name;
+        QJsonObject obj   = doc.object();
+        m_impl->name      = obj["name"].toString();
+        m_impl->dateipfad = pfad;
+        m_impl->geaendert = false;
+        emit projektGeladen();
+        return true;
+    }
 
-    QJsonDocument doc(obj);
-    QFile datei(m_impl->dateipfad);
-    if (!datei.open(QIODevice::WriteOnly)) return false;
+    bool Project::speichern()
+    {
+        if ( m_impl->dateipfad.isEmpty() )
+            return false;
 
-    datei.write(doc.toJson());
-    m_impl->geaendert = false;
-    return true;
-}
+        QJsonObject obj;
+        obj["name"] = m_impl->name;
 
-void Project::setGeaendert(bool geaendert)
-{
-    m_impl->geaendert = geaendert;
-    emit geaendertChanged();
-}
+        QJsonDocument doc(obj);
+        QFile         datei(m_impl->dateipfad);
+        if ( !datei.open(QIODevice::WriteOnly) )
+            return false;
 
-bool Project::istGeaendert() const
-{
-    return m_impl->geaendert;
-}
+        datei.write(doc.toJson());
+        m_impl->geaendert = false;
+        return true;
+    }
 
-} // namespace flipsicolor
+    void Project::setGeaendert(bool geaendert)
+    {
+        m_impl->geaendert = geaendert;
+        emit geaendertChanged();
+    }
+
+    bool Project::istGeaendert() const
+    {
+        return m_impl->geaendert;
+    }
+
+}  // namespace flipsicolor

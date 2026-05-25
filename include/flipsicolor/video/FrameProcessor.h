@@ -4,27 +4,31 @@
 
 #pragma once
 
-#include <QObject>
 #include <memory>
+#include <QObject>
 
-namespace cv { class Mat; }
-
-namespace flipsicolor {
-
-class FrameProcessor : public QObject
+namespace cv
 {
-    Q_OBJECT
+    class Mat;
+}
 
-public:
-    explicit FrameProcessor(QObject* parent = nullptr);
+namespace flipsicolor
+{
 
-    double histogrammAehnlichkeit(const cv::Mat& frame1, const cv::Mat& frame2) const;
-    bool szenenWechselErkennen(const cv::Mat& frame1, const cv::Mat& frame2, double schwellwert = 0.3) const;
-    cv::Mat histogrammAnpassen(const cv::Mat& frame, const cv::Mat& referenz) const;
-    cv::Mat emaGlatten(const cv::Mat& frame, const cv::Mat& vorhersage, float alpha) const;
+    class FrameProcessor : public QObject
+    {
+        Q_OBJECT
 
-private:
-    float m_emaAlpha = 0.5f;
-};
+    public:
+        explicit FrameProcessor(QObject* parent = nullptr);
 
-} // namespace flipsicolor
+        double  histogrammAehnlichkeit(const cv::Mat& frame1, const cv::Mat& frame2) const;
+        bool    szenenWechselErkennen(const cv::Mat& frame1, const cv::Mat& frame2, double schwellwert = 0.3) const;
+        cv::Mat histogrammAnpassen(const cv::Mat& frame, const cv::Mat& referenz) const;
+        cv::Mat emaGlatten(const cv::Mat& frame, const cv::Mat& vorhersage, float alpha) const;
+
+    private:
+        float m_emaAlpha = 0.5f;
+    };
+
+}  // namespace flipsicolor

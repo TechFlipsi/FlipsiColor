@@ -43,4 +43,4 @@
 #include <ctime>
 #endif
 
-#endif // FLIPSICOLOR_CTIME_FIX_H
+#endif  // FLIPSICOLOR_CTIME_FIX_H

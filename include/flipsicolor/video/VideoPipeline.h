@@ -4,31 +4,32 @@
 
 #pragma once
 
+#include "flipsicolor/core/Pipeline.h"
+#include <memory>
 #include <QObject>
 #include <QString>
-#include <memory>
-#include "flipsicolor/core/Pipeline.h"
 
-namespace flipsicolor {
-
-class VideoPipeline : public QObject
+namespace flipsicolor
 {
-    Q_OBJECT
 
-public:
-    explicit VideoPipeline(QObject* parent = nullptr);
-    ~VideoPipeline();
+    class VideoPipeline : public QObject
+    {
+        Q_OBJECT
 
-    [[nodiscard]] bool videoLaden(const QString& pfad);
-    void pipelineAusfuehren(const PipelineParams& params);
+    public:
+        explicit VideoPipeline(QObject* parent = nullptr);
+        ~VideoPipeline();
 
-signals:
-    void videoGeladen();
-    void pipelineAbgeschlossen();
+        [[nodiscard]] bool videoLaden(const QString& pfad);
+        void               pipelineAusfuehren(const PipelineParams& params);
 
-private:
-    struct Impl;
-    std::unique_ptr<Impl> m_impl;
-};
+    signals:
+        void videoGeladen();
+        void pipelineAbgeschlossen();
 
-} // namespace flipsicolor
+    private:
+        struct Impl;
+        std::unique_ptr<Impl> m_impl;
+    };
+
+}  // namespace flipsicolor

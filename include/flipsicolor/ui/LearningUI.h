@@ -5,12 +5,14 @@
 
 #include <QObject>
 
-namespace flipsicolor {
+namespace flipsicolor
+{
 
-class LearningUI : public QObject {
-    Q_OBJECT
-public:
-    explicit LearningUI(QObject* parent = nullptr) : QObject(parent) {}
-};
+    class LearningUI : public QObject
+    {
+        Q_OBJECT
+    public:
+        explicit LearningUI(QObject* parent = nullptr) : QObject(parent) {}
+    };
 
-} // namespace flipsicolor
+}  // namespace flipsicolor

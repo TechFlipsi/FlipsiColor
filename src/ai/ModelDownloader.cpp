@@ -3,64 +3,65 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 #include <flipsicolor/ai/ModelDownloader.h>
-#include <QNetworkAccessManager>
-#include <QNetworkRequest>
-#include <QNetworkReply>
-#include <QFile>
-#include <QDir>
-#include <QStandardPaths>
 #include <QDebug>
+#include <QDir>
+#include <QFile>
+#include <QNetworkAccessManager>
+#include <QNetworkReply>
+#include <QNetworkRequest>
+#include <QStandardPaths>
 
-namespace flipsicolor {
-
-class ModelDownloader::Impl {
-public:
-    QNetworkAccessManager networkManager;
-    QString modellVerzeichnis;
-};
-
-ModelDownloader::ModelDownloader(QObject* parent)
-    : QObject(parent)
-    , m_impl(std::make_unique<Impl>())
+namespace flipsicolor
 {
-    m_impl->modellVerzeichnis = QStandardPaths::writableLocation(QStandardPaths::AppDataLocation) + "/models/";
-    QDir().mkpath(m_impl->modellVerzeichnis);
-}
 
-ModelDownloader::~ModelDownloader() = default;
+    class ModelDownloader::Impl
+    {
+    public:
+        QNetworkAccessManager networkManager;
+        QString               modellVerzeichnis;
+    };
 
-void ModelDownloader::herunterladen(const QString& modellId, const QString& url, const QString& erwarteterSha256)
-{
-    QString zielPfad = m_impl->modellVerzeichnis + modellId + ".onnx";
-
-    // Bereits vorhanden?
-    if (QFile::exists(zielPfad)) {
-        // TODO: SHA256 prüfen
-        emit herunterladenFertig(modellId, zielPfad);
-        return;
+    ModelDownloader::ModelDownloader(QObject* parent) : QObject(parent), m_impl(std::make_unique<Impl>())
+    {
+        m_impl->modellVerzeichnis = QStandardPaths::writableLocation(QStandardPaths::AppDataLocation) + "/models/";
+        QDir().mkpath(m_impl->modellVerzeichnis);
     }
 
-    QNetworkRequest anfrage{QUrl(url)};
-    anfrage.setHeader(QNetworkRequest::UserAgentHeader, "FlipsiColor/v0.1.0");
+    ModelDownloader::~ModelDownloader() = default;
 
-    QNetworkReply* antwort = m_impl->networkManager.get(anfrage);
+    void ModelDownloader::herunterladen(const QString& modellId, const QString& url, const QString& erwarteterSha256)
+    {
+        QString zielPfad = m_impl->modellVerzeichnis + modellId + ".onnx";
 
-    connect(antwort, &QNetworkReply::downloadProgress, this,
-        [this, modellId](qint64 empfangen, qint64 gesamt) {
+        // Bereits vorhanden?
+        if ( QFile::exists(zielPfad) )
+        {
+            // TODO: SHA256 prüfen
+            emit herunterladenFertig(modellId, zielPfad);
+            return;
+        }
+
+        QNetworkRequest anfrage{QUrl(url)};
+        anfrage.setHeader(QNetworkRequest::UserAgentHeader, "FlipsiColor/v0.1.0");
+
+        QNetworkReply* antwort = m_impl->networkManager.get(anfrage);
+
+        connect(antwort, &QNetworkReply::downloadProgress, this, [this, modellId](qint64 empfangen, qint64 gesamt) {
             emit fortschritt(modellId, empfangen, gesamt);
         });
 
-    connect(antwort, &QNetworkReply::finished, this,
-        [this, antwort, modellId, zielPfad, erwarteterSha256]() {
+        connect(antwort, &QNetworkReply::finished, this, [this, antwort, modellId, zielPfad, erwarteterSha256]() {
             antwort->deleteLater();
 
-            if (antwort->error() != QNetworkReply::NoError) {
+            if ( antwort->error() != QNetworkReply::NoError )
+            {
                 emit fehler(modellId, antwort->errorString());
                 return;
             }
 
             QFile datei(zielPfad);
-            if (!datei.open(QIODevice::WriteOnly)) {
+            if ( !datei.open(QIODevice::WriteOnly) )
+            {
                 emit fehler(modellId, "Datei konnte nicht erstellt werden");
                 return;
             }
@@ -72,6 +73,6 @@ void ModelDownloader::herunterladen(const QString& modellId, const QString& url,
             qDebug() << "Modell heruntergeladen:" << modellId;
             emit herunterladenFertig(modellId, zielPfad);
         });
-}
+    }
 
-} // namespace flipsicolor
+}  // namespace flipsicolor

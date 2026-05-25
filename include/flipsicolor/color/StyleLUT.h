@@ -4,59 +4,64 @@
 
 #pragma once
 
+#include <QMap>
 #include <QObject>
 #include <QString>
-#include <QMap>
 
 // OpenCV Vorwärtsdeklaration
-namespace cv { class Mat; }
-
-namespace flipsicolor {
-
-struct TrainingsPaar {
-    // 256×256 Vorschaubilder für effizientes Training
-    // Original + benutzerverarbeitete Version
-    QString originalPfad;
-    QString bearbeitetPfad;
-    QString szenenTyp;
-};
-
-class StyleLUT : public QObject
+namespace cv
 {
-    Q_OBJECT
-    Q_PROPERTY(int feedbackAnzahl READ feedbackAnzahl NOTIFY feedbackAnzahlChanged)
-    Q_PROPERTY(int lernRunde READ lernRunde NOTIFY lernRundeChanged)
+    class Mat;
+}
 
-public:
-    explicit StyleLUT(QObject* parent = nullptr);
+namespace flipsicolor
+{
 
-    // Gelernten Stil auf Bild anwenden via AiLUT-Transform
-    cv::Mat stilAnwenden(const cv::Mat& bild, const QString& szenenTyp, float staerke) const;
+    struct TrainingsPaar
+    {
+        // 256×256 Vorschaubilder für effizientes Training
+        // Original + benutzerverarbeitete Version
+        QString originalPfad;
+        QString bearbeitetPfad;
+        QString szenenTyp;
+    };
 
-    // Feedback aufzeichnen
-    void feedbackAufzeichnen(const TrainingsPaar& paar, bool positiv);
-    void bearbeitungAufzeichnen(const TrainingsPaar& paar); // Smart-Learn-Modus
+    class StyleLUT : public QObject
+    {
+        Q_OBJECT
+        Q_PROPERTY(int feedbackAnzahl READ feedbackAnzahl NOTIFY feedbackAnzahlChanged)
+        Q_PROPERTY(int lernRunde READ lernRunde NOTIFY lernRundeChanged)
 
-    // Lern-Status
-    int feedbackAnzahl() const { return m_feedbackAnzahl; }
-    int lernRunde() const { return m_feedbackAnzahl < 60 ? 1 : (m_feedbackAnzahl < 120 ? 2 : 0); }
-    bool istSelbststaendig() const { return m_feedbackAnzahl >= 120; }
-    bool brauchtVielfalt() const { return m_feedbackAnzahl >= 55 && m_feedbackAnzahl <= 65; }
+    public:
+        explicit StyleLUT(QObject* parent = nullptr);
 
-    // Zurücksetzen
-    void zuruecksetzen();
+        // Gelernten Stil auf Bild anwenden via AiLUT-Transform
+        cv::Mat stilAnwenden(const cv::Mat& bild, const QString& szenenTyp, float staerke) const;
 
-signals:
-    void feedbackAnzahlChanged();
-    void lernRundeChanged();
-    void lernPhaseAbgeschlossen(int runde);
+        // Feedback aufzeichnen
+        void feedbackAufzeichnen(const TrainingsPaar& paar, bool positiv);
+        void bearbeitungAufzeichnen(const TrainingsPaar& paar);  // Smart-Learn-Modus
 
-private:
-    void lutNachtrainieren();    // AiLUT-Transform Neu-Training auslösen
-    void wissenVerdichten();     // Auto-Verdichtung alle 100 Feedbacks
+        // Lern-Status
+        int  feedbackAnzahl() const { return m_feedbackAnzahl; }
+        int  lernRunde() const { return m_feedbackAnzahl < 60 ? 1 : (m_feedbackAnzahl < 120 ? 2 : 0); }
+        bool istSelbststaendig() const { return m_feedbackAnzahl >= 120; }
+        bool brauchtVielfalt() const { return m_feedbackAnzahl >= 55 && m_feedbackAnzahl <= 65; }
 
-    int m_feedbackAnzahl = 0;
-    QMap<QString, int> m_szenenTypZaehler; // Szene → Feedback-Anzahl
-};
+        // Zurücksetzen
+        void zuruecksetzen();
 
-} // namespace flipsicolor
+    signals:
+        void feedbackAnzahlChanged();
+        void lernRundeChanged();
+        void lernPhaseAbgeschlossen(int runde);
+
+    private:
+        void lutNachtrainieren();  // AiLUT-Transform Neu-Training auslösen
+        void wissenVerdichten();   // Auto-Verdichtung alle 100 Feedbacks
+
+        int                m_feedbackAnzahl = 0;
+        QMap<QString, int> m_szenenTypZaehler;  // Szene → Feedback-Anzahl
+    };
+
+}  // namespace flipsicolor

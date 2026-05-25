@@ -7,22 +7,29 @@
 #include <QObject>
 #include <QString>
 
-namespace flipsicolor {
-
-class GPUInfo : public QObject
+namespace flipsicolor
 {
-    Q_OBJECT
 
-public:
-    enum class Backend { CUDA, DirectML, Metal, CPU };
-    Q_ENUM(Backend)
+    class GPUInfo : public QObject
+    {
+        Q_OBJECT
 
-    explicit GPUInfo(QObject* parent = nullptr);
+    public:
+        enum class Backend
+        {
+            CUDA,
+            DirectML,
+            Metal,
+            CPU
+        };
+        Q_ENUM(Backend)
 
-    [[nodiscard]] QString gpuName() const;
-    [[nodiscard]] bool istVerfuegbar() const;
-    [[nodiscard]] int vramMB() const;
-    [[nodiscard]] Backend bestesBackend() const;
-};
+        explicit GPUInfo(QObject* parent = nullptr);
 
-} // namespace flipsicolor
+        [[nodiscard]] QString gpuName() const;
+        [[nodiscard]] bool    istVerfuegbar() const;
+        [[nodiscard]] int     vramMB() const;
+        [[nodiscard]] Backend bestesBackend() const;
+    };
+
+}  // namespace flipsicolor

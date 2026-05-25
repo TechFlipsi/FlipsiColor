@@ -7,86 +7,95 @@
 #include <QDebug>
 #include <QFile>
 
-namespace flipsicolor {
-
-class InferenceEngine::Impl {
-public:
-    Ort::Env umgebung{ORT_LOGGING_LEVEL_WARNING, "FlipsiColor"};
-    Ort::SessionOptions optionen;
-    std::map<std::string, std::unique_ptr<Ort::Session>> sessions;
-};
-
-InferenceEngine::InferenceEngine(QObject* parent)
-    : QObject(parent)
-    , m_impl(std::make_unique<Impl>())
+namespace flipsicolor
 {
-    // Session-Optionen konfigurieren
-    m_impl->optionen.SetIntraOpNumThreads(4);
-    m_impl->optionen.SetGraphOptimizationLevel(GraphOptimizationLevel::ORT_ENABLE_ALL);
 
-    // GPU Provider aktivieren (falls vorhanden)
-    // TODO: CUDA / DirectML / Metal je nach Plattform
-}
+    class InferenceEngine::Impl
+    {
+    public:
+        Ort::Env                                             umgebung{ORT_LOGGING_LEVEL_WARNING, "FlipsiColor"};
+        Ort::SessionOptions                                  optionen;
+        std::map<std::string, std::unique_ptr<Ort::Session>> sessions;
+    };
 
-InferenceEngine::~InferenceEngine() = default;
+    InferenceEngine::InferenceEngine(QObject* parent) : QObject(parent), m_impl(std::make_unique<Impl>())
+    {
+        // Session-Optionen konfigurieren
+        m_impl->optionen.SetIntraOpNumThreads(4);
+        m_impl->optionen.SetGraphOptimizationLevel(GraphOptimizationLevel::ORT_ENABLE_ALL);
 
-bool InferenceEngine::modellLaden(const QString& modellId, const QString& dateiPfad)
-{
-    if (!QFile::exists(dateiPfad)) {
-        qWarning() << "Modell-Datei nicht gefunden:" << dateiPfad;
-        return false;
+        // GPU Provider aktivieren (falls vorhanden)
+        // TODO: CUDA / DirectML / Metal je nach Plattform
     }
 
-    try {
+    InferenceEngine::~InferenceEngine() = default;
+
+    bool InferenceEngine::modellLaden(const QString& modellId, const QString& dateiPfad)
+    {
+        if ( !QFile::exists(dateiPfad) )
+        {
+            qWarning() << "Modell-Datei nicht gefunden:" << dateiPfad;
+            return false;
+        }
+
+        try
+        {
 #ifdef _WIN32
-        auto pfad = dateiPfad.toStdWString();
+            auto pfad = dateiPfad.toStdWString();
 #else
-        auto pfad = dateiPfad.toStdString();
+            auto pfad = dateiPfad.toStdString();
 #endif
-        auto session = std::make_unique<Ort::Session>(
-            m_impl->umgebung, pfad.c_str(), m_impl->optionen);
-        m_impl->sessions[modellId.toStdString()] = std::move(session);
-        qDebug() << "Modell geladen:" << modellId;
-        return true;
-    } catch (const Ort::Exception& e) {
-        qWarning() << "ONNX Modell-Fehler:" << e.what();
-        return false;
-    }
-}
-
-QVector<float> InferenceEngine::inferenz(const QString& modellId, const QVector<float>& eingabe, const QVector<int64_t>& form)
-{
-    auto it = m_impl->sessions.find(modellId.toStdString());
-    if (it == m_impl->sessions.end()) {
-        qWarning() << "Modell nicht geladen:" << modellId;
-        return {};
+            auto session = std::make_unique<Ort::Session>(m_impl->umgebung, pfad.c_str(), m_impl->optionen);
+            m_impl->sessions[modellId.toStdString()] = std::move(session);
+            qDebug() << "Modell geladen:" << modellId;
+            return true;
+        }
+        catch ( const Ort::Exception& e )
+        {
+            qWarning() << "ONNX Modell-Fehler:" << e.what();
+            return false;
+        }
     }
 
-    auto& session = it->second;
+    QVector<float>
+    InferenceEngine::inferenz(const QString& modellId, const QVector<float>& eingabe, const QVector<int64_t>& form)
+    {
+        auto it = m_impl->sessions.find(modellId.toStdString());
+        if ( it == m_impl->sessions.end() )
+        {
+            qWarning() << "Modell nicht geladen:" << modellId;
+            return {};
+        }
 
-    // Eingabe-Tensor erstellen
-    std::vector<int64_t> inputShape(form.begin(), form.end());
-    auto memoryInfo = Ort::MemoryInfo::CreateCpu(OrtArenaAllocator, OrtMemTypeDefault);
-    auto inputTensor = Ort::Value::CreateTensor<float>(
-        memoryInfo, const_cast<float*>(eingabe.data()), eingabe.size() * sizeof(float),
-        inputShape.data(), inputShape.size());
+        auto& session = it->second;
 
-    const char* inputNamen[] = {"input"};
-    const char* outputNamen[] = {"output"};
+        // Eingabe-Tensor erstellen
+        std::vector<int64_t> inputShape(form.begin(), form.end());
+        auto                 memoryInfo  = Ort::MemoryInfo::CreateCpu(OrtArenaAllocator, OrtMemTypeDefault);
+        auto                 inputTensor = Ort::Value::CreateTensor<float>(memoryInfo,
+                                                                           const_cast<float*>(eingabe.data()),
+                                                                           eingabe.size() * sizeof(float),
+                                                                           inputShape.data(),
+                                                                           inputShape.size());
 
-    try {
-        auto ergebnis = session->Run(
-            Ort::RunOptions{nullptr}, inputNamen, &inputTensor, 1, outputNamen, 1);
+        const char* inputNamen[]  = {"input"};
+        const char* outputNamen[] = {"output"};
 
-        // Ergebnis extrahieren
-        float* daten = ergebnis[0].GetTensorMutableData<float>();
-        size_t anzahl = ergebnis[0].GetTensorTypeAndShapeInfo().GetElementCount();
+        try
+        {
+            auto ergebnis = session->Run(Ort::RunOptions{nullptr}, inputNamen, &inputTensor, 1, outputNamen, 1);
 
-        return QVector<float>(daten, daten + anzahl);
-    } catch (const Ort::Exception& e) {
-        qWarning() << "Inferenz-Fehler:" << e.what();
-        return {};
+            // Ergebnis extrahieren
+            float* daten  = ergebnis[0].GetTensorMutableData<float>();
+            size_t anzahl = ergebnis[0].GetTensorTypeAndShapeInfo().GetElementCount();
+
+            return QVector<float>(daten, daten + anzahl);
+        }
+        catch ( const Ort::Exception& e )
+        {
+            qWarning() << "Inferenz-Fehler:" << e.what();
+            return {};
+        }
     }
-}
 
-} // namespace flipsicolor
+}  // namespace flipsicolor

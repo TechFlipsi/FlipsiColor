@@ -7,19 +7,20 @@
 #include <QObject>
 #include <QString>
 
-namespace flipsicolor {
-
-class FileSystem : public QObject
+namespace flipsicolor
 {
-    Q_OBJECT
 
-public:
-    explicit FileSystem(QObject* parent = nullptr);
+    class FileSystem : public QObject
+    {
+        Q_OBJECT
 
-    [[nodiscard]] static QString modellVerzeichnis();
-    [[nodiscard]] static QString cacheVerzeichnis();
-    [[nodiscard]] static qint64 verzeichnisGroesse(const QString& pfad);
-    [[nodiscard]] static bool verzeichnisLeeren(const QString& pfad);
-};
+    public:
+        explicit FileSystem(QObject* parent = nullptr);
 
-} // namespace flipsicolor
+        [[nodiscard]] static QString modellVerzeichnis();
+        [[nodiscard]] static QString cacheVerzeichnis();
+        [[nodiscard]] static qint64  verzeichnisGroesse(const QString& pfad);
+        [[nodiscard]] static bool    verzeichnisLeeren(const QString& pfad);
+    };
+
+}  // namespace flipsicolor

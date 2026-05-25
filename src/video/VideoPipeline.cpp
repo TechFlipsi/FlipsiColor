@@ -2,49 +2,47 @@
 // Copyright (C) 2026 Fabian Kirchweger (TechFlipsi)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-#include <flipsicolor/video/VideoPipeline.h>
 #include "flipsicolor/core/Pipeline.h"
+#include <flipsicolor/video/VideoPipeline.h>
 #include <QDebug>
 
-namespace flipsicolor {
-
-class VideoPipeline::Impl {
-public:
-    QString dateiPfad;
-    int aktuellesFrame = 0;
-    int gesamtFrames = 0;
-    double fps = 0.0;
-    bool istGeladen = false;
-};
-
-VideoPipeline::VideoPipeline(QObject* parent)
-    : QObject(parent)
-    , m_impl(std::make_unique<Impl>())
+namespace flipsicolor
 {
-}
 
-VideoPipeline::~VideoPipeline() = default;
+    class VideoPipeline::Impl
+    {
+    public:
+        QString dateiPfad;
+        int     aktuellesFrame = 0;
+        int     gesamtFrames   = 0;
+        double  fps            = 0.0;
+        bool    istGeladen     = false;
+    };
 
-bool VideoPipeline::videoLaden(const QString& pfad)
-{
-    m_impl->dateiPfad = pfad;
-    // TODO: FFmpeg Demuxer + Decoder Initialisierung
-    m_impl->istGeladen = true;
-    emit videoGeladen();
-    return true;
-}
+    VideoPipeline::VideoPipeline(QObject* parent) : QObject(parent), m_impl(std::make_unique<Impl>()) {}
 
-void VideoPipeline::pipelineAusfuehren(const PipelineParams& params)
-{
-    // TODO: Vollständige Video-Pipeline
-    // 1) Frame-Dekodierung (FFmpeg)
-    // 2) Szenen-Erkennung
-    // 3) Bild-Pipeline pro Frame
-    // 4) Frame-Konsistenz (Referenz-Frame + Histogram-Matching + EMA)
-    // 5) Hautton-Schutz über Frame-Grenzen
-    // 6) Encoding (FFmpeg HW-Beschleunigt)
-    Q_UNUSED(params)
-    emit pipelineAbgeschlossen();
-}
+    VideoPipeline::~VideoPipeline() = default;
 
-} // namespace flipsicolor
+    bool VideoPipeline::videoLaden(const QString& pfad)
+    {
+        m_impl->dateiPfad = pfad;
+        // TODO: FFmpeg Demuxer + Decoder Initialisierung
+        m_impl->istGeladen = true;
+        emit videoGeladen();
+        return true;
+    }
+
+    void VideoPipeline::pipelineAusfuehren(const PipelineParams& params)
+    {
+        // TODO: Vollständige Video-Pipeline
+        // 1) Frame-Dekodierung (FFmpeg)
+        // 2) Szenen-Erkennung
+        // 3) Bild-Pipeline pro Frame
+        // 4) Frame-Konsistenz (Referenz-Frame + Histogram-Matching + EMA)
+        // 5) Hautton-Schutz über Frame-Grenzen
+        // 6) Encoding (FFmpeg HW-Beschleunigt)
+        Q_UNUSED(params)
+        emit pipelineAbgeschlossen();
+    }
+
+}  // namespace flipsicolor

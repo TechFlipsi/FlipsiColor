@@ -6,124 +6,136 @@
 #include "flipsicolor/ai/ModelManager.h"
 #include "flipsicolor/utils/AutoUpdater.h"
 
-#include <QSettings>
 #include <QDebug>
+#include <QSettings>
 
 #include <onnxruntime_cxx_api.h>
 
-namespace flipsicolor {
-
-Application::Application(QObject* parent)
-    : QObject(parent)
+namespace flipsicolor
 {
-}
 
-Application::~Application() = default;
+    Application::Application(QObject* parent) : QObject(parent) {}
 
-void Application::initialisieren()
-{
-    qDebug() << "FlipsiColor — App-Initialisierung gestartet";
-    gpuErkennen();
-    einstellungenLaden();
-    kiInitialisieren();
+    Application::~Application() = default;
 
-    // ── Auto-Updater starten ────────────────────────────────────────────
-    m_updater = std::make_unique<AutoUpdater>(this);
-    connect(m_updater.get(), &AutoUpdater::updateVerfuegbarChanged,
-            this, &Application::updateVerfuegbarChanged);
-    connect(m_updater.get(), &AutoUpdater::neueVersionChanged,
-            this, &Application::neueVersionChanged);
-    // Prüfung startet automatisch nach 30s
-    qDebug() << "FlipsiColor — Auto-Updater initialisiert (prüft automatisch)";
+    void Application::initialisieren()
+    {
+        qDebug() << "FlipsiColor — App-Initialisierung gestartet";
+        gpuErkennen();
+        einstellungenLaden();
+        kiInitialisieren();
 
-    qDebug() << "FlipsiColor — App-Initialisierung abgeschlossen";
-}
+        // ── Auto-Updater starten ────────────────────────────────────────────
+        m_updater = std::make_unique<AutoUpdater>(this);
+        connect(m_updater.get(), &AutoUpdater::updateVerfuegbarChanged, this, &Application::updateVerfuegbarChanged);
+        connect(m_updater.get(), &AutoUpdater::neueVersionChanged, this, &Application::neueVersionChanged);
+        // Prüfung startet automatisch nach 30s
+        qDebug() << "FlipsiColor — Auto-Updater initialisiert (prüft automatisch)";
 
-bool Application::updateVerfuegbar() const
-{
-    return m_updater ? m_updater->updateVerfuegbar() : false;
-}
+        qDebug() << "FlipsiColor — App-Initialisierung abgeschlossen";
+    }
 
-QString Application::neueVersion() const
-{
-    return m_updater ? m_updater->neueVersion() : QString();
-}
+    bool Application::updateVerfuegbar() const
+    {
+        return m_updater ? m_updater->updateVerfuegbar() : false;
+    }
 
-void Application::updatePruefen()
-{
-    if (m_updater) m_updater->pruefen();
-}
+    QString Application::neueVersion() const
+    {
+        return m_updater ? m_updater->neueVersion() : QString();
+    }
 
-void Application::updateStarten()
-{
-    if (m_updater) m_updater->updateStarten();
-}
+    void Application::updatePruefen()
+    {
+        if ( m_updater )
+            m_updater->pruefen();
+    }
 
-void Application::updateIgnorieren()
-{
-    if (m_updater) m_updater->ignorieren();
-}
+    void Application::updateStarten()
+    {
+        if ( m_updater )
+            m_updater->updateStarten();
+    }
 
-void Application::gpuErkennen()
-{
-    // ONNX Runtime Provider-Prüfung
-    QStringList verfuegbareProvider;
+    void Application::updateIgnorieren()
+    {
+        if ( m_updater )
+            m_updater->ignorieren();
+    }
 
-    try {
-        // Prüfe verfügbare Execution-Provider via ONNX Runtime C++ API
-        auto providers = Ort::GetAvailableProviders();
-        for (const auto& p : providers) {
-            QString s = QString::fromStdString(p);
-            verfuegbareProvider << s;
-            qDebug() << "ONNX Runtime Provider gefunden:" << s;
+    void Application::gpuErkennen()
+    {
+        // ONNX Runtime Provider-Prüfung
+        QStringList verfuegbareProvider;
+
+        try
+        {
+            // Prüfe verfügbare Execution-Provider via ONNX Runtime C++ API
+            auto providers = Ort::GetAvailableProviders();
+            for ( const auto& p : providers )
+            {
+                QString s = QString::fromStdString(p);
+                verfuegbareProvider << s;
+                qDebug() << "ONNX Runtime Provider gefunden:" << s;
+            }
         }
-    } catch (const std::exception& e) {
-        qWarning() << "Provider-Prüfung fehlgeschlagen:" << e.what();
+        catch ( const std::exception& e )
+        {
+            qWarning() << "Provider-Prüfung fehlgeschlagen:" << e.what();
+        }
+
+        // GPU-Verfügbarkeit anhand CUDA-Provider prüfen
+        m_gpuVerfuegbar = verfuegbareProvider.contains("CUDAExecutionProvider", Qt::CaseInsensitive) ||
+                          verfuegbareProvider.contains("TensorrtExecutionProvider", Qt::CaseInsensitive) ||
+                          verfuegbareProvider.contains("DmlExecutionProvider", Qt::CaseInsensitive) ||
+                          verfuegbareProvider.contains("CoreMLExecutionProvider", Qt::CaseInsensitive);
+
+        if ( verfuegbareProvider.contains("CUDAExecutionProvider") )
+        {
+            m_gpuName = "NVIDIA CUDA GPU (ONNX Runtime)";
+        }
+        else if ( verfuegbareProvider.contains("DmlExecutionProvider") )
+        {
+            m_gpuName = "DirectML GPU (Windows)";
+        }
+        else if ( verfuegbareProvider.contains("CoreMLExecutionProvider") )
+        {
+            m_gpuName = "Apple Neural Engine / CoreML";
+        }
+        else if ( verfuegbareProvider.contains("TensorrtExecutionProvider") )
+        {
+            m_gpuName = "NVIDIA TensorRT GPU";
+        }
+        else
+        {
+            m_gpuName = "CPU (keine GPU-Beschleunigung)";
+        }
+
+        qDebug() << "GPU verfügbar:" << m_gpuVerfuegbar << "—" << m_gpuName;
+        emit gpuVerfuegbarChanged();
     }
 
-    // GPU-Verfügbarkeit anhand CUDA-Provider prüfen
-    m_gpuVerfuegbar = verfuegbareProvider.contains("CUDAExecutionProvider", Qt::CaseInsensitive)
-                   || verfuegbareProvider.contains("TensorrtExecutionProvider", Qt::CaseInsensitive)
-                   || verfuegbareProvider.contains("DmlExecutionProvider", Qt::CaseInsensitive)
-                   || verfuegbareProvider.contains("CoreMLExecutionProvider", Qt::CaseInsensitive);
+    void Application::einstellungenLaden()
+    {
+        QSettings s("TechFlipsi", "FlipsiColor");
 
-    if (verfuegbareProvider.contains("CUDAExecutionProvider")) {
-        m_gpuName = "NVIDIA CUDA GPU (ONNX Runtime)";
-    } else if (verfuegbareProvider.contains("DmlExecutionProvider")) {
-        m_gpuName = "DirectML GPU (Windows)";
-    } else if (verfuegbareProvider.contains("CoreMLExecutionProvider")) {
-        m_gpuName = "Apple Neural Engine / CoreML";
-    } else if (verfuegbareProvider.contains("TensorrtExecutionProvider")) {
-        m_gpuName = "NVIDIA TensorRT GPU";
-    } else {
-        m_gpuName = "CPU (keine GPU-Beschleunigung)";
+        // Feedback-Anzahl aus gespeicherten Einstellungen laden
+        m_feedbackAnzahl = s.value("lernen/feedbackAnzahl", 0).toInt();
+
+        qDebug() << "Einstellungen geladen. Feedback-Anzahl:" << m_feedbackAnzahl;
+
+        // Migrationslogik für zukünftige Versionen kann hier eingefügt werden
     }
 
-    qDebug() << "GPU verfügbar:" << m_gpuVerfuegbar << "—" << m_gpuName;
-    emit gpuVerfuegbarChanged();
-}
+    void Application::kiInitialisieren()
+    {
+        // ModelManager-Initialisierung auslösen
+        // Der ModelManager lädt das Manifest und stellt sicher, dass Core-Modelle verfügbar sind
+        m_modelManager = std::make_unique<ModelManager>(this);
+        m_modelManager->manifestLaden();
 
-void Application::einstellungenLaden()
-{
-    QSettings s("TechFlipsi", "FlipsiColor");
+        qDebug() << "KI-Initialisierung abgeschlossen. Core-Modelle Gesamtgröße:" << m_modelManager->coreGroesseGesamt()
+                 << "Bytes";
+    }
 
-    // Feedback-Anzahl aus gespeicherten Einstellungen laden
-    m_feedbackAnzahl = s.value("lernen/feedbackAnzahl", 0).toInt();
-
-    qDebug() << "Einstellungen geladen. Feedback-Anzahl:" << m_feedbackAnzahl;
-
-    // Migrationslogik für zukünftige Versionen kann hier eingefügt werden
-}
-
-void Application::kiInitialisieren()
-{
-    // ModelManager-Initialisierung auslösen
-    // Der ModelManager lädt das Manifest und stellt sicher, dass Core-Modelle verfügbar sind
-    m_modelManager = std::make_unique<ModelManager>(this);
-    m_modelManager->manifestLaden();
-
-    qDebug() << "KI-Initialisierung abgeschlossen. Core-Modelle Gesamtgröße:"
-             << m_modelManager->coreGroesseGesamt() << "Bytes";
-}
-
-} // namespace flipsicolor
+}  // namespace flipsicolor

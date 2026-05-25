@@ -4,30 +4,31 @@
 
 #pragma once
 
+#include <memory>
 #include <QObject>
 #include <QString>
-#include <memory>
 
-namespace flipsicolor {
-
-class ModelDownloader : public QObject
+namespace flipsicolor
 {
-    Q_OBJECT
 
-public:
-    explicit ModelDownloader(QObject* parent = nullptr);
-    ~ModelDownloader();
+    class ModelDownloader : public QObject
+    {
+        Q_OBJECT
 
-    void herunterladen(const QString& modellId, const QString& url, const QString& erwarteterSha256 = QString());
+    public:
+        explicit ModelDownloader(QObject* parent = nullptr);
+        ~ModelDownloader();
 
-signals:
-    void fortschritt(const QString& modellId, qint64 empfangen, qint64 gesamt);
-    void herunterladenFertig(const QString& modellId, const QString& dateiPfad);
-    void fehler(const QString& modellId, const QString& fehlermeldung);
+        void herunterladen(const QString& modellId, const QString& url, const QString& erwarteterSha256 = QString());
 
-private:
-    struct Impl;
-    std::unique_ptr<Impl> m_impl;
-};
+    signals:
+        void fortschritt(const QString& modellId, qint64 empfangen, qint64 gesamt);
+        void herunterladenFertig(const QString& modellId, const QString& dateiPfad);
+        void fehler(const QString& modellId, const QString& fehlermeldung);
 
-} // namespace flipsicolor
+    private:
+        struct Impl;
+        std::unique_ptr<Impl> m_impl;
+    };
+
+}  // namespace flipsicolor

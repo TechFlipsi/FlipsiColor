@@ -4,56 +4,57 @@
 
 #pragma once
 
+#include <memory>
 #include <QObject>
 #include <QString>
-#include <memory>
 
-namespace flipsicolor {
-
-class AutoUpdater;
-class ModelManager;
-
-class Application : public QObject
+namespace flipsicolor
 {
-    Q_OBJECT
-    Q_PROPERTY(bool gpuVerfuegbar READ gpuVerfuegbar NOTIFY gpuVerfuegbarChanged)
-    Q_PROPERTY(QString gpuName READ gpuName NOTIFY gpuVerfuegbarChanged)
-    Q_PROPERTY(int feedbackAnzahl READ feedbackAnzahl NOTIFY feedbackAnzahlChanged)
-    Q_PROPERTY(bool updateVerfuegbar READ updateVerfuegbar NOTIFY updateVerfuegbarChanged)
-    Q_PROPERTY(QString neueVersion READ neueVersion NOTIFY neueVersionChanged)
 
-public:
-    explicit Application(QObject* parent = nullptr);
-    ~Application(); // Destruktor im .cpp (unique_ptr<AutoUpdater> braucht vollständigen Typ)
+    class AutoUpdater;
+    class ModelManager;
 
-    void initialisieren();
+    class Application : public QObject
+    {
+        Q_OBJECT
+        Q_PROPERTY(bool gpuVerfuegbar READ gpuVerfuegbar NOTIFY gpuVerfuegbarChanged)
+        Q_PROPERTY(QString gpuName READ gpuName NOTIFY gpuVerfuegbarChanged)
+        Q_PROPERTY(int feedbackAnzahl READ feedbackAnzahl NOTIFY feedbackAnzahlChanged)
+        Q_PROPERTY(bool updateVerfuegbar READ updateVerfuegbar NOTIFY updateVerfuegbarChanged)
+        Q_PROPERTY(QString neueVersion READ neueVersion NOTIFY neueVersionChanged)
 
-    bool gpuVerfuegbar() const { return m_gpuVerfuegbar; }
-    QString gpuName() const { return m_gpuName; }
-    int feedbackAnzahl() const { return m_feedbackAnzahl; }
-    bool updateVerfuegbar() const;
-    QString neueVersion() const;
+    public:
+        explicit Application(QObject* parent = nullptr);
+        ~Application();  // Destruktor im .cpp (unique_ptr<AutoUpdater> braucht vollständigen Typ)
 
-    Q_INVOKABLE void updatePruefen();
-    Q_INVOKABLE void updateStarten();
-    Q_INVOKABLE void updateIgnorieren();
+        void initialisieren();
 
-signals:
-    void gpuVerfuegbarChanged();
-    void feedbackAnzahlChanged();
-    void updateVerfuegbarChanged(bool verfuegbar);
-    void neueVersionChanged(const QString& version);
+        bool    gpuVerfuegbar() const { return m_gpuVerfuegbar; }
+        QString gpuName() const { return m_gpuName; }
+        int     feedbackAnzahl() const { return m_feedbackAnzahl; }
+        bool    updateVerfuegbar() const;
+        QString neueVersion() const;
 
-private:
-    void gpuErkennen();
-    void einstellungenLaden();
-    void kiInitialisieren();
+        Q_INVOKABLE void updatePruefen();
+        Q_INVOKABLE void updateStarten();
+        Q_INVOKABLE void updateIgnorieren();
 
-    bool m_gpuVerfuegbar = false;
-    QString m_gpuName;
-    int m_feedbackAnzahl = 0;
-    std::unique_ptr<AutoUpdater> m_updater;
-    std::unique_ptr<ModelManager> m_modelManager;
-};
+    signals:
+        void gpuVerfuegbarChanged();
+        void feedbackAnzahlChanged();
+        void updateVerfuegbarChanged(bool verfuegbar);
+        void neueVersionChanged(const QString& version);
 
-} // namespace flipsicolor
+    private:
+        void gpuErkennen();
+        void einstellungenLaden();
+        void kiInitialisieren();
+
+        bool                          m_gpuVerfuegbar = false;
+        QString                       m_gpuName;
+        int                           m_feedbackAnzahl = 0;
+        std::unique_ptr<AutoUpdater>  m_updater;
+        std::unique_ptr<ModelManager> m_modelManager;
+    };
+
+}  // namespace flipsicolor
