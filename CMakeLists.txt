@@ -128,6 +128,53 @@ install(TARGETS flipsicolor
     BUNDLE DESTINATION .
 )
 
+# Windows: DLLs und Runtime-Dateien für NSIS/CPack mitinstallieren
+# windeployqt + CI-Script kopieren alle DLLs nach ${CMAKE_BINARY_DIR}/Release/
+# install(CODE) läuft zur Install-Zeit — DLLs müssen dann dort liegen
+if(WIN32)
+    # Alle DLLs aus Release/ ins bin/-Zielverzeichnis kopieren
+    install(CODE "
+        set(RELEASE_DIR \"${CMAKE_BINARY_DIR}/Release\")
+        set(DEST_DIR \"\${CMAKE_INSTALL_PREFIX}/bin\")
+        file(MAKE_DIRECTORY \"\${DEST_DIR}\")
+        
+        # DLLs kopieren (aber nicht flipsicolor.exe — schon via TARGETS installiert)
+        file(GLOB DLL_FILES \"\${RELEASE_DIR}/*.dll\")
+        foreach(F \${DLL_FILES})
+            file(INSTALL \"\${F}\" DESTINATION \"\${DEST_DIR}\")
+        endforeach()
+        
+        # Qt-Plugins kopieren (platforms, styles, imageformats, etc.)
+        file(GLOB PLUGIN_SUBDIRS LIST_DIRECTORIES true \"\${RELEASE_DIR}/*\")
+        foreach(SUBDIR \${PLUGIN_SUBDIRS})
+            if(IS_DIRECTORY \"\${SUBDIR}\")
+                get_filename_component(DIRNAME \"\${SUBDIR}\" NAME)
+                file(GLOB PLUGIN_DLLS \"\${SUBDIR}/*.dll\")
+                list(LENGTH PLUGIN_DLLS PDLL_COUNT)
+                if(PDLL_COUNT GREATER 0)
+                    file(INSTALL \${PLUGIN_DLLS} DESTINATION \"\${DEST_DIR}/\${DIRNAME}\")
+                endif()
+            endif()
+        endforeach()
+        
+        # Übersetzungen (.qm)
+        if(EXISTS \"\${RELEASE_DIR}/i18n\")
+            file(GLOB QM_FILES \"\${RELEASE_DIR}/i18n/*.qm\")
+            if(QM_FILES)
+                file(INSTALL \${QM_FILES} DESTINATION \"\${DEST_DIR}/i18n\")
+            endif()
+        endif()
+        if(EXISTS \"\${RELEASE_DIR}/translations\")
+            file(GLOB TR_FILES \"\${RELEASE_DIR}/translations/*.qm\")
+            if(TR_FILES)
+                file(INSTALL \${TR_FILES} DESTINATION \"\${DEST_DIR}/translations\")
+            endif()
+        endif()
+        
+        message(STATUS \"Windows: DLLs von \${RELEASE_DIR} nach \${DEST_DIR} installiert\")
+    ")
+endif()
+
 # ── Icons & Desktop-Datei installieren ──────────────────────────────────────
 # Linux: .desktop + PNG Icons
 if(NOT WIN32 AND NOT APPLE)
