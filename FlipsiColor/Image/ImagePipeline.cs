@@ -275,7 +275,7 @@ public sealed class ImagePipeline : IDisposable
     {
         var result = new Mat();
         var amount = betrag * 0.5;
-        Cv2.GaussianBlur(bild, result, new Size(0, 0), 3);
+        Cv2.GaussianBlur(bild, result, new OpenCvSharp.Size(0, 0), 3);
         Cv2.AddWeighted(bild, 1.0 + amount, result, -amount, 0, result);
         return result;
     }
@@ -284,7 +284,7 @@ public sealed class ImagePipeline : IDisposable
     {
         var result = new Mat();
         var h = Math.Max(3, (int)(luma * 10));
-        Cv2.GaussianBlur(bild, result, new Size(0, 0), h);
+        Cv2.GaussianBlur(bild, result, new OpenCvSharp.Size(0, 0), h);
         // TODO: Chroma-Rauschunterdrückung im YUV-Farbraum
         return result;
     }

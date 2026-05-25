@@ -256,9 +256,8 @@ public sealed class DjiAutoMerge : IDisposable
 
             // FFmpeg stderr lesen für Fortschritt
             var lastUpdate = DateTime.UtcNow;
-            while (!process.StandardError.EndOfStream)
-            {
-                var line = await process.StandardError.ReadLineAsync();
+            string? line;
+            while ((line = await process.StandardError.ReadLineAsync()) != null)
                 if (line != null && line.Contains("time="))
                 {
                     var now = DateTime.UtcNow;
@@ -301,12 +300,13 @@ public sealed class DjiAutoMerge : IDisposable
     }
 
     /// <summary>
-    /// Fügt Clips zusammen UND wendet Farbkorrektur an
+    /// Fügt Clips zusammen UND wendet Farbkorrektur via VideoPipeline an
     /// </summary>
     public async Task<string?> ClipsZusammenfuegenMitFarbkorrekturAsync(
         ClipGruppe gruppe,
         string ausgabeOrdner,
-        Image.ImagePipeline imagePipeline,
+        AI.ModelManager modelManager,
+        Color.ColorManager colorManager,
         PipelineParams param,
         IProgress<double>? fortschritt = null)
     {
@@ -339,24 +339,49 @@ public sealed class DjiAutoMerge : IDisposable
 
         try
         {
-            var videoPipeline = new VideoPipeline(imagePipeline);
-            var farbkorrigiert = await videoPipeline.VideoVerarbeitenAsync(merged, param, fortschritt: fortschritt);
-
-            if (farbkorrigiert != null && File.Exists(farbkorrigiert))
+            using var videoPipeline = new VideoPipeline(modelManager, colorManager);
+            
+            if (!videoPipeline.VideoLaden(merged))
             {
-                // Ursprüngliche merged-Datei löschen, farbkorrigierte behalten
-                try { File.Delete(merged); } catch { /* keep both */ }
-                Log.Information("Farbkorrigiertes Video erstellt: {Datei}", farbkorrigiert);
-                return farbkorrigiert;
+                Log.Warning("Video konnte nicht geladen werden — Farbkorrektur übersprungen");
+                return merged;
             }
 
-            Log.Warning("Farbkorrektur fehlgeschlagen — zusammengeführtes Video ohne Korrektur vorhanden");
-            return merged;
+            // Pipeline in Hintergrund-Thread ausführen
+            var tcs = new TaskCompletionSource<string?>();
+            await Task.Run(() =>
+            {
+                try
+                {
+                    videoPipeline.PipelineAusfuehren(param, (aktuell, gesamt) =>
+                    {
+                        var prozent = 0.3 + 0.7 * ((double)aktuell / gesamt);
+                        fortschritt?.Report(prozent);
+                    });
+                    
+                    // Ausgabedatei der VideoPipeline
+                    var outputPath = Path.Combine(ausgabeOrdner, $"{gruppe.GruppenName}_colorcorrected.mp4");
+                    tcs.SetResult(File.Exists(outputPath) ? outputPath : merged);
+                }
+                catch (Exception ex)
+                {
+                    Log.Error(ex, "VideoPipeline Fehler");
+                    tcs.SetResult(merged);
+                }
+            });
+
+            var ergebnis = await tcs.Task;
+            if (ergebnis != merged && File.Exists(ergebnis))
+            {
+                try { File.Delete(merged); } catch { /* keep both */ }
+                Log.Information("Farbkorrigiertes Video erstellt: {Datei}", ergebnis);
+            }
+            return ergebnis;
         }
         catch (Exception ex)
         {
             Log.Error(ex, "Fehler bei Farbkorrektur auf zusammengeführtem Video");
-            return merged; // Zumindest das zusammengefügte Video zurückgeben
+            return merged;
         }
     }
 
