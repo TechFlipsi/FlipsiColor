@@ -29,24 +29,64 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      # ── MSVC Developer Environment ──
+      - name: MSVC Dev-Cmd aktivieren
+        uses: ilammy/msvc-dev-cmd@v1
+
+      # ── sccache: Compiler Cache ──
+      - name: sccache installieren
+        shell: pwsh
+        run: |
+          $sccacheVer = "0.9.1"
+          # Fallback: cargo install
+          choco install sccache -y --no-progress 2>$null
+          $sccache = Get-Command sccache -ErrorAction SilentlyContinue
+          if (-not $sccache) {
+            # Download release directly
+            $url = "https://github.com/mozilla/sccache/releases/download/v$sccacheVer/sccache-v$sccacheVer-x86_64-pc-windows-msvc.zip"
+            Invoke-WebRequest -Uri $url -OutFile sccache.zip -MaximumRetryCount 3
+            Expand-Archive -Path sccache.zip -DestinationPath C:\sccache -Force
+            $sccacheExe = Get-ChildItem C:\sccache -Recurse -Filter "sccache.exe" | Select-Object -First 1
+            $sccacheDir = Split-Path $sccacheExe.FullName
+            echo "$sccacheDir" | Out-File -Append $env:GITHUB_PATH -Encoding utf8
+          }
+          echo "SCCACHE_GHA_ENABLED=true" >> $env:GITHUB_ENV
+          echo "SCCACHE_DIR=$env:USERPROFILE\AppData\Local\Mozilla\sccache\cache" >> $env:GITHUB_ENV
+
+      - name: sccache Cache
+        uses: actions/cache@v4
+        with:
+          path: ~\AppData\Local\Mozilla\sccache\cache
+          key: sccache-win-${{ github.sha }}
+          restore-keys: |
+            sccache-win-
+
+      # ── Qt ──
       - name: Qt installieren
-        id: install-qt
         uses: jurplel/install-qt-action@v4
         with:
           version: '6.8.*'
           arch: 'win64_msvc2022_64'
           cache: true
 
-      - name: vcpkg Cache
+      # ── Ninja Build Generator ──
+      - name: Ninja installieren
+        shell: pwsh
+        run: |
+          choco install ninja -y --no-progress 2>$null
+          ninja --version
+
+      # ── vcpkg: Binary Caching via GHA ──
+      - name: vcpkg Cache (Binary Cache via GHA)
         uses: actions/cache@v4
         with:
           path: |
             C:\vcpkg\installed
             C:\vcpkg\packages
             C:\vcpkg\downloads
-          key: vcpkg-x64-windows-${{ hashFiles('vcpkg.json') }}
+          key: vcpkg-x64-${{ hashFiles('vcpkg.json') }}-v2
           restore-keys: |
-            vcpkg-x64-windows-
+            vcpkg-x64-
 
       - name: vcpkg vorbereiten
         shell: pwsh
@@ -62,40 +102,62 @@ jobs:
         env:
           VCPKG_BINARY_SOURCES: "clear;x-gha,readwrite"
 
-      - name: FFMPEG pre-built herunterladen
+      # ── Pre-built Dependencies: Gecacht ──
+      - name: Pre-built Dependencies Cache
+        uses: actions/cache@v4
+        id: deps-cache
+        with:
+          path: |
+            C:\ffmpeg
+            C:\onnxruntime
+            C:\opencv
+          key: deps-v1-ffmpeg71-onnx1200-opencv410
+
+      - name: FFMPEG herunterladen
+        if: steps.deps-cache.outputs.cache-hit != 'true'
         shell: pwsh
         run: |
           $url = "https://github.com/GyanD/codexffmpeg/releases/download/7.1/ffmpeg-7.1-full_build-shared.zip"
           Invoke-WebRequest -Uri $url -OutFile ffmpeg.zip -MaximumRetryCount 3
           Expand-Archive -Path ffmpeg.zip -DestinationPath C:\ffmpeg -Force
-          $ffmpegDir = Get-ChildItem "C:\ffmpeg" -Directory | Select-Object -First 1
-          echo "FFMPEG_DIR=$($ffmpegDir.FullName)" >> $env:GITHUB_ENV
-          echo "FFMPEG_INCLUDE=$($ffmpegDir.FullName)\include" >> $env:GITHUB_ENV
-          echo "FFMPEG_LIB=$($ffmpegDir.FullName)\lib" >> $env:GITHUB_ENV
-          echo "FFMPEG_BIN=$($ffmpegDir.FullName)\bin" >> $env:GITHUB_ENV
 
       - name: ONNX Runtime herunterladen
+        if: steps.deps-cache.outputs.cache-hit != 'true'
         shell: pwsh
         run: |
           $url = "https://github.com/microsoft/onnxruntime/releases/download/v1.20.0/onnxruntime-win-x64-1.20.0.zip"
           Invoke-WebRequest -Uri $url -OutFile onnxruntime.zip -MaximumRetryCount 3
           Expand-Archive -Path onnxruntime.zip -DestinationPath C:\onnxruntime -Force
-          echo "ONNXRUNTIME_DIR=C:\onnxruntime\onnxruntime-win-x64-1.20.0" >> $env:GITHUB_ENV
 
-      - name: OpenCV pre-built herunterladen
+      - name: OpenCV herunterladen
+        if: steps.deps-cache.outputs.cache-hit != 'true'
         shell: pwsh
         run: |
           $url = "https://github.com/opencv/opencv/releases/download/4.10.0/opencv-4.10.0-windows.exe"
           Invoke-WebRequest -Uri $url -OutFile opencv.exe -MaximumRetryCount 3
           7z x opencv.exe -oC:\opencv -y
-          # Archive contains opencv/build/... structure, so after extract it's C:\opencv\opencv\build\...
+
+      - name: Pre-built Pfade setzen
+        shell: pwsh
+        run: |
+          $ffmpegDir = Get-ChildItem "C:\ffmpeg" -Directory | Select-Object -First 1
+          echo "FFMPEG_DIR=$($ffmpegDir.FullName)" >> $env:GITHUB_ENV
+          echo "FFMPEG_INCLUDE=$($ffmpegDir.FullName)\include" >> $env:GITHUB_ENV
+          echo "FFMPEG_LIB=$($ffmpegDir.FullName)\lib" >> $env:GITHUB_ENV
+          echo "FFMPEG_BIN=$($ffmpegDir.FullName)\bin" >> $env:GITHUB_ENV
+          echo "ONNXRUNTIME_DIR=C:\onnxruntime\onnxruntime-win-x64-1.20.0" >> $env:GITHUB_ENV
           $ocvDir = if (Test-Path "C:\opencv\opencv\build\x64") { "C:\opencv\opencv\build" } elseif (Test-Path "C:\opencv\build\x64") { "C:\opencv\build" } else { Get-ChildItem "C:\opencv" -Directory -Recurse -Filter "build" | Where-Object { Test-Path "$($_.FullName)\x64" } | Select-Object -First 1 -ExpandProperty FullName }
           echo "OpenCV_ROOT=$ocvDir" >> $env:GITHUB_ENV
           Write-Host "OpenCV_ROOT set to: $ocvDir"
 
-      - name: Konfigurieren
+      # ── CMake Configure ──
+      - name: Konfigurieren mit CMake-Preset
         shell: pwsh
-        run: cmake -B build -DCMAKE_BUILD_TYPE=Release -DFLIPSICOLOR_BUILD_TESTS=OFF -DCMAKE_TOOLCHAIN_FILE=C:\vcpkg\scripts\buildsystems\vcpkg.cmake
+        run: |
+          $sccachePath = (Get-Command sccache -ErrorAction SilentlyContinue).Source
+          if (-not $sccachePath) { $sccachePath = "sccache" }
+          echo "SCCACHE_PATH=$sccachePath" >> $env:GITHUB_ENV
+          cmake --preset windows-ci
         env:
           CMAKE_PREFIX_PATH: "${{ env.QT_ROOT_DIR }};${{ env.FFMPEG_DIR }};${{ env.ONNXRUNTIME_DIR }};${{ env.OpenCV_ROOT }}"
           FFMPEG_DIR: "${{ env.FFMPEG_DIR }}"
@@ -104,28 +166,32 @@ jobs:
           FFMPEG_LIBRARY_DIR: "${{ env.FFMPEG_LIB }}"
           ONNXRUNTIME_DIR: "${{ env.ONNXRUNTIME_DIR }}"
 
+      # ── Build ──
       - name: Kompilieren
-        run: cmake --build build --config Release
+        run: cmake --build --preset windows-ci
 
-      - name: Qt-Deployment (windeployqt)
-        working-directory: build
+      - name: sccache Statistiken
+        if: always()
+        shell: pwsh
+        run: sccache --show-stats 2>$null || Write-Host "sccache stats nicht verfügbar"
+
+      # ── Deployment ──
+      - name: Qt-Deployment - windeployqt
+        working-directory: build/windows-ci
         shell: pwsh
         run: |
           $exePath = Get-ChildItem -Recurse -Filter "flipsicolor.exe" | Select-Object -First 1
           if (-not $exePath) { Write-Error "flipsicolor.exe nicht gefunden!"; exit 1 }
           
-          # windeployqt finden — mehrere Fallback-Methoden
           $deployQt = $null
           if ($env:QT_ROOT_DIR) {
             $candidate = Join-Path $env:QT_ROOT_DIR "bin\windeployqt.exe"
             if (Test-Path $candidate) { $deployQt = $candidate }
           }
           if (-not $deployQt) {
-            # Versuch via PATH
             $deployQt = (Get-Command windeployqt -ErrorAction SilentlyContinue).Source
           }
           if (-not $deployQt) {
-            # Fallback: suche im Install-Dir der Action
             $candidates = Get-ChildItem -Path "D:\a" -Recurse -Filter "windeployqt.exe" -ErrorAction SilentlyContinue | Select-Object -First 1
             if ($candidates) { $deployQt = $candidates.FullName }
           }
@@ -145,36 +211,29 @@ jobs:
           Write-Host "windeployqt erfolgreich — Qt-DLLs deployt"
 
       - name: DLLs kopieren
-        working-directory: build
+        working-directory: build/windows-ci
         shell: pwsh
         run: |
           $dest = ".\Release\"
           if (-not (Test-Path $dest)) { New-Item -ItemType Directory -Path $dest | Out-Null }
           
-          # vcpkg DLLs (raw.dll, lcms2.dll, lensfun.dll, libexif.dll, zlib.dll etc.)
           $vcpkgDlls = "C:\vcpkg\installed\x64-windows\bin"
           if (Test-Path $vcpkgDlls) {
             $copied = (Get-ChildItem "$vcpkgDlls\*.dll" | Copy-Item -Destination $dest -PassThru).Count
             Write-Host "vcpkg: $copied DLLs kopiert"
-          } else {
-            Write-Host "WARNUNG: vcpkg bin-Verzeichnis nicht gefunden: $vcpkgDlls"
           }
           
-          # FFMPEG DLLs
           if (Test-Path "${{ env.FFMPEG_BIN }}") {
             $copied = (Get-ChildItem "${{ env.FFMPEG_BIN }}\*.dll" | Copy-Item -Destination $dest -PassThru).Count
             Write-Host "FFMPEG: $copied DLLs kopiert"
           }
           
-          # ONNX Runtime DLL
           $ortDll = "${{ env.ONNXRUNTIME_DIR }}\lib\onnxruntime.dll"
           if (Test-Path $ortDll) {
             Copy-Item $ortDll -Destination $dest
             Write-Host "ONNX Runtime: onnxruntime.dll kopiert"
           }
           
-          # OpenCV DLLs (world-Build oder einzelne Module-DLLs)
-          # Pre-built OpenCV releases use different VC toolchain dirs: vc16 (VS2019), vc17 (VS2022), vc15 (VS2017)
           $ocvRoot = "${{ env.OpenCV_ROOT }}"
           $ocvCopied = $false
           foreach ($vc in @("vc17", "vc16", "vc15")) {
@@ -188,7 +247,6 @@ jobs:
             }
           }
           if (-not $ocvCopied) {
-            # Ultimate fallback: recursive search for opencv_world*.dll
             $dlls = Get-ChildItem -Path $ocvRoot -Recurse -Filter "opencv_world*.dll" -ErrorAction SilentlyContinue
             if ($dlls) {
               $copied = ($dlls | Copy-Item -Destination $dest -PassThru).Count
@@ -200,7 +258,6 @@ jobs:
             Write-Host "WARNUNG: Keine OpenCV DLLs gefunden unter $ocvRoot"
           }
           
-          # Verifizieren: Alle benötigten DLLs vorhanden?
           $requiredDlls = @(
             "raw.dll", "onnxruntime.dll", "lcms2.dll", "lensfun.dll",
             "libexif.dll", "opencv_world4100.dll",
@@ -219,25 +276,22 @@ jobs:
             Write-Host "WARNUNG: $missing DLLs fehlen — Programm wird nicht starten!"
           }
 
-      - name: Paket erstellen (Portable ZIP + NSIS)
-        working-directory: build
+      - name: Paket erstellen - Portable ZIP + NSIS
+        working-directory: build/windows-ci
         shell: pwsh
         run: |
-          # Always create a portable ZIP first (most reliable — includes all DLLs)
           Write-Host "Erstelle portable ZIP aus Release-Verzeichnis..."
           $zipName = "FlipsiColor-Windows-Portable.zip"
           Compress-Archive -Path "Release\*" -DestinationPath $zipName
           $zipSize = (Get-Item $zipName).Length
           Write-Host "Portable ZIP erstellt: $zipName ($([math]::Round($zipSize/1MB, 1)) MB)"
           
-          # Verify ZIP contents
           Write-Host "ZIP-Inhalt (erste 20 Einträge):"
           Add-Type -AssemblyName System.IO.Compression.FileSystem
           $zip = [System.IO.Compression.ZipFile]::OpenRead((Join-Path (Get-Location) $zipName))
           $zip.Entries | Select-Object -First 20 | ForEach-Object { Write-Host "  $($_.Name)" }
           $zip.Dispose()
           
-          # Also attempt NSIS installer (optional — may not include all DLLs from manual copies)
           choco install nsis -y --no-progress 2>$null
           cpack -G NSIS
           if ($LASTEXITCODE -eq 0) {
@@ -249,13 +303,13 @@ jobs:
             Write-Host "NSIS fehlgeschlagen (Exit-Code $LASTEXITCODE) — nur ZIP verfügbar"
           }
 
-      - name: Artefakt hochladen (Windows)
+      - name: Artefakt hochladen - Windows
         uses: actions/upload-artifact@v4
         with:
           name: FlipsiColor-Windows
           path: |
-            build/*.exe
-            build/*.zip
+            build/windows-ci/*.exe
+            build/windows-ci/*.zip
 
   release:
     needs: [build-windows]
