@@ -36,6 +36,18 @@ dotnet publish FlipsiColor/FlipsiColor.csproj -c Release -r win-x64 --self-conta
 - MetadataExtractor (EXIF)
 - FFMPEG (Video)
 
+## Credits
+
+- **Idee:** Fabian Kirchweger
+- **Entwicklung:** J.A.R.V.I.S. (Hermes Agent)
+
+### Verwendete KI-Modelle
+
+| Modell            | Rolle        | Aufgaben                          |
+|-------------------|--------------|-----------------------------------|
+| **GLM-5.1**       | Hauptmodell  | Architektur, Code, Debugging      |
+| **MiniMax M3**    | Sub-Agenten  | Tests, Audits                     |
+
 ## Lizenz
 
 GPL-3.0-or-later © 2026 Fabian Kirchweger (TechFlipsi)
