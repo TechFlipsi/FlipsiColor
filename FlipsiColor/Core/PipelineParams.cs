@@ -42,4 +42,6 @@ public sealed class PipelineParams
     public bool ObjektivkorrekturAktiv { get; set; } = true;
     public bool GesichtswiederherstellungAktiv { get; set; } = false;
     public int HochskalierenFaktor { get; set; } = 1;
+    public bool DistortionGridAktiv { get; set; } = false;
+    public bool ColorCalibrationAktiv { get; set; } = false;
 }

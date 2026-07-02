@@ -24,7 +24,7 @@ public partial class MainViewModel : ObservableObject, IDisposable
     private readonly ImagePipeline _imagePipeline;
     private readonly AutoUpdater _autoUpdater;
 
-    [ObservableProperty] private string _title = "FlipsiColor v0.2.1";
+    [ObservableProperty] private string _title = "FlipsiColor v0.3.0";
     [ObservableProperty] private bool _gpuVerfuegbar;
     [ObservableProperty] private string _gpuName = "";
     [ObservableProperty] private bool _updateVerfuegbar;
@@ -56,6 +56,8 @@ public partial class MainViewModel : ObservableObject, IDisposable
     [ObservableProperty] private float _rauschenLuma;
     [ObservableProperty] private float _rauschenChroma;
     [ObservableProperty] private bool _objektivkorrektur = true;
+    [ObservableProperty] private bool _distortionGridAktiv;
+    [ObservableProperty] private bool _colorCalibrationAktiv;
     [ObservableProperty] private int _intensitaetIndex = 1; // Mittel
 
     // Theme
@@ -161,7 +163,9 @@ public partial class MainViewModel : ObservableObject, IDisposable
             SchaerfeBetrag = Schaerfe,
             LuminanzRauschen = RauschenLuma,
             ChrominanzRauschen = RauschenChroma,
-            ObjektivkorrekturAktiv = Objektivkorrektur
+            ObjektivkorrekturAktiv = Objektivkorrektur,
+            DistortionGridAktiv = DistortionGridAktiv,
+            ColorCalibrationAktiv = ColorCalibrationAktiv
         };
 
         try
@@ -195,7 +199,59 @@ public partial class MainViewModel : ObservableObject, IDisposable
             Belichtung = 0; Kontrast = 0; Saettigung = 0; Vibranz = 0;
             Lichter = 0; Schatten = 0; Schaerfe = 0; RauschenLuma = 0; RauschenChroma = 0;
             Objektivkorrektur = true;
+            DistortionGridAktiv = false;
+            ColorCalibrationAktiv = false;
             StatusText = "Parameter zurückgesetzt";
+        }
+        catch (Exception ex)
+        {
+            StatusText = $"Fehler: {ex.Message}";
+        }
+    }
+
+    [RelayCommand]
+    private void DistortionGridKalibrieren()
+    {
+        try
+        {
+            var dialog = new Microsoft.Win32.OpenFileDialog
+            {
+                Filter = "Bilddateien|*.jpg;*.jpeg;*.png;*.tif;*.tiff;*.bmp|Alle Dateien|*.*",
+                Title = "Schachbrett-Referenzbild für Distortion-Grid-Kalibrierung öffnen"
+            };
+
+            if (dialog.ShowDialog() == true)
+            {
+                var erfolg = _imagePipeline.KalibriereDistortionGrid(dialog.FileName);
+                StatusText = erfolg
+                    ? "Distortion-Grid-Kalibrierung erfolgreich"
+                    : "Distortion-Grid-Kalibrierung fehlgeschlagen";
+            }
+        }
+        catch (Exception ex)
+        {
+            StatusText = $"Fehler: {ex.Message}";
+        }
+    }
+
+    [RelayCommand]
+    private void ColorCalibrationKalibrieren()
+    {
+        try
+        {
+            var dialog = new Microsoft.Win32.OpenFileDialog
+            {
+                Filter = "Bilddateien|*.jpg;*.jpeg;*.png;*.tif;*.tiff;*.bmp|Alle Dateien|*.*",
+                Title = "ColorChecker- oder Graukarten-Referenzbild für Farbkalibrierung öffnen"
+            };
+
+            if (dialog.ShowDialog() == true)
+            {
+                var erfolg = _imagePipeline.KalibriereColor(dialog.FileName);
+                StatusText = erfolg
+                    ? "Farbkalibrierung erfolgreich"
+                    : "Farbkalibrierung fehlgeschlagen";
+            }
         }
         catch (Exception ex)
         {

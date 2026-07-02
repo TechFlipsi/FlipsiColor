@@ -23,6 +23,8 @@ public sealed class ImagePipeline : IDisposable
     private readonly WhiteBalance _whiteBalance;
     private readonly LensCorrector _lensCorrector;
     private readonly StyleLUT _styleLut;
+    private readonly DistortionGridCorrector _distortionGridCorrector;
+    private readonly ColorCalibration _colorCalibration;
 
     public event EventHandler? BildGeladen;
     public event EventHandler? PipelineAbgeschlossen;
@@ -34,6 +36,8 @@ public sealed class ImagePipeline : IDisposable
         _whiteBalance = new WhiteBalance();
         _lensCorrector = new LensCorrector();
         _styleLut = new StyleLUT();
+        _distortionGridCorrector = new DistortionGridCorrector();
+        _colorCalibration = new ColorCalibration();
         _lensCorrector.Initialisieren();
     }
 
@@ -174,6 +178,28 @@ public sealed class ImagePipeline : IDisposable
                 bild = neuesBild;
             }
 
+            // 9. Distortion-Grid-Korrektur (nach Objektivkorrektur)
+            if (param.DistortionGridAktiv && _distortionGridCorrector.IstKalibriert)
+            {
+                var neuesBild = _distortionGridCorrector.Korrigieren(bild);
+                if (neuesBild != bild)
+                {
+                    bild.Dispose();
+                    bild = neuesBild;
+                }
+            }
+
+            // 10. Farbkalibrierung (nach Distortion-Grid)
+            if (param.ColorCalibrationAktiv && _colorCalibration.IstKalibriert)
+            {
+                var neuesBild = _colorCalibration.Anwenden(bild);
+                if (neuesBild != bild)
+                {
+                    bild.Dispose();
+                    bild = neuesBild;
+                }
+            }
+
             _aktuellesBild?.Dispose();
             _aktuellesBild = bild;
 
@@ -296,5 +322,25 @@ public sealed class ImagePipeline : IDisposable
         _aktuellesBild?.Dispose();
         _originalBild?.Dispose();
         _lensCorrector.Dispose();
+    }
+
+    /// <summary>
+    /// Kalibriert die Distortion-Grid-Korrektur anhand eines Schachbrett-Referenzbilds.
+    /// </summary>
+    /// <param name="pfad">Pfad zum Schachbrett-Bild.</param>
+    /// <returns>true bei erfolgreicher Kalibrierung.</returns>
+    public bool KalibriereDistortionGrid(string pfad)
+    {
+        return _distortionGridCorrector.Kalibrieren(pfad);
+    }
+
+    /// <summary>
+    /// Kalibriert die Farbkalibrierung anhand eines ColorChecker- oder Graukarten-Bilds.
+    /// </summary>
+    /// <param name="pfad">Pfad zum Referenzbild.</param>
+    /// <returns>true bei erfolgreicher Kalibrierung.</returns>
+    public bool KalibriereColor(string pfad)
+    {
+        return _colorCalibration.Kalibrieren(pfad);
     }
 }
