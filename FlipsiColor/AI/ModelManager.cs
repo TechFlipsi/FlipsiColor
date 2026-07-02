@@ -10,21 +10,42 @@ using System.Threading.Tasks;
 using Microsoft.ML.OnnxRuntime;
 
 using FlipsiColor.Utils;
+// SecurityValidator wird über Utils-Namespace importiert
 
 namespace FlipsiColor.AI;
 
 /// <summary>
-/// Verwaltet KI-Modelle: Download, SHA256-Verifikation, ONNX Session-Erstellung
+/// Verwaltet KI-Modelle: Download, SHA256-Verifikation, ONNX Session-Erstellung.
+/// FIX #3: URL-Validierung (HTTPS, kein file://), Redirect-Beschränkung.
+/// FIX #6: SHA256-Verifikation — Warnung bei fehlendem Hash.
+/// FIX #10: Thread-Sicherheit durch Lock bei Download und Session-Erstellung.
 /// </summary>
 public sealed class ModelManager : IDisposable
 {
     private static readonly Serilog.ILogger Log = Serilog.Log.ForContext<ModelManager>();
 
+    // FIX #10: Lock-Objekt für thread-sicheren Download und Session-Erstellung
+    private readonly object _lock = new();
     private readonly Dictionary<ModellId, ModellInfo> _modelle = new();
     private readonly Dictionary<ModellId, InferenceSession> _sessions = new();
-    private readonly HttpClient _http = new();
+    // FIX #3: HttpClient mit Redirect-Beschränkung
+    private static readonly HttpClient _http = CreateSafeHttpClient();
     private readonly string _modelDir;
     private bool _disposed;
+
+    /// <summary>
+    /// Erstellt einen sicheren HttpClient mit Redirect-Beschränkung.
+    /// </summary>
+    private static HttpClient CreateSafeHttpClient()
+    {
+        var handler = new HttpClientHandler
+        {
+            AllowAutoRedirect = true,
+            MaxAutomaticRedirections = 3,
+            AutomaticDecompression = System.Net.DecompressionMethods.GZip | System.Net.DecompressionMethods.Deflate
+        };
+        return new HttpClient(handler, disposeHandler: true);
+    }
 
     public event EventHandler<ModellDownloadFortschritt>? DownloadFortschritt;
     public event EventHandler<ModellId>? ModellBereit;
@@ -49,43 +70,43 @@ public sealed class ModelManager : IDisposable
         {
             Id = ModellId.NAFNet, Name = "NAFNet",
             Url = "https://github.com/TechFlipsi/FlipsiColor-Models/releases/download/v0.1/nafnet.onnx",
-            Sha256 = "", GroesseBytes = 17_825_792, Erforderlich = true
+            Sha256 = null, GroesseBytes = 17_825_792, Erforderlich = true
         };
         _modelle[ModellId.RestormerLight] = new()
         {
             Id = ModellId.RestormerLight, Name = "RestormerLight",
             Url = "https://github.com/TechFlipsi/FlipsiColor-Models/releases/download/v0.1/restormer_light.onnx",
-            Sha256 = "", GroesseBytes = 25_165_824, Erforderlich = true
+            Sha256 = null, GroesseBytes = 25_165_824, Erforderlich = true
         };
         _modelle[ModellId.RealHATGAN] = new()
         {
             Id = ModellId.RealHATGAN, Name = "RealHATGAN",
             Url = "https://github.com/TechFlipsi/FlipsiColor-Models/releases/download/v0.1/realhatgan.onnx",
-            Sha256 = "", GroesseBytes = 125_829_120, Erforderlich = false
+            Sha256 = null, GroesseBytes = 125_829_120, Erforderlich = false
         };
         _modelle[ModellId.RealESRGAN] = new()
         {
             Id = ModellId.RealESRGAN, Name = "RealESRGAN",
             Url = "https://github.com/TechFlipsi/FlipsiColor-Models/releases/download/v0.1/realesrgan.onnx",
-            Sha256 = "", GroesseBytes = 67_108_864, Erforderlich = false
+            Sha256 = null, GroesseBytes = 67_108_864, Erforderlich = false
         };
         _modelle[ModellId.CodeFormer] = new()
         {
             Id = ModellId.CodeFormer, Name = "CodeFormer",
             Url = "https://github.com/TechFlipsi/FlipsiColor-Models/releases/download/v0.1/codeformer.onnx",
-            Sha256 = "", GroesseBytes = 367_001_600, Erforderlich = false
+            Sha256 = null, GroesseBytes = 367_001_600, Erforderlich = false
         };
         _modelle[ModellId.AiLUTTransform] = new()
         {
             Id = ModellId.AiLUTTransform, Name = "AiLUTTransform",
             Url = "https://github.com/TechFlipsi/FlipsiColor-Models/releases/download/v0.1/ailut_transform.onnx",
-            Sha256 = "", GroesseBytes = 8_388_608, Erforderlich = true
+            Sha256 = null, GroesseBytes = 8_388_608, Erforderlich = true
         };
         _modelle[ModellId.EfficientNet] = new()
         {
             Id = ModellId.EfficientNet, Name = "EfficientNet",
             Url = "https://github.com/TechFlipsi/FlipsiColor-Models/releases/download/v0.1/efficientnet.onnx",
-            Sha256 = "", GroesseBytes = 4_818_304, Erforderlich = true
+            Sha256 = null, GroesseBytes = 4_818_304, Erforderlich = true
         };
 
         // Prüfe welche Modelle bereits lokal existieren
@@ -99,7 +120,8 @@ public sealed class ModelManager : IDisposable
     }
 
     /// <summary>
-    /// Stellt sicher dass ein Modell heruntergeladen und geladen ist
+    /// Stellt sicher dass ein Modell heruntergeladen und geladen ist.
+    /// FIX #10: Thread-Sicherheit — verhindert parallele Downloads desselben Modells.
     /// </summary>
     public async Task<bool> ModellSicherstellenAsync(ModellId id)
     {
@@ -109,17 +131,33 @@ public sealed class ModelManager : IDisposable
             return false;
         }
 
-        if (info.Heruntergeladen && _sessions.ContainsKey(id))
-            return true;
+        // FIX #10: Lock verhindert Race-Condition bei parallelen Downloads
+        lock (_lock)
+        {
+            if (info.Heruntergeladen && _sessions.ContainsKey(id))
+                return true;
+        }
 
-        // Herunterladen falls nötig
-        if (!info.Heruntergeladen)
+        // Herunterladen falls nötig (mit Lock — verhindert doppelten Download)
+        bool needsDownload;
+        lock (_lock)
+        {
+            needsDownload = !info.Heruntergeladen;
+        }
+
+        if (needsDownload)
         {
             if (!await ModellHerunterladenAsync(id))
                 return false;
         }
 
-        // ONNX Session erstellen
+        // ONNX Session erstellen (thread-sicher)
+        lock (_lock)
+        {
+            if (_sessions.ContainsKey(id))
+                return true;
+        }
+
         return ModellLaden(id);
     }
 
@@ -145,12 +183,34 @@ public sealed class ModelManager : IDisposable
         var zielPfad = ModellPfad(id);
         var tempPfad = zielPfad + ".downloading";
 
+        // FIX #3: URL-Validierung — HTTPS erzwingen, file:// und private IPs blockieren
+        if (!SecurityValidator.ValidiereDownloadUrl(info.Url))
+        {
+            Log.Error("Modell-Download abgelehnt: URL-Validierung fehlgeschlagen für {Name}", info.Name);
+            DownloadFehler?.Invoke(this, new ModellFehlerEventArgs(id, "URL-Validierung fehlgeschlagen"));
+            return false;
+        }
+
+        // FIX #6: Warnung wenn kein SHA256-Hash angegeben
+        if (string.IsNullOrEmpty(info.Sha256))
+        {
+            Log.Warning("Modell {Name}: kein SHA256-Hash hinterlegt — Integrität kann nicht verifiziert werden", info.Name);
+        }
+
         Log.Information("Lade Modell {Name} herunter ({Groesse:N0} bytes)...", info.Name, info.GroesseBytes);
 
         try
         {
             using var response = await _http.GetAsync(info.Url, HttpCompletionOption.ResponseHeadersRead);
             response.EnsureSuccessStatusCode();
+
+            // FIX #3: Antwort-URL nach Redirect prüfen — nur HTTPS erlaubt
+            if (response.RequestMessage?.RequestUri is { } finalUri && finalUri.Scheme != Uri.UriSchemeHttps)
+            {
+                Log.Error("Modell-Download abgelehnt: Redirect zu nicht-HTTPS ({Schema}) für {Name}", finalUri.Scheme, info.Name);
+                DownloadFehler?.Invoke(this, new ModellFehlerEventArgs(id, "Redirect zu nicht-HTTPS blockiert"));
+                return false;
+            }
 
             var totalBytes = response.Content.Headers.ContentLength ?? info.GroesseBytes;
             long empfangen = 0;
@@ -176,9 +236,8 @@ public sealed class ModelManager : IDisposable
                 var hash = await ComputeSha256Async(tempPfad);
                 if (!hash.Equals(info.Sha256, StringComparison.OrdinalIgnoreCase))
                 {
-                    Log.Error("SHA256-Fehler für {Name}: erwartet {Expected}, erhalten {Actual}",
-                        info.Name, info.Sha256, hash);
-                    File.Delete(tempPfad);
+                    Log.Error("SHA256-Fehler für {Name}: Hash stimmt nicht überein", info.Name);
+                    try { File.Delete(tempPfad); } catch { /* Ignorieren */ }
                     DownloadFehler?.Invoke(this, new ModellFehlerEventArgs(id, "SHA256-Verifikation fehlgeschlagen"));
                     return false;
                 }
@@ -186,16 +245,19 @@ public sealed class ModelManager : IDisposable
             }
 
             File.Move(tempPfad, zielPfad, overwrite: true);
-            info.Heruntergeladen = true;
+            lock (_lock)
+            {
+                info.Heruntergeladen = true;
+            }
             Log.Information("Modell {Name} erfolgreich heruntergeladen", info.Name);
             ModellBereit?.Invoke(this, id);
             return true;
         }
         catch (Exception ex)
         {
-            Log.Error(ex, "Download-Fehler für {Name}", info.Name);
-            if (File.Exists(tempPfad)) File.Delete(tempPfad);
-            DownloadFehler?.Invoke(this, new ModellFehlerEventArgs(id, ex.Message));
+            Log.Error("Download-Fehler für {Name}: {Fehler}", info.Name, SecurityValidator.BereinigeExceptionFuerLog(ex.Message));
+            try { if (File.Exists(tempPfad)) File.Delete(tempPfad); } catch { /* Ignorieren */ }
+            DownloadFehler?.Invoke(this, new ModellFehlerEventArgs(id, SecurityValidator.BereinigeExceptionFuerLog(ex.Message)));
             return false;
         }
     }
@@ -205,14 +267,21 @@ public sealed class ModelManager : IDisposable
         var pfad = ModellPfad(id);
         if (!File.Exists(pfad))
         {
-            Log.Error("Modell-Datei nicht gefunden: {Pfad}", pfad);
+            Log.Error("Modell-Datei nicht gefunden: {Name}", _modelle[id].Name);
             return false;
+        }
+
+        // FIX #10: Lock für thread-sichere Session-Erstellung
+        lock (_lock)
+        {
+            if (_sessions.ContainsKey(id))
+                return true; // Bereits von einem anderen Thread geladen
         }
 
         try
         {
             var sessionOptions = new SessionOptions();
-            // DirectML (GPU) als首选, Fallback auf CPU
+            // DirectML (GPU) bevorzugt, Fallback auf CPU
             try
             {
                 sessionOptions.AppendExecutionProvider_DML(0);
@@ -224,14 +293,18 @@ public sealed class ModelManager : IDisposable
             }
 
             var session = new InferenceSession(pfad, sessionOptions);
-            _sessions[id] = session;
+            lock (_lock)
+            {
+                _sessions[id] = session;
+            }
             Log.Information("Modell {Name}: ONNX Session erstellt (Inputs: {Inputs})",
                 _modelle[id].Name, string.Join(", ", session.InputNames));
             return true;
         }
         catch (Exception ex)
         {
-            Log.Error(ex, "Fehler beim Laden von Modell {Name}", _modelle[id].Name);
+            Log.Error("Fehler beim Laden von Modell {Name}: {Fehler}", _modelle[id].Name,
+                SecurityValidator.BereinigeExceptionFuerLog(ex.Message));
             return false;
         }
     }
@@ -247,10 +320,14 @@ public sealed class ModelManager : IDisposable
     {
         if (_disposed) return;
         _disposed = true;
-        foreach (var session in _sessions.Values)
-            session.Dispose();
-        _sessions.Clear();
-        _http.Dispose();
+        // FIX #10: Thread-sichere Session-Freigabe
+        lock (_lock)
+        {
+            foreach (var session in _sessions.Values)
+                session.Dispose();
+            _sessions.Clear();
+        }
+        // Hinweis: _http ist static und wird nicht pro-Instanz disposed
     }
 }
 

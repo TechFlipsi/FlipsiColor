@@ -29,7 +29,7 @@ public sealed class ModellInfo
     public required ModellId Id { get; init; }
     public required string Name { get; init; }
     public required string Url { get; init; }
-    public required string Sha256 { get; init; }
+    public string? Sha256 { get; init; }
     public required long GroesseBytes { get; init; }
     public required bool Erforderlich { get; init; }
     public bool Heruntergeladen { get; set; }

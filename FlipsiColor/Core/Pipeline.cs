@@ -15,11 +15,16 @@ public sealed class Pipeline
     public BetriebsModus Modus { get; set; } = BetriebsModus.Ask;
 
     /// <summary>
-    /// Gibt Standard-Parameter für einen Szenen-Typ zurück
+    /// Gibt Standard-Parameter für einen Szenen-Typ zurück.
+    /// Intensität und Modus aus der Pipeline-Instanz werden in die Parameter übernommen.
     /// </summary>
     public PipelineParams StandardParamsFuerSzene(string szenenTyp)
     {
-        var param = new PipelineParams();
+        var param = new PipelineParams
+        {
+            Intensitaet = Intensitaet,
+            Modus = Modus
+        };
 
         switch (szenenTyp.ToLowerInvariant())
         {

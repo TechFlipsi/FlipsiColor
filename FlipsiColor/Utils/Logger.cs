@@ -9,7 +9,8 @@ using Serilog.Events;
 namespace FlipsiColor.Utils;
 
 /// <summary>
-/// Strukturiertes Logging mit Serilog — Datei-Rotation + Console
+/// Strukturiertes Logging mit Serilog — Datei-Rotation + Console.
+/// FIX #9: Reduzierte Log-Level in Production — keine Debug-Logs mit sensiblen Daten.
 /// </summary>
 public class Logger
 {
@@ -17,7 +18,8 @@ public class Logger
     private const int MaxFiles = 5;
 
     /// <summary>
-    /// Initialisiert Serilog mit Datei- und Console-Output
+    /// Initialisiert Serilog mit Datei- und Console-Output.
+    /// FIX #9: Log-Level auf Information (nicht Debug) — reduziert sensible Daten in Logs.
     /// </summary>
     public static void Init(string? logDir = null)
     {
@@ -26,8 +28,9 @@ public class Logger
             "FlipsiColor", "Logs");
         Directory.CreateDirectory(logDir);
 
+        // FIX #9: MinimumLevel.Information statt Debug — verhindert Logging sensibler Details
         Log.Logger = new LoggerConfiguration()
-            .MinimumLevel.Debug()
+            .MinimumLevel.Information()
             .WriteTo.Console(
                 outputTemplate: "[{Timestamp:HH:mm:ss.fff}] [{Level:u3}] [{SourceContext}] {Message:lj}{NewLine}{Exception}")
             .WriteTo.File(
@@ -35,7 +38,8 @@ public class Logger
                 rollingInterval: RollingInterval.Day,
                 fileSizeLimitBytes: MaxFileSize,
                 retainedFileCountLimit: MaxFiles,
-                outputTemplate: "[{Timestamp:HH:mm:ss.fff}] [{Level:u3}] [{SourceContext}] {Message:lj}{NewLine}{Exception}")
+                // FIX #9: Keine Stack-Traces in File-Logs — nur Message
+                outputTemplate: "[{Timestamp:HH:mm:ss.fff}] [{Level:u3}] [{SourceContext}] {Message:lj}{NewLine}")
             .Enrich.FromLogContext()
             .CreateLogger();
 
@@ -79,7 +83,7 @@ public static class FileSystem
         if (!Directory.Exists(pfad))
         {
             Directory.CreateDirectory(pfad);
-            Log.Debug("Verzeichnis erstellt: {Pfad}", pfad);
+            Log.Information("Verzeichnis erstellt: {Pfad}", pfad);
         }
     }
 

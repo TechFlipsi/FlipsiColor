@@ -9,18 +9,24 @@ using System.Security.Cryptography;
 using System.Threading.Tasks;
 
 using FlipsiColor.Utils;
+// SecurityValidator wird über Utils-Namespace importiert
 
 namespace FlipsiColor.Core;
 
 /// <summary>
-/// Auto-Updater — GitHub Releases API, Downgrade-Schutz, Beta/Stable Kanal
+/// Auto-Updater — GitHub Releases API, Downgrade-Schutz, Beta/Stable Kanal.
+/// FIX #3: URL-Validierung (HTTPS), Redirect-Beschränkung, sicherer Download.
+/// FIX #10: Thread-Sicherheit und Schutz gegen parallele Updates.
 /// </summary>
 public sealed class AutoUpdater : IDisposable
 {
     private static readonly Serilog.ILogger Log = Serilog.Log.ForContext<AutoUpdater>();
-    private readonly HttpClient _http = new();
+    // FIX #3: HttpClient mit Redirect-Beschränkung
+    private static readonly HttpClient _http = CreateSafeHttpClient();
+    private readonly object _updateLock = new(); // FIX #10: Schutz gegen parallele Updates
     private System.Threading.Timer? _pruefTimer;
     private bool _disposed;
+    private bool _updateLaeuft; // FIX #10: Flag gegen doppelte Update-Ausführung
 
     private const string GitHubApiUrl = "https://api.github.com/repos/TechFlipsi/FlipsiColor/releases";
 
@@ -43,12 +49,36 @@ public sealed class AutoUpdater : IDisposable
         var versionStr = Assembly.GetEntryAssembly()?.GetName().Version?.ToString(3) ?? "0.2.0";
         _aktuelleVersion = new Version(versionStr);
 
-        // Ignorierte Version laden
-        // TODO: Aus Settings laden
+        // Ignorierte Version aus Settings laden
+        try
+        {
+            var settings = Settings.Laden();
+            if (!string.IsNullOrEmpty(settings.IgnorierteUpdateVersion))
+                _ignorierteVersion = settings.IgnorierteUpdateVersion;
+        }
+        catch (Exception ex)
+        {
+            Log.Warning("Ignorierte Version konnte nicht aus Settings geladen werden: {Fehler}", ex.Message);
+        }
 
         // Erste Prüfung in 30s, dann alle 24h
         _pruefTimer = new System.Threading.Timer(_ => Pruefen(), null, TimeSpan.FromSeconds(30), TimeSpan.FromHours(24));
         Log.Information("AutoUpdater initialisiert. Aktuell: v{Version}. Prüfung in 30s.", _aktuelleVersion);
+    }
+
+    /// <summary>
+    /// Erstellt einen sicheren HttpClient mit Redirect-Beschränkung.
+    /// FIX #3: Blockiert Redirects zu file:// oder http://.
+    /// </summary>
+    private static HttpClient CreateSafeHttpClient()
+    {
+        var handler = new HttpClientHandler
+        {
+            AllowAutoRedirect = true,
+            MaxAutomaticRedirections = 3,
+            AutomaticDecompression = System.Net.DecompressionMethods.GZip | System.Net.DecompressionMethods.Deflate
+        };
+        return new HttpClient(handler, disposeHandler: true);
     }
 
     public void Pruefen()
@@ -119,6 +149,13 @@ public sealed class AutoUpdater : IDisposable
                     }
                 }
 
+                // FIX #3: Download-URL validieren — nur HTTPS erlaubt
+                if (!string.IsNullOrEmpty(releaseUrl) && !SecurityValidator.ValidiereDownloadUrl(releaseUrl))
+                {
+                    Log.Warning("Update-Download-URL ungültig (nicht HTTPS oder private IP): {Url}", releaseUrl);
+                    releaseUrl = null;
+                }
+
                 UpdateVerfuegbar = true;
                 NeueVersion = tagStr;
                 Aenderungen = release.GetProperty("body").GetString() ?? "";
@@ -141,8 +178,8 @@ public sealed class AutoUpdater : IDisposable
         }
         catch (Exception ex)
         {
-            Log.Error(ex, "Update-Prüfung fehlgeschlagen");
-            FehlerAufgetreten?.Invoke(this, ex.Message);
+            Log.Error("Update-Prüfung fehlgeschlagen: {Fehler}", SecurityValidator.BereinigeExceptionFuerLog(ex.Message));
+            FehlerAufgetreten?.Invoke(this, SecurityValidator.BereinigeExceptionFuerLog(ex.Message));
         }
     }
 
@@ -151,6 +188,13 @@ public sealed class AutoUpdater : IDisposable
         if (string.IsNullOrEmpty(DownloadUrl))
         {
             FehlerAufgetreten?.Invoke(this, "Kein Download-Link verfügbar");
+            return;
+        }
+
+        // FIX #3: Download-URL erneut validieren vor dem Start
+        if (!SecurityValidator.ValidiereDownloadUrl(DownloadUrl))
+        {
+            FehlerAufgetreten?.Invoke(this, "Download-URL ungültig (nicht HTTPS)");
             return;
         }
 
@@ -163,6 +207,17 @@ public sealed class AutoUpdater : IDisposable
             return;
         }
 
+        // FIX #10: Schutz gegen parallele Update-Ausführung
+        lock (_updateLock)
+        {
+            if (_updateLaeuft)
+            {
+                Log.Warning("Update läuft bereits — UpdateStarten ignoriert");
+                return;
+            }
+            _updateLaeuft = true;
+        }
+
         _ = UpdateStartenAsync();
     }
 
@@ -170,17 +225,42 @@ public sealed class AutoUpdater : IDisposable
     {
         try
         {
-            var tempPfad = Path.Combine(Path.GetTempPath(), $"FlipsiColor-Update-{NeueVersion}.exe");
+            // FIX: Eindeutigen Temp-Dateinamen verwenden — verhindert Kollisionen
+            var tempPfad = Path.Combine(Path.GetTempPath(), $"FlipsiColor-Update-{NeueVersion}-{Guid.NewGuid():N}.exe");
 
-            Log.Information("Lade Update herunter: {Url}", DownloadUrl);
-            var data = await _http.GetByteArrayAsync(DownloadUrl);
-            await File.WriteAllBytesAsync(tempPfad, data);
+            Log.Information("Lade Update herunter: v{Version}", NeueVersion);
 
-            // SHA256 loggen
-            var hash = Convert.ToHexString(SHA256.HashData(data)).ToLowerInvariant();
+            // FIX #3: Download mit Redirect-Validierung
+            using var response = await _http.GetAsync(DownloadUrl, HttpCompletionOption.ResponseHeadersRead);
+            response.EnsureSuccessStatusCode();
+
+            // FIX #3: Antwort-URL nach Redirect prüfen — nur HTTPS
+            if (response.RequestMessage?.RequestUri is { } finalUri && finalUri.Scheme != Uri.UriSchemeHttps)
+            {
+                Log.Error("Update-Download abgelehnt: Redirect zu nicht-HTTPS ({Schema})", finalUri.Scheme);
+                FehlerAufgetreten?.Invoke(this, "Redirect zu nicht-HTTPS blockiert");
+                return;
+            }
+
+            // FIX: Datei als Stream herunterladen (nicht GetByteArrayAsync — verhindert OOM bei großen Updates)
+            await using var content = await response.Content.ReadAsStreamAsync();
+            await using var file = new FileStream(tempPfad, FileMode.Create, FileAccess.Write, FileShare.None);
+            var buffer = new byte[81920];
+            int gelesen;
+            while ((gelesen = await content.ReadAsync(buffer.AsMemory())) > 0)
+            {
+                await file.WriteAsync(buffer.AsMemory(0, gelesen));
+            }
+            await file.FlushAsync();
+
+            // SHA256 loggen (Information-Disclosure-Schutz: nur Hash, nicht Pfad)
+            var hash = await Utils.Crypto.Sha256FileAsync(tempPfad);
             Log.Information("Download SHA256: {Hash}", hash);
 
-            // Installer starten und App beenden
+            // FIX #10: SHA256-Verifikation würde hier erfolgen — derzeit nur Logging
+            // In einer Produktionsumgebung sollte der erwartete Hash aus der Release-API kommen
+
+            // FIX: Installer mit UseShellExecute=false starten — keine Shell-Injection möglich
             Process.Start(new ProcessStartInfo
             {
                 FileName = tempPfad,
@@ -192,8 +272,16 @@ public sealed class AutoUpdater : IDisposable
         }
         catch (Exception ex)
         {
-            Log.Error(ex, "Update-Download fehlgeschlagen");
-            FehlerAufgetreten?.Invoke(this, ex.Message);
+            Log.Error("Update-Download fehlgeschlagen: {Fehler}", SecurityValidator.BereinigeExceptionFuerLog(ex.Message));
+            FehlerAufgetreten?.Invoke(this, SecurityValidator.BereinigeExceptionFuerLog(ex.Message));
+        }
+        finally
+        {
+            // FIX #10: Update-Flag zurücksetzen
+            lock (_updateLock)
+            {
+                _updateLaeuft = false;
+            }
         }
     }
 
@@ -208,7 +296,17 @@ public sealed class AutoUpdater : IDisposable
     public void Ignorieren()
     {
         _ignorierteVersion = NeueVersion;
-        // TODO: In Settings speichern
+        // Ignorierte Version in Settings speichern
+        try
+        {
+            var settings = Settings.Laden();
+            settings.IgnorierteUpdateVersion = NeueVersion;
+            settings.Speichern();
+        }
+        catch (Exception ex)
+        {
+            Log.Warning("Ignorierte Version konnte nicht gespeichert werden: {Fehler}", ex.Message);
+        }
         UpdateVerfuegbar = false;
         UpdateVerfuegbarChanged?.Invoke(this, false);
         Log.Information("Version v{Version} wird ignoriert", NeueVersion);
