@@ -2,6 +2,8 @@ using System.IO;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 using OpenCvSharp;
+using FlipsiColor.Utils;
+// SecurityValidator wird über Utils-Namespace importiert
 
 namespace FlipsiColor.Color;
 
@@ -43,23 +45,27 @@ public sealed class DistortionGridCorrector
     /// Kalibriert die Linsenverzerrung anhand eines Schachbrett-Referenzbilds.
     /// Findet Corners, verfeinert diese subpixelgenau und berechnet
     /// Kamera-Matrix + Distortion-Koeffizienten via OpenCV calibrateCamera.
+    /// FIX #1: Pfad-Validierung gegen Path-Traversal.
     /// </summary>
     /// <param name="referenzBildPfad">Pfad zum Schachbrett-Foto.</param>
     /// <returns>true bei erfolgreicher Kalibrierung.</returns>
     public bool Kalibrieren(string referenzBildPfad)
     {
-        Log.Information("Starte Distortion-Grid-Kalibrierung: {Pfad}", referenzBildPfad);
-
-        if (!File.Exists(referenzBildPfad))
+        // FIX #1: Pfad-Validierung gegen Path-Traversal
+        var validierterPfad = SecurityValidator.ValidiereDateiPfad(referenzBildPfad);
+        if (validierterPfad == null)
         {
-            Log.Error("Referenzbild nicht gefunden: {Pfad}", referenzBildPfad);
+            Log.Warning("Distortion-Grid-Kalibrierung: Pfad-Validierung fehlgeschlagen");
             return false;
         }
+        referenzBildPfad = validierterPfad;
+
+        Log.Information("Starte Distortion-Grid-Kalibrierung");
 
         using Mat bild = Cv2.ImRead(referenzBildPfad, ImreadModes.Color);
         if (bild.Empty())
         {
-            Log.Error("Referenzbild konnte nicht geladen werden: {Pfad}", referenzBildPfad);
+            Log.Error("Referenzbild konnte nicht geladen werden");
             return false;
         }
 
@@ -223,6 +229,8 @@ public sealed class DistortionGridCorrector
 
     /// <summary>
     /// Speichert die Kalibrierung als JSON-Datei.
+    /// FIX #1: Pfad-Validierung gegen Path-Traversal.
+    /// FIX #5: JSON-Serialisierung mit typ-sicheren Optionen (kein TypeNameHandling).
     /// </summary>
     /// <param name="pfad">Zieldatei-Pfad.</param>
     /// <returns>true bei Erfolg.</returns>
@@ -231,6 +239,15 @@ public sealed class DistortionGridCorrector
         if (!IstKalibriert)
         {
             Log.Warning("Speichern: keine Kalibrierung vorhanden");
+            return false;
+        }
+
+        // FIX #1: Ausgabe-Pfad validieren
+        var jsonEndungen = new HashSet<string>(StringComparer.OrdinalIgnoreCase) { ".json" };
+        var validierterPfad = SecurityValidator.ValidiereAusgabePfad(pfad, jsonEndungen);
+        if (validierterPfad == null)
+        {
+            Log.Warning("Speichern: Pfad-Validierung fehlgeschlagen");
             return false;
         }
 
@@ -245,39 +262,67 @@ public sealed class DistortionGridCorrector
             };
 
             string json = JsonSerializer.Serialize(daten, KalibrierungsJsonOptionen);
-            File.WriteAllText(pfad, json);
-            Log.Information("Kalibrierung gespeichert: {Pfad}", pfad);
+            File.WriteAllText(validierterPfad, json);
+            Log.Information("Kalibrierung gespeichert");
             return true;
         }
         catch (Exception ex)
         {
-            Log.Error(ex, "Speichern der Kalibrierung fehlgeschlagen: {Pfad}", pfad);
+            Log.Error("Speichern der Kalibrierung fehlgeschlagen: {Fehler}",
+                SecurityValidator.BereinigeExceptionFuerLog(ex.Message));
             return false;
         }
     }
 
     /// <summary>
     /// Lädt eine Kalibrierung aus einer JSON-Datei.
+    /// FIX #1: Pfad-Validierung gegen Path-Traversal.
+    /// FIX #5: Typ-sichere Deserialisierung — Matrix-Dimensionen werden validiert.
     /// </summary>
     /// <param name="pfad">Quelldatei-Pfad.</param>
     /// <returns>true bei Erfolg.</returns>
     public bool Laden(string pfad)
     {
-        if (!File.Exists(pfad))
+        // FIX #1: Pfad-Validierung gegen Path-Traversal
+        var jsonEndungen = new HashSet<string>(StringComparer.OrdinalIgnoreCase) { ".json" };
+        var validierterPfad = SecurityValidator.ValidiereDateiPfad(pfad, jsonEndungen);
+        if (validierterPfad == null)
         {
-            Log.Error("Kalibrierungsdatei nicht gefunden: {Pfad}", pfad);
+            Log.Warning("Laden: Pfad-Validierung fehlgeschlagen");
             return false;
         }
 
         try
         {
-            string json = File.ReadAllText(pfad);
+            string json = File.ReadAllText(validierterPfad);
             KalibrierungsDaten? daten = JsonSerializer.Deserialize<KalibrierungsDaten>(
                 json, KalibrierungsJsonOptionen);
 
             if (daten is null || daten.KameraMatrix is null || daten.DistortionKoeffizienten is null)
             {
-                Log.Error("Kalibrierungsdatei ungültig: {Pfad}", pfad);
+                Log.Error("Kalibrierungsdatei ungültig");
+                return false;
+            }
+
+            // FIX #5: Matrix-Dimensionen validieren — verhindert Typ-Confusion / Buffer-Overflow
+            if (daten.KameraMatrix.GetLength(0) != 3 || daten.KameraMatrix.GetLength(1) != 3)
+            {
+                Log.Error("Kalibrierungsdatei ungültig: Kamera-Matrix muss 3×3 sein");
+                return false;
+            }
+
+            // FIX #5: Bild-Dimensionen validieren — verhindert extrem große Werte
+            if (daten.BildBreite <= 0 || daten.BildBreite > 100000 ||
+                daten.BildHoehe <= 0 || daten.BildHoehe > 100000)
+            {
+                Log.Error("Kalibrierungsdatei ungültig: Bild-Dimensionen außerhalb gültiger Bereich");
+                return false;
+            }
+
+            // FIX #5: Distortion-Koeffizienten-Anzahl begrenzen
+            if (daten.DistortionKoeffizienten.Length < 1 || daten.DistortionKoeffizienten.Length > 20)
+            {
+                Log.Error("Kalibrierungsdatei ungültig: Distortion-Koeffizienten-Anzahl ungültig");
                 return false;
             }
 
@@ -285,13 +330,14 @@ public sealed class DistortionGridCorrector
             _kameraMatrix = daten.KameraMatrix;
             _distortionKoeffizienten = daten.DistortionKoeffizienten;
 
-            Log.Information("Kalibrierung geladen: {Pfad} ({Breite}×{Hoehe})",
-                pfad, _bildGroesse.Width, _bildGroesse.Height);
+            Log.Information("Kalibrierung geladen ({Breite}×{Hoehe})",
+                _bildGroesse.Width, _bildGroesse.Height);
             return true;
         }
         catch (Exception ex)
         {
-            Log.Error(ex, "Laden der Kalibrierung fehlgeschlagen: {Pfad}", pfad);
+            Log.Error("Laden der Kalibrierung fehlgeschlagen: {Fehler}",
+                SecurityValidator.BereinigeExceptionFuerLog(ex.Message));
             return false;
         }
     }

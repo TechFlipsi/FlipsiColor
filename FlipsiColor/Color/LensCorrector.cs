@@ -319,11 +319,20 @@ public sealed class LensCorrector : IDisposable
 }
 
 /// <summary>
-/// P/Invoke Wrapper für lensfun.dll
+/// P/Invoke Wrapper für lensfun.dll.
+/// FIX #4: DllImport mit SearchPath-Beschränkung — lädt nur aus dem App-Verzeichnis,
+/// nicht aus dem aktuellen Arbeitsverzeichnis oder PATH (verhindert DLL-Hijacking).
 /// </summary>
 internal static class LensfunNative
 {
+    // FIX #4: DefaultDllImportSearchPaths-Attribut auf jeder P/Invoke-Methode
+    // verhindert DLL-Hijacking — lädt nur aus ApplicationDirectory und System32.
     private const string DllName = "lensfun";
+
+    // FIX #4: Sichere DLL-Suchpfade als Konstante
+    private const System.Runtime.InteropServices.DllImportSearchPath SichereSuchpfade =
+        System.Runtime.InteropServices.DllImportSearchPath.ApplicationDirectory |
+        System.Runtime.InteropServices.DllImportSearchPath.System32;
 
     // --- Modifikations-Flags (lfModifier) ---
     public const int LF_MODIFY_TCA = 0x00000001;
@@ -351,24 +360,30 @@ internal static class LensfunNative
     public const int LF_FISHEYE_THOBY = 7;
 
     [DllImport(DllName, CallingConvention = CallingConvention.Cdecl)]
+    [System.Runtime.InteropServices.DefaultDllImportSearchPaths(SichereSuchpfade)]
     public static extern IntPtr lf_db_new();
 
     [DllImport(DllName, CallingConvention = CallingConvention.Cdecl)]
+    [System.Runtime.InteropServices.DefaultDllImportSearchPaths(SichereSuchpfade)]
     public static extern int lf_db_load(IntPtr db);
 
     [DllImport(DllName, CallingConvention = CallingConvention.Cdecl)]
+    [System.Runtime.InteropServices.DefaultDllImportSearchPaths(SichereSuchpfade)]
     public static extern void lf_db_destroy(IntPtr db);
 
     [DllImport(DllName, CallingConvention = CallingConvention.Cdecl)]
+    [System.Runtime.InteropServices.DefaultDllImportSearchPaths(SichereSuchpfade)]
     public static extern IntPtr lf_db_find_cam(IntPtr db, string manufacturer);
 
     [DllImport(DllName, CallingConvention = CallingConvention.Cdecl)]
+    [System.Runtime.InteropServices.DefaultDllImportSearchPaths(SichereSuchpfade)]
     public static extern IntPtr lf_db_find_lens(IntPtr db, string lensName);
 
     /// <summary>
     /// Erstellt einen neuen Lensfun-Modifier für das gegebene Objektiv.
     /// </summary>
     [DllImport(DllName, CallingConvention = CallingConvention.Cdecl)]
+    [System.Runtime.InteropServices.DefaultDllImportSearchPaths(SichereSuchpfade)]
     public static extern IntPtr lf_modifier_new(
         IntPtr lens, float crop, int width, int height);
 
@@ -377,6 +392,7 @@ internal static class LensfunNative
     /// Liefert eine Bitmaske der tatsächlich aktivierten Korrekturen (0 = keine).
     /// </summary>
     [DllImport(DllName, CallingConvention = CallingConvention.Cdecl)]
+    [System.Runtime.InteropServices.DefaultDllImportSearchPaths(SichereSuchpfade)]
     public static extern int lf_modifier_initialize(
         IntPtr modifier, IntPtr lens, int format,
         float focal, float aperture, float distance, float scale,
@@ -388,6 +404,7 @@ internal static class LensfunNative
     /// res muss ein float-Array der Größe width*height*6 sein.
     /// </summary>
     [DllImport(DllName, CallingConvention = CallingConvention.Cdecl)]
+    [System.Runtime.InteropServices.DefaultDllImportSearchPaths(SichereSuchpfade)]
     [return: MarshalAs(UnmanagedType.Bool)]
     public static extern bool lf_modifier_apply_subpixel_geometry_distortion(
         IntPtr modifier, float xu, float yu, int width, int height, IntPtr res);
@@ -397,6 +414,7 @@ internal static class LensfunNative
     /// comp_role beschreibt die Pixel-Komponenten-Reihenfolge (LF_CR_*).
     /// </summary>
     [DllImport(DllName, CallingConvention = CallingConvention.Cdecl)]
+    [System.Runtime.InteropServices.DefaultDllImportSearchPaths(SichereSuchpfade)]
     [return: MarshalAs(UnmanagedType.Bool)]
     public static extern bool lf_modifier_apply_color_modification(
         IntPtr modifier, IntPtr pixels, float x, float y,
@@ -406,5 +424,6 @@ internal static class LensfunNative
     /// Gibt den Modifier und alle zugehörigen Ressourcen frei.
     /// </summary>
     [DllImport(DllName, CallingConvention = CallingConvention.Cdecl)]
+    [System.Runtime.InteropServices.DefaultDllImportSearchPaths(SichereSuchpfade)]
     public static extern void lf_modifier_destroy(IntPtr modifier);
 }

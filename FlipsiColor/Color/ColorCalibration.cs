@@ -2,6 +2,8 @@ using System.IO;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 using OpenCvSharp;
+using FlipsiColor.Utils;
+// SecurityValidator wird über Utils-Namespace importiert
 
 namespace FlipsiColor.Color;
 
@@ -102,23 +104,27 @@ public sealed class ColorCalibration
     /// <summary>
     /// Lädt ein Referenzbild mit einem ColorChecker oder einer Graukarte,
     /// erkennt die Felder und berechnet die Farb-Transfer-Matrix.
+    /// FIX #1: Pfad-Validierung gegen Path-Traversal.
     /// </summary>
     /// <param name="referenzBildPfad">Pfad zum Referenzbild.</param>
     /// <returns>true bei erfolgreicher Kalibrierung.</returns>
     public bool Kalibrieren(string referenzBildPfad)
     {
-        Log.Information("Starte Farb-Kalibrierung (Modus={Modus}): {Pfad}", Modus, referenzBildPfad);
-
-        if (!File.Exists(referenzBildPfad))
+        // FIX #1: Pfad-Validierung gegen Path-Traversal
+        var validierterPfad = SecurityValidator.ValidiereDateiPfad(referenzBildPfad);
+        if (validierterPfad == null)
         {
-            Log.Error("Referenzbild nicht gefunden: {Pfad}", referenzBildPfad);
+            Log.Warning("Farb-Kalibrierung: Pfad-Validierung fehlgeschlagen");
             return false;
         }
+        referenzBildPfad = validierterPfad;
+
+        Log.Information("Starte Farb-Kalibrierung (Modus={Modus})", Modus);
 
         using Mat bild = Cv2.ImRead(referenzBildPfad, ImreadModes.Color);
         if (bild.Empty())
         {
-            Log.Error("Referenzbild konnte nicht geladen werden: {Pfad}", referenzBildPfad);
+            Log.Error("Referenzbild konnte nicht geladen werden");
             return false;
         }
 
@@ -234,6 +240,7 @@ public sealed class ColorCalibration
 
     /// <summary>
     /// Speichert die Kalibrierung als JSON-Datei.
+    /// FIX #1: Pfad-Validierung gegen Path-Traversal.
     /// </summary>
     /// <param name="pfad">Zieldatei-Pfad.</param>
     /// <returns>true bei Erfolg.</returns>
@@ -242,6 +249,15 @@ public sealed class ColorCalibration
         if (!IstKalibriert)
         {
             Log.Warning("Speichern: keine Kalibrierung vorhanden");
+            return false;
+        }
+
+        // FIX #1: Ausgabe-Pfad validieren
+        var jsonEndungen = new HashSet<string>(StringComparer.OrdinalIgnoreCase) { ".json" };
+        var validierterPfad = SecurityValidator.ValidiereAusgabePfad(pfad, jsonEndungen);
+        if (validierterPfad == null)
+        {
+            Log.Warning("Speichern: Pfad-Validierung fehlgeschlagen");
             return false;
         }
 
@@ -254,38 +270,45 @@ public sealed class ColorCalibration
             };
 
             string json = JsonSerializer.Serialize(daten, JsonOptionen);
-            File.WriteAllText(pfad, json);
-            Log.Information("Farb-Kalibrierung gespeichert: {Pfad}", pfad);
+            File.WriteAllText(validierterPfad, json);
+            Log.Information("Farb-Kalibrierung gespeichert");
             return true;
         }
         catch (Exception ex)
         {
-            Log.Error(ex, "Speichern der Farb-Kalibrierung fehlgeschlagen: {Pfad}", pfad);
+            Log.Error("Speichern der Farb-Kalibrierung fehlgeschlagen: {Fehler}",
+                SecurityValidator.BereinigeExceptionFuerLog(ex.Message));
             return false;
         }
     }
 
     /// <summary>
     /// Lädt eine Kalibrierung aus einer JSON-Datei.
+    /// FIX #1: Pfad-Validierung gegen Path-Traversal.
+    /// FIX #5: Typ-sichere Deserialisierung — Matrix-Dimensionen werden validiert.
     /// </summary>
     /// <param name="pfad">Quelldatei-Pfad.</param>
     /// <returns>true bei Erfolg.</returns>
     public bool Laden(string pfad)
     {
-        if (!File.Exists(pfad))
+        // FIX #1: Pfad-Validierung gegen Path-Traversal
+        var jsonEndungen = new HashSet<string>(StringComparer.OrdinalIgnoreCase) { ".json" };
+        var validierterPfad = SecurityValidator.ValidiereDateiPfad(pfad, jsonEndungen);
+        if (validierterPfad == null)
         {
-            Log.Error("Kalibrierungsdatei nicht gefunden: {Pfad}", pfad);
+            Log.Warning("Laden: Pfad-Validierung fehlgeschlagen");
             return false;
         }
 
         try
         {
-            string json = File.ReadAllText(pfad);
+            string json = File.ReadAllText(validierterPfad);
             KalibrierungsDaten? daten = JsonSerializer.Deserialize<KalibrierungsDaten>(json, JsonOptionen);
 
+            // FIX #5: Matrix-Dimensionen strikt validieren — verhindert Typ-Confusion
             if (daten is null || daten.Matrix is null || daten.Matrix.GetLength(0) != 3 || daten.Matrix.GetLength(1) != 3)
             {
-                Log.Error("Kalibrierungsdatei ungültig (Matrix fehlt oder nicht 3×3): {Pfad}", pfad);
+                Log.Error("Kalibrierungsdatei ungültig (Matrix fehlt oder nicht 3×3)");
                 return false;
             }
 
@@ -297,13 +320,14 @@ public sealed class ColorCalibration
             else
                 VerwendeterModus = KalibrierungsModus.Auto;
 
-            Log.Information("Farb-Kalibrierung geladen: {Pfad} (Modus={Modus})", pfad, VerwendeterModus);
+            Log.Information("Farb-Kalibrierung geladen (Modus={Modus})", VerwendeterModus);
             MatrixProtokollieren();
             return true;
         }
         catch (Exception ex)
         {
-            Log.Error(ex, "Laden der Farb-Kalibrierung fehlgeschlagen: {Pfad}", pfad);
+            Log.Error("Laden der Farb-Kalibrierung fehlgeschlagen: {Fehler}",
+                SecurityValidator.BereinigeExceptionFuerLog(ex.Message));
             return false;
         }
     }

@@ -1,4 +1,5 @@
 using System;
+using System.Runtime.InteropServices;
 using OpenCvSharp;
 
 using FlipsiColor.Utils;
@@ -15,62 +16,184 @@ public sealed class ColorManager : IDisposable
     public const string Arbeitsfarbraum = "ProPhoto RGB";
     private bool _disposed;
 
+    // ProPhoto RGB (ROMM RGB) Primärwerte in CIE xy:
+    //   Rot   x=0.7347  y=0.2653
+    //   Grün  x=0.1596  y=0.8404
+    //   Blau  x=0.0366  y=0.0001
+    // Weißpunkt D50 (ProPhoto uses D50): Xn=0.9642, Yn=1.0, Zn=0.8249
+    // In D65 (sRGB/Windows-Standard) angegeben, dann nach D50 transformiert.
+    // Die folgende Matrix ist die Standard sRGB→ProPhoto RGB (D65) Matrix
+    // aus Bruce Lindbloom's Referenz. Wir kombinieren BGR→sRGB linear→ProPhoto RGB.
+
+    // sRGB→ProPhoto RGB Matrix (D50, aus Lindbloom, transponiert für Cv2.Transform mit RGB-Spaltenvektoren):
+    // [ 0.7976749,  0.1351915,  0.0313436]
+    // [ 0.2880402,  0.7118742,  0.0000856]
+    // [ 0.0000000,  0.0000000,  0.8252100]
+    // Diese Matrix multipliziert lineares RGB (sRGB) → ProPhoto RGB (beide D50).
+
+    /// <summary>
+    /// sRGB→ProPhoto RGB Konvertierungsmatrix (3×3, CV_32FC1, RGB-Reihenfolge)
+    /// Quelle: Bruce Lindbloom — Chromatic Adaptation + RGB/RGB Matrizen
+    /// </summary>
+    private static readonly float[,] SrgbToProPhoto =
+    {
+        { 0.7976749f, 0.1351915f, 0.0313436f },
+        { 0.2880402f, 0.7118742f, 0.0000856f },
+        { 0.0000000f, 0.0000000f, 0.8252100f }
+    };
+
     public void Initialisieren()
     {
         Log.Information("Farbmanagement initialisiert. Arbeitsfarbraum: {Farbraum}", Arbeitsfarbraum);
         var monitorProfil = MonitorProfilErkennen();
-        Log.Information("Monitor-Profil: {Profil}", monitorProfil ?? "nicht gefunden");
+        Log.Information("Monitor-Profil: {Profil}", monitorProfil ?? "sRGB (Fallback)");
     }
 
     /// <summary>
-    /// Erkennt das ICC-Profil des Monitors (Windows API via System.Drawing)
+    /// Erkennt das ICC-Profil des primären Monitors via Win32 GetICMProfileW.
+    /// Fällt auf sRGB zurück, wenn kein Profil gefunden wird oder die API nicht verfügbar ist.
     /// </summary>
     public string? MonitorProfilErkennen()
     {
         try
         {
-            // Windows: ICC-Profil via System.Drawing (WPF Dispatcher nötig)
-            // TODO: Win32 API GetICMProfile für primären Monitor
             Log.Debug("Monitor-Profil-Erkennung aufgerufen");
-            return null; // Wird mit Win32 Interop implementiert
+
+            // Device Context für den primären Bildschirm holen
+            IntPtr hdc = IcmNative.GetDC(IntPtr.Zero);
+            if (hdc == IntPtr.Zero)
+            {
+                Log.Debug("GetDC fehlgeschlagen — sRGB-Fallback");
+                return null;
+            }
+
+            try
+            {
+                // Puffer für den ICC-Profil-Pfad (MAX_PATH = 260)
+                var sb = new System.Text.StringBuilder(260);
+                int laenge = sb.Capacity;
+
+                bool ok = IcmNative.GetICMProfileW(hdc, ref laenge, sb);
+                if (ok && laenge > 0)
+                {
+                    var profil = sb.ToString();
+                    Log.Debug("ICC-Profil gefunden: {Profil}", profil);
+                    return profil;
+                }
+
+                Log.Debug("Kein ICC-Profil für primären Monitor — sRGB-Fallback");
+                return null;
+            }
+            finally
+            {
+                IcmNative.ReleaseDC(IntPtr.Zero, hdc);
+            }
         }
         catch (Exception ex)
         {
-            Log.Warning(ex, "Monitor-Profil konnte nicht erkannt werden");
+            // Auf Linux/Mono oder ohne GDI+ nicht verfügbar — sRGB-Fallback
+            Log.Debug("Monitor-Profil-Erkennung nicht verfügbar (Platform?) — sRGB-Fallback: {Msg}", ex.Message);
             return null;
         }
     }
 
     /// <summary>
-    /// Konvertiert ein Bild in den ProPhoto RGB Arbeitsfarbraum
+    /// Konvertiert ein Bild in den ProPhoto RGB Arbeitsfarbraum.
+    /// Pipeline: BGR → lineares sRGB (Gamma-Dekodierung) → ProPhoto RGB (Matrix).
+    /// Die Gamma-Dekodierung approximiert sRGB→linear mit Potenz 2.2.
     /// </summary>
     public Mat NachArbeitsfarbraumKonvertieren(Mat eingabe)
     {
         if (eingabe.Empty())
             return eingabe;
 
-        var result = new Mat();
-        if (eingabe.Channels() == 3)
+        if (eingabe.Channels() is not 3 and not 4)
         {
-            // BGR → ProPhoto RGB (approximiert via BGR→XYZ→RGB mit breitem Gamut)
-            // Echte ICC-Transformation via LCMS2 P/Invoke ist TODO
-            // Aktuell: BGR → XYZ (D65) als Annäherung an linearen Arbeitsfarbraum
-            Cv2.CvtColor(eingabe, result, ColorConversionCodes.BGR2XYZ);
+            var result = new Mat();
+            eingabe.CopyTo(result);
+            return result;
         }
-        else if (eingabe.Channels() == 4)
+
+        // BGRA → BGR, Alpha separat behandeln
+        Mat bgr;
+        Mat? alpha = null;
+        if (eingabe.Channels() == 4)
         {
-            // BGRA: BGR→XYZ für die Farbkanäle, Alpha beibehalten
-            var bgr = new Mat();
-            Cv2.CvtColor(eingabe, bgr, ColorConversionCodes.BGRA2BGR);
-            Cv2.CvtColor(bgr, result, ColorConversionCodes.BGR2XYZ);
-            bgr.Dispose();
-            // TODO: Alpha-Kanal mappen
+            var channels = Cv2.Split(eingabe);
+            bgr = new Mat();
+            Cv2.Merge([channels[0], channels[1], channels[2]], bgr);
+            alpha = channels[3];
+            channels[0].Dispose();
+            channels[1].Dispose();
+            channels[2].Dispose();
         }
         else
         {
-            eingabe.CopyTo(result);
+            bgr = eingabe.Clone();
         }
-        return result;
+
+        try
+        {
+            // BGR → RGB (Matrix arbeitet in RGB-Reihenfolge)
+            Mat rgb = new();
+            Cv2.CvtColor(bgr, rgb, ColorConversionCodes.BGR2RGB);
+
+            // Nach Float konvertieren und normalisieren auf [0,1]
+            Mat rgb32 = new();
+            rgb.ConvertTo(rgb32, MatType.CV_32FC3, 1.0 / 255.0);
+
+            // sRGB Gamma-Dekodierung: linear ≈ sRGB^2.2 (Approximation)
+            Mat linear = new();
+            Cv2.Pow(rgb32, 2.2, linear);
+
+            // 3×3 Matrix für Cv2.Transform erstellen (RGB→ProPhoto)
+            using Mat m = new(3, 3, MatType.CV_32FC1);
+            for (int i = 0; i < 3; i++)
+                for (int j = 0; j < 3; j++)
+                    m.Set<float>(i, j, SrgbToProPhoto[i, j]);
+
+            // Lineare Transformation pro Pixel: dst = m * src
+            Mat proPhoto = new();
+            Cv2.Transform(linear, proPhoto, m);
+
+            // Zurück nach 8-Bit: ProPhoto Gamma-Kodierung (2.2) + Skalierung
+            Mat proPhoto8 = new();
+            Cv2.Pow(proPhoto, 1.0 / 2.2, proPhoto8);
+            proPhoto8.ConvertTo(proPhoto8, MatType.CV_8UC3, 255.0);
+
+            // RGB → BGR für die weitere OpenCV-Verarbeitung
+            Mat ergebnisBgr = new();
+            Cv2.CvtColor(proPhoto8, ergebnisBgr, ColorConversionCodes.RGB2BGR);
+
+            // Hilfs-Mats freigeben
+            rgb.Dispose();
+            rgb32.Dispose();
+            linear.Dispose();
+            proPhoto.Dispose();
+            proPhoto8.Dispose();
+
+            // Alpha wieder anhängen falls vorhanden
+            if (alpha != null)
+            {
+                var bgra = new Mat();
+                Cv2.CvtColor(ergebnisBgr, bgra, ColorConversionCodes.BGR2BGRA);
+                // Alpha-Kanal durch Merge ersetzen
+                var ch = Cv2.Split(bgra);
+                ch[3].Dispose();
+                ch[3] = alpha;
+                Cv2.Merge(ch, bgra);
+                foreach (var c in ch) c.Dispose();
+                ergebnisBgr.Dispose();
+                return bgra;
+            }
+
+            return ergebnisBgr;
+        }
+        finally
+        {
+            bgr.Dispose();
+            alpha?.Dispose();
+        }
     }
 
     public void Dispose()
@@ -162,4 +285,23 @@ public sealed class WhiteBalance
         double tint = (rRatio - bRatio) * 50;
         return (temp, tint);
     }
+}
+
+/// <summary>
+/// Win32 ICM-API für ICC-Profil-Erkennung (P/Invoke)
+/// </summary>
+internal static class IcmNative
+{
+    private const string Gdi32 = "gdi32.dll";
+    private const string User32 = "user32.dll";
+
+    [DllImport(User32, CallingConvention = CallingConvention.Winapi)]
+    public static extern IntPtr GetDC(IntPtr hWnd);
+
+    [DllImport(User32, CallingConvention = CallingConvention.Winapi)]
+    public static extern int ReleaseDC(IntPtr hWnd, IntPtr hDC);
+
+    [DllImport(Gdi32, CallingConvention = CallingConvention.Winapi, SetLastError = true)]
+    [return: MarshalAs(UnmanagedType.Bool)]
+    public static extern bool GetICMProfileW(IntPtr hdc, ref int lpszFilename, System.Text.StringBuilder lpszFilenameBuffer);
 }

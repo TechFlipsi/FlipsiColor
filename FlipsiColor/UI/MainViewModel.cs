@@ -22,6 +22,7 @@ public partial class MainViewModel : ObservableObject, IDisposable
     private readonly ModelManager _modelManager;
     private readonly ColorManager _colorManager;
     private readonly ImagePipeline _imagePipeline;
+    private readonly VideoPipeline _videoPipeline;
     private readonly AutoUpdater _autoUpdater;
 
     [ObservableProperty] private string _title = "FlipsiColor v0.3.0";
@@ -35,6 +36,13 @@ public partial class MainViewModel : ObservableObject, IDisposable
     [ObservableProperty] private string _statusText = "Bereit";
     [ObservableProperty] private bool _pipelineLaeuft;
     [ObservableProperty] private BitmapSource? _pipelineBild;
+
+    // Video-Status
+    [ObservableProperty] private bool _videoGeladen;
+    [ObservableProperty] private string _videoPfad = "";
+    [ObservableProperty] private bool _videoPipelineLaeuft;
+    [ObservableProperty] private double _videoFortschritt;
+    [ObservableProperty] private string _videoInfo = "";
 
     // DJI Auto-Merge
     private readonly DjiAutoMerge _djiAutoMerge = new();
@@ -60,6 +68,14 @@ public partial class MainViewModel : ObservableObject, IDisposable
     [ObservableProperty] private bool _colorCalibrationAktiv;
     [ObservableProperty] private int _intensitaetIndex = 1; // Mittel
 
+    // Upscaling & Gesichtswiederherstellung
+    [ObservableProperty] private int _hochskalierenFaktor = 1;
+    [ObservableProperty] private bool _gesichtswiederherstellungAktiv;
+
+    // StyleLUT
+    [ObservableProperty] private string? _styleLutPfad;
+    [ObservableProperty] private string _styleLutName = "";
+
     // Theme
     [ObservableProperty] private string _aktuellesTheme = "System";
 
@@ -70,6 +86,7 @@ public partial class MainViewModel : ObservableObject, IDisposable
         _modelManager = new ModelManager();
         _colorManager = new ColorManager();
         _imagePipeline = new ImagePipeline(_modelManager, _colorManager);
+        _videoPipeline = new VideoPipeline(_modelManager, _colorManager);
         _autoUpdater = new AutoUpdater();
 
         GPUInfo.Erkennen();
@@ -95,6 +112,26 @@ public partial class MainViewModel : ObservableObject, IDisposable
         _autoUpdater.NeueVersionChanged += (_, version) =>
             System.Windows.Application.Current.Dispatcher.Invoke(() => NeueVersion = version);
     }
+
+    /// <summary>
+    /// Konvertiert IntensitaetIndex (0/1/2) in den Intensitaet-Enum.
+    /// </summary>
+    private Intensitaet IntensitaetFromIndex() => IntensitaetIndex switch
+    {
+        0 => Intensitaet.Leicht,
+        2 => Intensitaet.Stark,
+        _ => Intensitaet.Mittel
+    };
+
+    /// <summary>
+    /// Konvertiert AktuellerModus-String in den BetriebsModus-Enum.
+    /// </summary>
+    private BetriebsModus ModusFromString() => AktuellerModus switch
+    {
+        "Turbo" => BetriebsModus.Turbo,
+        "SmartLearn" => BetriebsModus.SmartLearn,
+        _ => BetriebsModus.Ask
+    };
 
     /// <summary>Öffentliche Methode für Drag&Drop (von Code-Behind)</summary>
     public bool LoadBild(string pfad)
@@ -161,11 +198,17 @@ public partial class MainViewModel : ObservableObject, IDisposable
             Lichter = Lichter,
             Schatten = Schatten,
             SchaerfeBetrag = Schaerfe,
-            LuminanzRauschen = RauschenLuma,
-            ChrominanzRauschen = RauschenChroma,
+            LuminanzRauschen = RauschenLuma / 100f, // Slider 0-100 → 0.0-1.0
+            ChrominanzRauschen = RauschenChroma / 100f,
             ObjektivkorrekturAktiv = Objektivkorrektur,
             DistortionGridAktiv = DistortionGridAktiv,
-            ColorCalibrationAktiv = ColorCalibrationAktiv
+            ColorCalibrationAktiv = ColorCalibrationAktiv,
+            // ── Verkabelte Parameter ──
+            Intensitaet = IntensitaetFromIndex(),
+            Modus = ModusFromString(),
+            HochskalierenFaktor = HochskalierenFaktor,
+            GesichtswiederherstellungAktiv = GesichtswiederherstellungAktiv,
+            StyleLutPfad = StyleLutPfad
         };
 
         try
@@ -201,6 +244,10 @@ public partial class MainViewModel : ObservableObject, IDisposable
             Objektivkorrektur = true;
             DistortionGridAktiv = false;
             ColorCalibrationAktiv = false;
+            HochskalierenFaktor = 1;
+            GesichtswiederherstellungAktiv = false;
+            StyleLutPfad = null;
+            StyleLutName = "";
             StatusText = "Parameter zurückgesetzt";
         }
         catch (Exception ex)
@@ -256,6 +303,129 @@ public partial class MainViewModel : ObservableObject, IDisposable
         catch (Exception ex)
         {
             StatusText = $"Fehler: {ex.Message}";
+        }
+    }
+
+    [RelayCommand]
+    private void StyleLutLaden()
+    {
+        try
+        {
+            var dialog = new Microsoft.Win32.OpenFileDialog
+            {
+                Filter = "LUT-Dateien|*.cube|Alle Dateien|*.*",
+                Title = "Style-LUT (.cube) öffnen"
+            };
+
+            if (dialog.ShowDialog() == true)
+            {
+                StyleLutPfad = dialog.FileName;
+                StyleLutName = System.IO.Path.GetFileNameWithoutExtension(dialog.FileName);
+                StatusText = $"StyleLUT geladen: {StyleLutName}";
+            }
+        }
+        catch (Exception ex)
+        {
+            StatusText = $"Fehler: {ex.Message}";
+        }
+    }
+
+    [RelayCommand]
+    private void StyleLutEntfernen()
+    {
+        StyleLutPfad = null;
+        StyleLutName = "";
+        StatusText = "StyleLUT entfernt";
+    }
+
+    // ===== Video Commands =====
+
+    [RelayCommand]
+    private void VideoOeffnen()
+    {
+        try
+        {
+            var dialog = new Microsoft.Win32.OpenFileDialog
+            {
+                Filter = "Videodateien|*.mp4;*.mov;*.avi;*.mkv;*.mxf|Alle Dateien|*.*",
+                Title = "Video öffnen"
+            };
+
+            if (dialog.ShowDialog() == true)
+            {
+                if (_videoPipeline.VideoLaden(dialog.FileName))
+                {
+                    VideoPfad = dialog.FileName;
+                    VideoGeladen = true;
+                    VideoInfo = $"{_videoPipeline.Breite}x{_videoPipeline.Hoehe}, {_videoPipeline.Fps:F1}fps, {_videoPipeline.Dauer:F1}s";
+                    StatusText = $"Video geladen: {System.IO.Path.GetFileName(dialog.FileName)}";
+                }
+                else
+                {
+                    System.Windows.MessageBox.Show("Video konnte nicht geladen werden.", "Fehler", MessageBoxButton.OK, MessageBoxImage.Error);
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            System.Windows.MessageBox.Show($"Fehler: {ex.Message}", "Fehler", MessageBoxButton.OK, MessageBoxImage.Error);
+        }
+    }
+
+    [RelayCommand]
+    private async Task VideoPipelineAusfuehrenAsync()
+    {
+        if (!VideoGeladen || VideoPipelineLaeuft) return;
+
+        VideoPipelineLaeuft = true;
+        VideoFortschritt = 0;
+        StatusText = "Video-Pipeline läuft...";
+
+        var param = new PipelineParams
+        {
+            Belichtung = Belichtung,
+            Kontrast = Kontrast,
+            Saettigung = Saettigung,
+            Vibranz = Vibranz,
+            Lichter = Lichter,
+            Schatten = Schatten,
+            SchaerfeBetrag = Schaerfe,
+            LuminanzRauschen = RauschenLuma / 100f,
+            ChrominanzRauschen = RauschenChroma / 100f,
+            ObjektivkorrekturAktiv = Objektivkorrektur,
+            DistortionGridAktiv = DistortionGridAktiv,
+            ColorCalibrationAktiv = ColorCalibrationAktiv,
+            Intensitaet = IntensitaetFromIndex(),
+            Modus = ModusFromString(),
+            HochskalierenFaktor = 1, // Video: kein Upscaling (zu langsam)
+            GesichtswiederherstellungAktiv = GesichtswiederherstellungAktiv,
+            StyleLutPfad = StyleLutPfad
+        };
+
+        try
+        {
+            await Task.Run(() =>
+            {
+                _videoPipeline.PipelineAusfuehren(param, (aktueller, gesamt) =>
+                {
+                    System.Windows.Application.Current.Dispatcher.Invoke(() =>
+                    {
+                        VideoFortschritt = (double)aktueller / gesamt;
+                        StatusText = $"Video-Verarbeitung: {aktueller}/{gesamt} Frames";
+                    });
+                });
+            });
+
+            StatusText = "Video-Pipeline abgeschlossen";
+        }
+        catch (Exception ex)
+        {
+            StatusText = $"Video-Pipeline-Fehler: {ex.Message}";
+            System.Windows.MessageBox.Show($"Video-Pipeline fehlgeschlagen: {ex.Message}", "Fehler", MessageBoxButton.OK, MessageBoxImage.Error);
+        }
+        finally
+        {
+            VideoPipelineLaeuft = false;
         }
     }
 
@@ -348,9 +518,11 @@ public partial class MainViewModel : ObservableObject, IDisposable
                     Lichter = Lichter,
                     Schatten = Schatten,
                     SchaerfeBetrag = Schaerfe,
-                    LuminanzRauschen = RauschenLuma,
-                    ChrominanzRauschen = RauschenChroma,
-                    ObjektivkorrekturAktiv = Objektivkorrektur
+                    LuminanzRauschen = RauschenLuma / 100f,
+                    ChrominanzRauschen = RauschenChroma / 100f,
+                    ObjektivkorrekturAktiv = Objektivkorrektur,
+                    Intensitaet = IntensitaetFromIndex(),
+                    Modus = ModusFromString()
                 };
 
                 var ergebnis = await _djiAutoMerge.ClipsZusammenfuegenMitFarbkorrekturAsync(
@@ -405,9 +577,11 @@ public partial class MainViewModel : ObservableObject, IDisposable
                 Lichter = Lichter,
                 Schatten = Schatten,
                 SchaerfeBetrag = Schaerfe,
-                LuminanzRauschen = RauschenLuma,
-                ChrominanzRauschen = RauschenChroma,
-                ObjektivkorrekturAktiv = Objektivkorrektur
+                LuminanzRauschen = RauschenLuma / 100f,
+                ChrominanzRauschen = RauschenChroma / 100f,
+                ObjektivkorrekturAktiv = Objektivkorrektur,
+                Intensitaet = IntensitaetFromIndex(),
+                Modus = ModusFromString()
             };
 
             foreach (var gruppe in ClipGruppen)
@@ -446,6 +620,7 @@ public partial class MainViewModel : ObservableObject, IDisposable
     public void Dispose()
     {
         _imagePipeline.Dispose();
+        _videoPipeline.Dispose();
         _modelManager.Dispose();
         _autoUpdater.Dispose();
         _djiAutoMerge.Dispose();

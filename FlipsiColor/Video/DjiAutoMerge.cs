@@ -10,6 +10,7 @@ using OpenCvSharp;
 
 using FlipsiColor.Core;
 using FlipsiColor.Utils;
+// SecurityValidator wird über Utils-Namespace importiert
 
 namespace FlipsiColor.Video;
 
@@ -57,15 +58,19 @@ public sealed class DjiAutoMerge : IDisposable
     }
 
     /// <summary>
-    /// Scannt einen Ordner und gruppiert DJI-Clips automatisch
+    /// Scannt einen Ordner und gruppiert DJI-Clips automatisch.
+    /// FIX #1: Verzeichnis-Pfad wird gegen Path-Traversal validiert.
     /// </summary>
     public List<ClipGruppe> ClipsGruppieren(string ordner)
     {
-        if (!Directory.Exists(ordner))
+        // FIX #1: Verzeichnis-Pfad gegen Path-Traversal/UNC validieren
+        var validierterOrdner = SecurityValidator.ValidiereVerzeichnisPfad(ordner);
+        if (validierterOrdner == null || !Directory.Exists(validierterOrdner))
         {
-            Log.Warning("Ordner existiert nicht: {Ordner}", ordner);
+            Log.Warning("Ordner existiert nicht oder wurde abgelehnt");
             return [];
         }
+        ordner = validierterOrdner;
 
         var mp4Files = Directory.GetFiles(ordner, "*.MP4", SearchOption.TopDirectoryOnly)
             .Concat(Directory.GetFiles(ordner, "*.mp4", SearchOption.TopDirectoryOnly))
@@ -74,11 +79,11 @@ public sealed class DjiAutoMerge : IDisposable
 
         if (mp4Files.Count == 0)
         {
-            Log.Information("Keine MP4-Dateien in {Ordner}", ordner);
+            Log.Information("Keine MP4-Dateien im Ordner gefunden");
             return [];
         }
 
-        Log.Information("{Anzahl} MP4-Dateien gefunden in {Ordner}", mp4Files.Count, ordner);
+        Log.Information("{Anzahl} MP4-Dateien gefunden", mp4Files.Count);
 
         var gruppen = new Dictionary<string, List<string>>();
 
@@ -164,7 +169,8 @@ public sealed class DjiAutoMerge : IDisposable
     }
 
     /// <summary>
-    /// Fügt eine Clip-Gruppe zu einer einzelnen MP4 zusammen (FFmpeg concat — kein Re-Encoding)
+    /// Fügt eine Clip-Gruppe zu einer einzelnen MP4 zusammen (FFmpeg concat — kein Re-Encoding).
+    /// FIX #1: Ausgabe-Ordner wird validiert. FIX #2: Command-Injection durch sichere ArgumentList verhindert.
     /// </summary>
     public async Task<string?> ClipsZusammenfuegenAsync(
         ClipGruppe gruppe,
@@ -173,16 +179,26 @@ public sealed class DjiAutoMerge : IDisposable
     {
         if (gruppe.Dateien.Count < 2) return null;
 
+        // FIX #1: Ausgabe-Ordner gegen Path-Traversal validieren
+        var validierterOrdner = SecurityValidator.ValidiereVerzeichnisPfad(ausgabeOrdner);
+        if (validierterOrdner == null)
+        {
+            Log.Warning("ClipsZusammenfuegen: Ausgabe-Ordner abgelehnt");
+            return null;
+        }
+        ausgabeOrdner = validierterOrdner;
         Directory.CreateDirectory(ausgabeOrdner);
 
-        var ausgabeDatei = Path.Combine(ausgabeOrdner, $"{gruppe.GruppenName}_merged.mp4");
+        // FIX: GruppenName bereinigen — verhindert Path-Traversal im Dateinamen
+        var sichererGruppenName = gruppe.GruppenName.Replace("..", "").Replace("/", "").Replace("\\", "");
+        var ausgabeDatei = Path.Combine(ausgabeOrdner, $"{sichererGruppenName}_merged.mp4");
         if (File.Exists(ausgabeDatei))
         {
-            Log.Information("Bereits vorhanden: {Datei}", ausgabeDatei);
+            Log.Information("Bereits vorhanden: {Datei}", SecurityValidator.BereinigePfadFuerLog(ausgabeDatei));
             return ausgabeDatei;
         }
 
-        var concatDatei = Path.Combine(ausgabeOrdner, $"concat_{gruppe.GruppenName}.txt");
+        var concatDatei = Path.Combine(ausgabeOrdner, $"concat_{sichererGruppenName}.txt");
 
         try
         {
@@ -190,16 +206,11 @@ public sealed class DjiAutoMerge : IDisposable
             await File.WriteAllLinesAsync(concatDatei, lines);
 
             var start = DateTime.UtcNow;
+            // FIX #2: Sichere ArgumentList statt String-Arguments — verhindert Command-Injection
             using var process = new Process
             {
-                StartInfo = new ProcessStartInfo
-                {
-                    FileName = "ffmpeg",
-                    Arguments = $"-y -f concat -safe 0 -i \"{concatDatei}\" -c copy \"{ausgabeDatei}\"",
-                    UseShellExecute = false,
-                    RedirectStandardError = true,
-                    CreateNoWindow = true
-                }
+                StartInfo = SecurityValidator.SichereProcessStartInfo("ffmpeg",
+                    new[] { "-y", "-f", "concat", "-safe", "0", "-i", concatDatei, "-c", "copy", ausgabeDatei })
             };
             process.Start();
 
@@ -232,7 +243,7 @@ public sealed class DjiAutoMerge : IDisposable
         }
         catch (Exception ex)
         {
-            Log.Error(ex, "Fehler beim Zusammenfügen");
+            Log.Error("Fehler beim Zusammenfügen: {Fehler}", SecurityValidator.BereinigeExceptionFuerLog(ex.Message));
             return null;
         }
         finally
@@ -242,7 +253,8 @@ public sealed class DjiAutoMerge : IDisposable
     }
 
     /// <summary>
-    /// Fügt Clips zusammen UND wendet Farbkorrektur via VideoPipeline an
+    /// Fügt Clips zusammen UND wendet Farbkorrektur via VideoPipeline an.
+    /// FIX #1: Ausgabe-Ordner wird validiert.
     /// </summary>
     public async Task<string?> ClipsZusammenfuegenMitFarbkorrekturAsync(
         ClipGruppe gruppe,
@@ -254,12 +266,22 @@ public sealed class DjiAutoMerge : IDisposable
     {
         if (gruppe.Dateien.Count < 2) return null;
 
+        // FIX #1: Ausgabe-Ordner gegen Path-Traversal validieren
+        var validierterOrdner = SecurityValidator.ValidiereVerzeichnisPfad(ausgabeOrdner);
+        if (validierterOrdner == null)
+        {
+            Log.Warning("ClipsZusammenfuegenMitFarbkorrektur: Ausgabe-Ordner abgelehnt");
+            return null;
+        }
+        ausgabeOrdner = validierterOrdner;
         Directory.CreateDirectory(ausgabeOrdner);
 
-        var ausgabeDatei = Path.Combine(ausgabeOrdner, $"{gruppe.GruppenName}_colorcorrected.mp4");
+        // FIX: GruppenName bereinigen — verhindert Path-Traversal im Dateinamen
+        var sichererGruppenName = gruppe.GruppenName.Replace("..", "").Replace("/", "").Replace("\\", "");
+        var ausgabeDatei = Path.Combine(ausgabeOrdner, $"{sichererGruppenName}_colorcorrected.mp4");
         if (File.Exists(ausgabeDatei))
         {
-            Log.Information("Bereits vorhanden: {Datei}", ausgabeDatei);
+            Log.Information("Bereits vorhanden: {Datei}", SecurityValidator.BereinigePfadFuerLog(ausgabeDatei));
             return ausgabeDatei;
         }
 
@@ -289,14 +311,14 @@ public sealed class DjiAutoMerge : IDisposable
             if (farbkorrigiert != null && File.Exists(farbkorrigiert))
             {
                 try { File.Delete(merged); } catch { }
-                Log.Information("Farbkorrigiert: {Datei}", farbkorrigiert);
+                Log.Information("Farbkorrigiert: {Datei}", SecurityValidator.BereinigePfadFuerLog(farbkorrigiert));
             }
 
             return farbkorrigiert;
         }
         catch (Exception ex)
         {
-            Log.Error(ex, "Farbkorrektur fehlgeschlagen");
+            Log.Error("Farbkorrektur fehlgeschlagen: {Fehler}", SecurityValidator.BereinigeExceptionFuerLog(ex.Message));
             return merged;
         }
     }

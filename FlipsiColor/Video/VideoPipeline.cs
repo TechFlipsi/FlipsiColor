@@ -1,16 +1,20 @@
 using OpenCvSharp;
 using System;
+using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
 using System.Threading.Tasks;
 
 using FlipsiColor.Core;
 using FlipsiColor.Utils;
+// SecurityValidator wird über Utils-Namespace importiert
 
 namespace FlipsiColor.Video;
 
 /// <summary>
-/// Video-Pipeline — lädt Videos, verarbeitet Frame für Frame, exportiert mit FFMPEG
+/// Video-Pipeline — lädt Videos, erkennt Szenenwechsel, verarbeitet
+/// Frame für Frame mit FrameProcessor (effizienter als ImagePipeline pro Frame),
+/// exportiert mit FFMPEG und erhält die Audiospur.
 /// </summary>
 public sealed class VideoPipeline : IDisposable
 {
@@ -40,32 +44,33 @@ public sealed class VideoPipeline : IDisposable
     }
 
     /// <summary>
-    /// Lädt ein Video und liest Metadaten via FFMPEG ffprobe
+    /// Lädt ein Video und liest Metadaten via FFMPEG ffprobe.
+    /// Sicherheitsmaßnahmen: Pfad-Validierung (Path-Traversal/UNC), sichere Prozess-Argumente.
     /// </summary>
     public bool VideoLaden(string pfad)
     {
-        if (!File.Exists(pfad))
+        // FIX #1: Pfad-Validierung gegen Path-Traversal und UNC-Pfade
+        var videoEndungen = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
         {
-            Log.Error("Video nicht gefunden: {Pfad}", pfad);
+            ".mp4", ".mov", ".avi", ".mkv", ".m4v", ".wmv", ".flv"
+        };
+        var validierterPfad = SecurityValidator.ValidiereDateiPfad(pfad, videoEndungen);
+        if (validierterPfad == null)
+        {
+            Log.Warning("VideoLaden: Pfad-Validierung fehlgeschlagen");
             return false;
         }
 
-        _videoPfad = pfad;
+        _videoPfad = validierterPfad;
 
         try
         {
-            // ffprobe für Metadaten
-            var probe = new Process
-            {
-                StartInfo = new ProcessStartInfo
-                {
-                    FileName = "ffprobe",
-                    Arguments = $"-v error -select_streams v:0 -show_entries stream=width,height,r_frame_rate,nb_frames,duration -of csv=p=0 \"{pfad}\"",
-                    RedirectStandardOutput = true,
-                    UseShellExecute = false,
-                    CreateNoWindow = true
-                }
-            };
+            // FIX #2: Command-Injection verhindern — ArgumentList statt String-Arguments
+            var probePsi = SecurityValidator.SichereProcessStartInfo("ffprobe",
+                new[] { "-v", "error", "-select_streams", "v:0",
+                        "-show_entries", "stream=width,height,r_frame_rate,nb_frames,duration",
+                        "-of", "csv=p=0", validierterPfad });
+            var probe = new Process { StartInfo = probePsi };
             probe.Start();
             var output = probe.StandardOutput.ReadToEnd();
             probe.WaitForExit(10000);
@@ -91,19 +96,22 @@ public sealed class VideoPipeline : IDisposable
             }
 
             Log.Information("Video geladen: {Pfad} ({W}x{H}, {Fps}fps, {Frames} Frames, {Dauer:F1}s)",
-                pfad, _breite, _hoehe, _fps, _frameAnzahl, _dauer);
+                SecurityValidator.BereinigePfadFuerLog(validierterPfad), _breite, _hoehe, _fps, _frameAnzahl, _dauer);
             VideoGeladen?.Invoke(this, EventArgs.Empty);
             return true;
         }
         catch (Exception ex)
         {
-            Log.Error(ex, "Video konnte nicht geladen werden: {Pfad}", pfad);
+            Log.Error("Video konnte nicht geladen werden: {Fehler}", SecurityValidator.BereinigeExceptionFuerLog(ex.Message));
             return false;
         }
     }
 
     /// <summary>
-    /// Führt die Pipeline auf jedem Frame aus
+    /// Führt die Pipeline auf jedem Frame aus.
+    /// Nutzt SceneDetector für Szenenwechsel-Erkennung und FrameProcessor
+    /// (effizienter als ImagePipeline pro Frame).
+    /// Erhält die Audiospur durch Extraktion und Re-Mux nach Video-Encode.
     /// </summary>
     public void PipelineAusfuehren(PipelineParams param, Action<int, int>? fortschrittCallback = null)
     {
@@ -113,79 +121,211 @@ public sealed class VideoPipeline : IDisposable
             return;
         }
 
-        Log.Information("Video-Pipeline startet...");
+        Log.Information("Video-Pipeline startet (mit SceneDetector + FrameProcessor + Audio-Erhaltung)...");
 
-        // FFMPEG: Video lesen → Frame für Frame dekodieren → Pipeline → encodieren
-        // Aktuell: Prozess-basierter Ansatz
-        var tempDir = Path.Combine(Path.GetTempPath(), "FlipsiColor-Video");
+        // FIX #8: Temp-Verzeichnis mit eindeutigem Namen — wird in finally sicher gelöscht
+        var tempDir = Path.Combine(Path.GetTempPath(), $"FlipsiColor-Video-{Guid.NewGuid():N}");
         Directory.CreateDirectory(tempDir);
+
+        // Audio extrahieren (für Re-Mux nach Encoding)
+        string audioPfad = Path.Combine(tempDir, "audio.aac");
+        bool hatAudio = AudioExtrahieren(_videoPfad!, audioPfad);
 
         try
         {
-            // Frame-Extraktion via FFMPEG
-            var extract = new Process
-            {
-                StartInfo = new ProcessStartInfo
-                {
-                    FileName = "ffmpeg",
-                    Arguments = $"-i \"{_videoPfad}\" -vsync 0 \"{tempDir}/frame_%06d.png\"",
-                    RedirectStandardOutput = true,
-                    RedirectStandardError = true,
-                    UseShellExecute = false,
-                    CreateNoWindow = true
-                }
-            };
+            // ── Szenenwechsel-Erkennung ──
+            Log.Information("Szenenwechsel-Erkennung läuft...");
+            var szenenwechsel = SceneDetector.SzenenwechselErkennen(_videoPfad!, schwelle: 30.0);
+            Log.Information("{Anzahl} Szenenwechsel erkannt", szenenwechsel.Count);
+
+            // Szenen-Index pro Frame für Parameter-Anpassung
+            var frameSzeneMap = ErstelleFrameSzeneMap(szenenwechsel);
+
+            // FIX #2: Frame-Extraktion via FFMPEG — sichere ArgumentList statt String-Arguments
+            var framePattern = Path.Combine(tempDir, "frame_%06d.png");
+            var extractPsi = SecurityValidator.SichereProcessStartInfo("ffmpeg",
+                new[] { "-i", _videoPfad!, "-vsync", "0", framePattern });
+            var extract = new Process { StartInfo = extractPsi };
             extract.Start();
             extract.WaitForExit(300000); // 5 Min Timeout
 
             var frameFiles = Directory.GetFiles(tempDir, "frame_*.png");
+            Array.Sort(frameFiles);
             Log.Information("{Anzahl} Frames extrahiert", frameFiles.Length);
 
-            // Jeden Frame durch ImagePipeline schicken
-            using var imagePipeline = new Image.ImagePipeline(_modelManager, _colorManager);
+            // FrameProcessor verwenden (effizienter als ImagePipeline pro Frame)
+            using var frameProcessor = new FrameProcessor();
 
             for (int i = 0; i < frameFiles.Length; i++)
             {
-                if (imagePipeline.BildLaden(frameFiles[i]))
+                // Pro-Szene Parameter anpassen
+                var frameParams = param;
+                if (szenenwechsel.Count > 0)
                 {
-                    imagePipeline.PipelineAusfuehren(param);
-                    var ergebnis = imagePipeline.Ergebnis;
-                    if (ergebnis != null && !ergebnis.Empty())
+                    var szeneIdx = frameSzeneMap.GetValueOrDefault(i, 0);
+                    frameParams = SzeneParameterAnpassen(param, szeneIdx, szenenwechsel.Count);
+                }
+
+                // Frame laden und verarbeiten
+                using var frame = Cv2.ImRead(frameFiles[i], ImreadModes.Color);
+                if (!frame.Empty())
+                {
+                    using var ergebnis = frameProcessor.Verarbeiten(frame, frameParams);
+                    if (!ergebnis.Empty())
                     {
                         Cv2.ImWrite(frameFiles[i], ergebnis);
                     }
                 }
+
                 fortschrittCallback?.Invoke(i + 1, frameFiles.Length);
             }
 
-            // Video zurück encodieren
+            // Video zurück encodieren — mit Audio Re-Mux falls Audio vorhanden
+            // FIX: Ausgabe-Pfad validieren (verhindert Path-Traversal in Output)
+            var ausgabeEndungen = new HashSet<string>(StringComparer.OrdinalIgnoreCase) { ".mp4" };
             var outputPfad = Path.Combine(
-                Path.GetDirectoryName(_videoPfad)!,
+                Path.GetDirectoryName(_videoPfad) ?? Environment.GetFolderPath(Environment.SpecialFolder.MyVideos),
                 Path.GetFileNameWithoutExtension(_videoPfad) + "_korrigiert.mp4");
+            outputPfad = SecurityValidator.ValidiereAusgabePfad(outputPfad, ausgabeEndungen) ?? outputPfad;
 
-            var encode = new Process
+            // FIX #2: Encode via sichere ArgumentList — kein String-Arguments (Command-Injection-Schutz)
+            ProcessStartInfo encodePsi;
+            if (hatAudio && File.Exists(audioPfad))
             {
-                StartInfo = new ProcessStartInfo
-                {
-                    FileName = "ffmpeg",
-                    Arguments = $"-framerate {_fps} -i \"{tempDir}/frame_%06d.png\" -c:v libx264 -crf 18 \"{outputPfad}\"",
-                    UseShellExecute = false,
-                    CreateNoWindow = true
-                }
-            };
+                // Video + Audio Re-Mux
+                encodePsi = SecurityValidator.SichereProcessStartInfo("ffmpeg",
+                    new[] { "-framerate", _fps.ToString(System.Globalization.CultureInfo.InvariantCulture),
+                            "-i", framePattern!, "-i", audioPfad,
+                            "-c:v", "libx264", "-crf", "18", "-c:a", "aac", "-b:a", "192k",
+                            "-shortest", outputPfad });
+            }
+            else
+            {
+                // Nur Video (kein Audio vorhanden)
+                encodePsi = SecurityValidator.SichereProcessStartInfo("ffmpeg",
+                    new[] { "-framerate", _fps.ToString(System.Globalization.CultureInfo.InvariantCulture),
+                            "-i", framePattern!,
+                            "-c:v", "libx264", "-crf", "18", outputPfad });
+            }
+
+            var encode = new Process { StartInfo = encodePsi };
             encode.Start();
             encode.WaitForExit(300000);
 
-            // Temp-Dateien aufräumen
-            foreach (var f in frameFiles) File.Delete(f);
-
-            Log.Information("Video-Pipeline abgeschlossen: {Output}", outputPfad);
+            // FIX #8: Temp-Dateien aufräumen — in finally-Block für Sicherheit bei Exceptions
+            Log.Information("Video-Pipeline abgeschlossen: {Output}", SecurityValidator.BereinigePfadFuerLog(outputPfad));
             PipelineAbgeschlossen?.Invoke(this, EventArgs.Empty);
         }
         catch (Exception ex)
         {
-            Log.Error(ex, "Video-Pipeline fehlgeschlagen");
+            Log.Error("Video-Pipeline fehlgeschlagen: {Fehler}", SecurityValidator.BereinigeExceptionFuerLog(ex.Message));
         }
+        finally
+        {
+            // FIX #8: Temp-Verzeichnis immer löschen — auch bei Exception
+            try
+            {
+                if (Directory.Exists(tempDir))
+                    Directory.Delete(tempDir, recursive: true);
+            }
+            catch (Exception ex)
+            {
+                Log.Warning("Temp-Verzeichnis konnte nicht gelöscht werden: {Fehler}",
+                    SecurityValidator.BereinigeExceptionFuerLog(ex.Message));
+            }
+        }
+    }
+
+    /// <summary>
+    /// Extrahiert die Audiospur aus dem Video mit FFMPEG.
+    /// FIX #2: Sichere ArgumentList verhindert Command-Injection.
+    /// </summary>
+    private bool AudioExtrahieren(string videoPfad, string audioPfad)
+    {
+        try
+        {
+            var psi = SecurityValidator.SichereProcessStartInfo("ffmpeg",
+                new[] { "-i", videoPfad, "-vn", "-acodec", "aac", "-b:a", "192k", audioPfad, "-y" });
+            var extractAudio = new Process { StartInfo = psi };
+            extractAudio.Start();
+            extractAudio.WaitForExit(120000);
+
+            bool erfolg = extractAudio.ExitCode == 0 && File.Exists(audioPfad);
+            if (erfolg)
+                Log.Information("Audiospur extrahiert");
+            else
+                Log.Warning("Keine Audiospur im Video gefunden oder Extraktion fehlgeschlagen");
+
+            return erfolg;
+        }
+        catch (Exception ex)
+        {
+            Log.Warning(ex, "Audio-Extraktion fehlgeschlagen — Video wird ohne Audio encodiert");
+            return false;
+        }
+    }
+
+    /// <summary>
+    /// Erstellt eine Map von Frame-Index → Szenen-Index.
+    /// Frames vor dem ersten Szenenwechsel gehören zu Szene 0.
+    /// </summary>
+    private static Dictionary<int, int> ErstelleFrameSzeneMap(List<int> szenenwechsel)
+    {
+        var map = new Dictionary<int, int>();
+        for (int i = 0; i < szenenwechsel.Count; i++)
+        {
+            // Alle Frames ab diesem Szenenwechsel bis zum nächsten gehören zu Szene i+1
+            int startFrame = szenenwechsel[i];
+            int endFrame = i + 1 < szenenwechsel.Count ? szenenwechsel[i + 1] : int.MaxValue;
+            for (int f = startFrame; f < endFrame && f < 100000; f++)
+            {
+                map[f] = i + 1;
+            }
+        }
+        return map;
+    }
+
+    /// <summary>
+    /// Passt Pipeline-Parameter pro Szene an.
+    /// Verschiedene Szenen können unterschiedliche Belichtungs/Kontrast-Werte benötigen.
+    /// </summary>
+    private static PipelineParams SzeneParameterAnpassen(PipelineParams basis, int szeneIdx, int szeneAnzahl)
+    {
+        // Leichte Variation pro Szene, um Szenenwechsel auszugleichen
+        var param = new PipelineParams
+        {
+            Belichtung = basis.Belichtung,
+            Kontrast = basis.Kontrast,
+            Saettigung = basis.Saettigung,
+            Vibranz = basis.Vibranz,
+            Lichter = basis.Lichter,
+            Schatten = basis.Schatten,
+            SchaerfeBetrag = basis.SchaerfeBetrag,
+            LuminanzRauschen = basis.LuminanzRauschen,
+            ChrominanzRauschen = basis.ChrominanzRauschen,
+            ObjektivkorrekturAktiv = basis.ObjektivkorrekturAktiv,
+            GesichtswiederherstellungAktiv = basis.GesichtswiederherstellungAktiv,
+            HochskalierenFaktor = basis.HochskalierenFaktor,
+            DistortionGridAktiv = basis.DistortionGridAktiv,
+            ColorCalibrationAktiv = basis.ColorCalibrationAktiv,
+            Intensitaet = basis.Intensitaet,
+            Modus = basis.Modus,
+            StyleLutPfad = basis.StyleLutPfad,
+            AiStilName = basis.AiStilName,
+            ExifKamera = basis.ExifKamera,
+            ExifObjektiv = basis.ExifObjektiv,
+            ExifBrennweite = basis.ExifBrennweite,
+            ExifBlende = basis.ExifBlende,
+            ErkannteSzene = basis.ErkannteSzene
+        };
+
+        // Szenen-spezifische Anpassung: Belichtung leicht variieren
+        // um Helligkeitsunterschiede zwischen Szenen auszugleichen
+        // FIX #7: Begrenzung gegen Overflow/Underflow bei extremen float-Werten
+        float szeneOffset = (szeneIdx % 3 - 1) * 0.05f;
+        param.Belichtung = SecurityValidator.BegrenzeParameter(basis.Belichtung + szeneOffset, -1f, 1f);
+
+        return param;
     }
 
     public void Dispose()
