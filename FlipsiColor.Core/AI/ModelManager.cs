@@ -430,7 +430,7 @@ public sealed class ModelManager : IDisposable
 
         try
         {
-            var sessionOptions = new SessionOptions();
+            using var sessionOptions = new SessionOptions();
             // DirectML (GPU) nur auf Windows zur Laufzeit laden, sonst CPU-Only.
             // Microsoft.ML.OnnxRuntime (CPU) ist cross-platform; DirectML ist Windows-only.
             if (OperatingSystem.IsWindows())

@@ -98,7 +98,7 @@ public sealed class VapourSynthProcessor : IDisposable
                 if (IstBefehlVerfuegbar("ldconfig"))
                 {
                     var psi = SecurityValidator.SichereProcessStartInfo("ldconfig", new[] { "-p" });
-                    var proc = new Process { StartInfo = psi };
+                    using var proc = new Process { StartInfo = psi };
                     proc.Start();
                     var output = proc.StandardOutput.ReadToEnd();
                     proc.WaitForExit(5000);
@@ -131,7 +131,7 @@ public sealed class VapourSynthProcessor : IDisposable
         {
             var checker = OperatingSystem.IsWindows() ? "where" : "which";
             var psi = SecurityValidator.SichereProcessStartInfo(checker, new[] { befehl });
-            var proc = new Process { StartInfo = psi };
+            using var proc = new Process { StartInfo = psi };
             proc.Start();
             var output = proc.StandardOutput.ReadToEnd();
             proc.WaitForExit(5000);
@@ -168,7 +168,7 @@ public sealed class VapourSynthProcessor : IDisposable
                 new[] { "-v", "error", "-select_streams", "v:0",
                         "-show_entries", "stream=width,height,r_frame_rate,nb_frames",
                         "-of", "csv=p=0", validierterPfad });
-            var probe = new Process { StartInfo = probePsi };
+            using var probe = new Process { StartInfo = probePsi };
             probe.Start();
             var output = probe.StandardOutput.ReadToEnd();
             probe.WaitForExit(10000);
@@ -390,7 +390,7 @@ public sealed class VapourSynthProcessor : IDisposable
                 new[] { scriptPfad, "-", "--y4m" });
             vspipePsi.RedirectStandardOutput = true;
             vspipePsi.RedirectStandardError = true;
-            var vspipe = new Process { StartInfo = vspipePsi };
+            using var vspipe = new Process { StartInfo = vspipePsi };
 
             // FFmpeg Prozess starten — liest von stdin
             var ffmpegArgs = new List<string>
@@ -422,7 +422,7 @@ public sealed class VapourSynthProcessor : IDisposable
             var ffmpegPsi = SecurityValidator.SichereProcessStartInfo("ffmpeg", ffmpegArgs);
             ffmpegPsi.RedirectStandardInput = true;
             ffmpegPsi.RedirectStandardError = true;
-            var ffmpeg = new Process { StartInfo = ffmpegPsi };
+            using var ffmpeg = new Process { StartInfo = ffmpegPsi };
 
             // Beide Prozesse starten
             vspipe.Start();
@@ -528,7 +528,7 @@ public sealed class VapourSynthProcessor : IDisposable
         {
             var psi = SecurityValidator.SichereProcessStartInfo("ffmpeg",
                 new[] { "-i", videoPfad, "-vn", "-acodec", "aac", "-b:a", "192k", audioPfad, "-y" });
-            var proc = new Process { StartInfo = psi };
+            using var proc = new Process { StartInfo = psi };
             proc.Start();
             proc.WaitForExit(120000);
 
