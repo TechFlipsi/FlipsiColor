@@ -13,7 +13,7 @@ namespace FlipsiColor.Color;
 /// Style-LUT — KI-gelernte Farb-Lookup-Table für einheitliche Bildstile
 /// Unterstützt 1D-LUT (via Cv2.LUT) und 3D-.cube-LUTs (trilineare Interpolation).
 /// </summary>
-public sealed class StyleLUT
+public sealed class StyleLUT : IDisposable
 {
     private static readonly Serilog.ILogger Log = Serilog.Log.ForContext<StyleLUT>();
 
@@ -306,5 +306,16 @@ public sealed class StyleLUT
                 SecurityValidator.BereinigeExceptionFuerLog(ex.Message));
             return false;
         }
+    }
+
+    /// <summary>
+    /// Gibt die internen Mat-Ressourcen frei.
+    /// </summary>
+    public void Dispose()
+    {
+        _lut1d?.Dispose();
+        _lut3d?.Dispose();
+        _lut1d = null;
+        _lut3d = null;
     }
 }

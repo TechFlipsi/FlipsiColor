@@ -115,13 +115,13 @@ public sealed class ColorManager : IDisposable
 
         try
         {
-            Mat rgb = new();
+            using Mat rgb = new();
             Cv2.CvtColor(bgr, rgb, ColorConversionCodes.BGR2RGB);
 
-            Mat rgb32 = new();
+            using Mat rgb32 = new();
             rgb.ConvertTo(rgb32, MatType.CV_32FC3, 1.0 / 255.0);
 
-            Mat linear = new();
+            using Mat linear = new();
             Cv2.Pow(rgb32, 2.2, linear);
 
             using Mat m = new(3, 3, MatType.CV_32FC1);
@@ -129,21 +129,15 @@ public sealed class ColorManager : IDisposable
                 for (int j = 0; j < 3; j++)
                     m.Set<float>(i, j, SrgbToProPhoto[i, j]);
 
-            Mat proPhoto = new();
+            using Mat proPhoto = new();
             Cv2.Transform(linear, proPhoto, m);
 
-            Mat proPhoto8 = new();
+            using Mat proPhoto8 = new();
             Cv2.Pow(proPhoto, 1.0 / 2.2, proPhoto8);
             proPhoto8.ConvertTo(proPhoto8, MatType.CV_8UC3, 255.0);
 
             Mat ergebnisBgr = new();
             Cv2.CvtColor(proPhoto8, ergebnisBgr, ColorConversionCodes.RGB2BGR);
-
-            rgb.Dispose();
-            rgb32.Dispose();
-            linear.Dispose();
-            proPhoto.Dispose();
-            proPhoto8.Dispose();
 
             if (alpha != null)
             {

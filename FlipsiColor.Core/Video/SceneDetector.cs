@@ -33,12 +33,12 @@ public class SceneDetector
 
             while (true)
             {
-                var frame = new Mat();
+                using var frame = new Mat();
                 if (!capture.Read(frame) || frame.Empty())
                     break;
 
                 // Zu Grau konvertieren
-                var grau = new Mat();
+                using var grau = new Mat();
                 Cv2.CvtColor(frame, grau, ColorConversionCodes.BGR2GRAY);
 
                 if (vorherigesFrame != null)
@@ -57,8 +57,7 @@ public class SceneDetector
                 }
 
                 vorherigesFrame?.Dispose();
-                vorherigesFrame = grau;
-                frame.Dispose();
+                vorherigesFrame = grau.Clone(); // Clone weil grau disposed wird am Ende des using-Blocks
                 frameIdx++;
             }
 

@@ -88,6 +88,8 @@ public static class GPUInfo
 /// </summary>
 internal static class Win32GpuInfo
 {
+    private static readonly Serilog.ILogger Log = Serilog.Log.ForContext("SourceContext", "Win32GpuInfo");
+
     public static string? GetGpuNameWindows()
     {
         if (!OperatingSystem.IsWindows())
@@ -128,9 +130,9 @@ internal static class Win32GpuInfo
                 }
             }
         }
-        catch
+        catch (Exception ex)
         {
-            // Fallback
+            Log.Debug("GPU-Name via WMI fehlgeschlagen: {Fehler}", ex.Message);
         }
         return null;
     }

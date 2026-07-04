@@ -185,7 +185,7 @@ public sealed class ClipMerger : IDisposable
                     int.TryParse(match.Groups[6].Value, out var sekunde))
                 {
                     try { return new DateTime(jahr, monat, tag, stunde, minute, sekunde); }
-                    catch { /* invalid date */ }
+                    catch (Exception ex) { Log.Debug("Ungültiges Datum: {Fehler}", ex.Message); }
                 }
             }
         }

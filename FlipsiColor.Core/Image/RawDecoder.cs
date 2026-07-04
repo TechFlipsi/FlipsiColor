@@ -196,7 +196,7 @@ public class RawDecoder
             proc.WaitForExit(30000); // 30s Timeout
             if (!proc.HasExited)
             {
-                try { proc.Kill(true); } catch { /* Ignorieren */ }
+                try { proc.Kill(true); } catch (Exception ex) { Log.Debug("Process-Kill fehlgeschlagen: {Fehler}", ex.Message); }
                 Log.Debug("dcraw: Timeout — Prozess abgebrochen");
                 return null;
             }
@@ -262,7 +262,7 @@ public class RawDecoder
             proc.WaitForExit(30000);
             if (!proc.HasExited)
             {
-                try { proc.Kill(true); } catch { /* Ignorieren */ }
+                try { proc.Kill(true); } catch (Exception ex) { Log.Debug("Process-Kill fehlgeschlagen: {Fehler}", ex.Message); }
                 Log.Debug("ffmpeg: Timeout — Prozess abgebrochen");
                 return null;
             }

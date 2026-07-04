@@ -867,8 +867,12 @@ public sealed class ImagePipeline : IDisposable
             faktorB = 1.0f + (5500 - temperatur) / 15000f;
         }
 
-        bgr[2] *= faktorR;
-        bgr[0] *= faktorB;
+        var neuR = bgr[2] * faktorR;
+        bgr[2].Dispose();
+        bgr[2] = neuR;
+        var neuB = bgr[0] * faktorB;
+        bgr[0].Dispose();
+        bgr[0] = neuB;
 
         var result = new Mat();
         Cv2.Merge(bgr, result);
@@ -973,7 +977,9 @@ public sealed class ImagePipeline : IDisposable
 
         // S-Kanal anpassen
         var sDelta = saettigung * 0.5f + vibranz * 0.25f;
-        channels[1] = channels[1] + new Scalar(sDelta * 50, sDelta * 50, sDelta * 50, 0);
+        var neuG = channels[1] + new Scalar(sDelta * 50, sDelta * 50, sDelta * 50, 0);
+        channels[1].Dispose();
+        channels[1] = neuG;
         Cv2.Merge(channels, hsv);
         foreach (var c in channels) c.Dispose();
 

@@ -196,11 +196,11 @@ public sealed class ColorCalibration
             }
 
             // BGR → RGB (Matrix arbeitet in RGB-Reihenfolge)
-            Mat rgb = new();
+            using Mat rgb = new();
             Cv2.CvtColor(bgr, rgb, ColorConversionCodes.BGR2RGB);
 
             // Nach Float konvertieren für die Matrix-Multiplikation
-            Mat rgb32 = new();
+            using Mat rgb32 = new();
             rgb.ConvertTo(rgb32, MatType.CV_32FC3);
 
             // 3×3 Matrix als OpenCvSharp Mat (CV_32F für Cv2.Transform)
@@ -210,11 +210,11 @@ public sealed class ColorCalibration
                     m.Set<float>(i, j, (float)_matrix![i, j]);
 
             // Lineare Transformation pro Pixel: dst = m * src
-            Mat transformiert = new();
+            using Mat transformiert = new();
             Cv2.Transform(rgb32, transformiert, m);
 
             // Zurück nach 8-Bit (saturate_cast clippt auf 0–255)
-            Mat transformiert8 = new();
+            using Mat transformiert8 = new();
             transformiert.ConvertTo(transformiert8, MatType.CV_8UC3);
 
             // RGB → BGR für die weitere Verarbeitung
@@ -223,10 +223,6 @@ public sealed class ColorCalibration
 
             // Hilfs-Mats freigeben
             bgrTemp?.Dispose();
-            rgb.Dispose();
-            rgb32.Dispose();
-            transformiert.Dispose();
-            transformiert8.Dispose();
 
             Log.Debug("Farb-Korrektur angewendet: {Breite}×{Hoehe}", ergebnis.Width, ergebnis.Height);
             return ergebnis;
