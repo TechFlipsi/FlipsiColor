@@ -33,11 +33,18 @@ public class MatToBitmapConverter : IValueConverter
 /// <summary>
 /// Bool → Visibility Converter. Avalonia verwendet IsVisible (bool), nicht Visibility enum.
 /// Pitfall: Visibility.Collapsed → IsVisible="False" (bool, nicht enum).
+/// Akzeptiert auch int (Count > 0 → true).
 /// </summary>
 public class BoolToVisibilityConverter : IValueConverter
 {
     public object? Convert(object? value, Type targetType, object? parameter, CultureInfo culture)
-        => value is bool b && b;
+    {
+        if (value is bool b)
+            return b;
+        if (value is int i)
+            return i > 0;
+        return false;
+    }
 
     public object? ConvertBack(object? value, Type targetType, object? parameter, CultureInfo culture)
         => value is bool b && b;

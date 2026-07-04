@@ -11,41 +11,10 @@ permissions:
   contents: write
 
 jobs:
-  build:
-    strategy:
-      fail-fast: false
-      matrix:
-        os: [ubuntu-latest, windows-latest]
-    runs-on: ${{ matrix.os }}
-    steps:
-      - uses: actions/checkout@v4
-
-      - name: Setup .NET 10
-        uses: actions/setup-dotnet@v4
-        with:
-          dotnet-version: '10.0.x'
-
-      - name: Build (Linux)
-        if: matrix.os == 'ubuntu-latest'
-        run: |
-          dotnet restore FlipsiColor.sln
-          dotnet build FlipsiColor.sln -c Release --no-restore
-
-      - name: TestRunner (Linux)
-        if: matrix.os == 'ubuntu-latest'
-        run: |
-          pip install Pillow
-          CI=true dotnet run --project FlipsiColor.TestRunner/FlipsiColor.TestRunner.csproj -c Release
-
-      - name: Build (Windows)
-        if: matrix.os == 'windows-latest'
-        run: |
-          dotnet restore FlipsiColor.sln
-          dotnet build FlipsiColor.sln -c Release --no-restore
-
-  publish-linux:
-    needs: build
-    if: startsWith(github.ref, 'refs/tags/v')
+  # =============================================================================
+  # Job 1: Build Core (plattformunabhängig)
+  # =============================================================================
+  build-core:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -55,30 +24,25 @@ jobs:
         with:
           dotnet-version: '10.0.x'
 
-      - name: Restore (with RID)
-        run: dotnet restore FlipsiColor.sln -r linux-x64
+      - name: Restore Core
+        run: dotnet restore FlipsiColor.Core/FlipsiColor.Core.csproj
 
-      - name: Publish linux-x64
-        run: dotnet publish FlipsiColor.Avalonia/FlipsiColor.Avalonia.csproj -c Release -r linux-x64 --self-contained true -p:PublishSingleFile=true -p:IncludeNativeLibrariesForSelfExtract=true -o publish/linux-x64 --no-restore
+      - name: Build Core
+        run: dotnet build FlipsiColor.Core/FlipsiColor.Core.csproj -c Release --no-restore
 
-      - name: Install makeself
-        run: sudo apt-get install -y makeself
-
-      - name: Create makeself installer
+      - name: Run TestRunner
         run: |
-          makeself publish/linux-x64 FlipsiColor-${{ github.ref_name }}-Linux-x64-Installer.run \
-            "FlipsiColor ${{ github.ref_name }} — Linux x64 Installer" \
-            './FlipsiColor.Avalonia'
+          pip install Pillow
+          CI=true dotnet run --project FlipsiColor.TestRunner/FlipsiColor.TestRunner.csproj -c Release
 
-      - name: Upload Linux installer
-        uses: softprops/action-gh-release@v2
-        with:
-          files: FlipsiColor-${{ github.ref_name }}-Linux-x64-Installer.run
-
-  publish-windows:
-    needs: build
-    if: startsWith(github.ref, 'refs/tags/v')
+  # =============================================================================
+  # Job 2: Build Windows — WPF publish + Avalonia publish + Inno Setup Installer
+  # =============================================================================
+  build-windows:
+    needs: build-core
     runs-on: windows-latest
+    strategy:
+      fail-fast: false
     steps:
       - uses: actions/checkout@v4
 
@@ -87,22 +51,170 @@ jobs:
         with:
           dotnet-version: '10.0.x'
 
-      - name: Restore (with RID)
+      - name: Restore Solution
         run: dotnet restore FlipsiColor.sln -r win-x64
 
-      - name: Publish win-x64
-        run: dotnet publish FlipsiColor.Avalonia/FlipsiColor.Avalonia.csproj -c Release -r win-x64 --self-contained true -p:PublishSingleFile=true -p:IncludeNativeLibrariesForSelfExtract=true -o publish/win-x64 --no-restore
+      - name: Build Solution
+        run: dotnet build FlipsiColor.sln -c Release --no-restore
 
-      - name: Add NSIS to PATH
+      # ── WPF publish (win-x64) ──
+      - name: Publish WPF (win-x64)
+        run: |
+          dotnet publish FlipsiColor/FlipsiColor.csproj -c Release -r win-x64 --self-contained true -p:PublishSingleFile=true -p:IncludeNativeLibrariesForSelfExtract=true -o FlipsiColor/publish/win-x64 --no-restore
+
+      # ── Avalonia publish (win-x64) ──
+      - name: Publish Avalonia (win-x64)
+        run: |
+          dotnet publish FlipsiColor.Avalonia/FlipsiColor.Avalonia.csproj -c Release -r win-x64 --self-contained true -p:PublishSingleFile=true -p:IncludeNativeLibrariesForSelfExtract=true -o publish/avalonia-win-x64 --no-restore
+
+      # ── VC++ Redistributable Download ──
+      - name: Download VC++ Redistributable
         shell: pwsh
-        run: echo "C:\Program Files (x86)\NSIS" >> $env:GITHUB_PATH
+        run: |
+          Invoke-WebRequest -Uri "https://aka.ms/vs/17/release/vc_redist.x64.exe" -OutFile "FlipsiColor/publish/win-x64/VC_redist.x64.exe"
 
-      - name: Build NSIS Installer
-        working-directory: installer/windows
-        shell: cmd
-        run: makensis /DPUBLISH_DIR="..\..\publish\win-x64" installer.nsi
+      # ── Inno Setup Installer ──
+      - name: Install Inno Setup
+        run: choco install innosetup -y
+        shell: pwsh
 
-      - name: Upload Windows installer
+      - name: Extract Version
+        id: version
+        run: |
+          $csproj = Get-Content FlipsiColor/FlipsiColor.csproj -Raw
+          if ($csproj -match '<Version>(.*?)</Version>') {
+            $version = $Matches[1]
+          } else {
+            $version = "0.4.0"
+          }
+          echo "version=$version" >> $env:GITHUB_OUTPUT
+        shell: pwsh
+
+      - name: Build Inno Setup Installer
+        run: |
+          $version = "${{ steps.version.outputs.version }}"
+          iscc installer/installer.iss /DAppVersion=$version /Oinstaller-output
+        shell: pwsh
+
+      - name: Upload WPF Installer Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: FlipsiColor-${{ steps.version.outputs.version }}-Windows-setup
+          path: installer-output/FlipsiColor-*.exe
+          if-no-files-found: warn
+
+  # =============================================================================
+  # Job 3: Build Linux — Avalonia publish + .deb + .AppImage
+  # =============================================================================
+  build-linux:
+    needs: build-core
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup .NET 10
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
+
+      - name: Restore Solution
+        run: dotnet restore FlipsiColor.sln -r linux-x64
+
+      - name: Build Solution
+        run: dotnet build FlipsiColor.sln -c Release --no-restore
+
+      # ── Avalonia publish (linux-x64) ──
+      - name: Publish Avalonia (linux-x64)
+        run: |
+          dotnet publish FlipsiColor.Avalonia/FlipsiColor.Avalonia.csproj -c Release -r linux-x64 --self-contained true -p:PublishSingleFile=true -p:IncludeNativeLibrariesForSelfExtract=true -o installer/build/publish --no-restore
+
+      # ── .deb + .AppImage bauen ──
+      - name: Install dpkg-dev
+        run: sudo apt-get install -y dpkg-dev
+
+      - name: Build Linux Installers (.deb + .AppImage)
+        run: |
+          chmod +x installer/build-script.sh
+          ./installer/build-script.sh
+
+      - name: Upload .deb Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: FlipsiColor-linux-deb
+          path: installer/build/FlipsiColor-*.deb
+          if-no-files-found: warn
+
+      - name: Upload .AppImage Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: FlipsiColor-linux-appimage
+          path: installer/build/FlipsiColor-*.AppImage
+          if-no-files-found: warn
+
+  # =============================================================================
+  # Job 4: Release — Bei Tag-Push: GitHub Release mit allen Installern
+  # =============================================================================
+  release:
+    needs: [build-windows, build-linux]
+    if: startsWith(github.ref, 'refs/tags/v')
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Extract Version from Tag
+        id: version
+        run: echo "version=${GITHUB_REF_NAME#v}" >> $GITHUB_OUTPUT
+
+      # Windows Installer herunterladen
+      - name: Download Windows Installer
+        uses: actions/download-artifact@v4
+        with:
+          name: FlipsiColor-${{ steps.version.outputs.version }}-Windows-setup
+          path: release-artifacts
+
+      # Linux .deb herunterladen
+      - name: Download Linux .deb
+        uses: actions/download-artifact@v4
+        with:
+          name: FlipsiColor-linux-deb
+          path: release-artifacts
+
+      # Linux .AppImage herunterladen
+      - name: Download Linux .AppImage
+        uses: actions/download-artifact@v4
+        with:
+          name: FlipsiColor-linux-appimage
+          path: release-artifacts
+
+      - name: List Release Artifacts
+        run: ls -la release-artifacts/
+
+      - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
         with:
-          files: installer/windows/FlipsiColor-v*-Windows-x64-Installer.exe
+          files: release-artifacts/*
+          body: |
+            ## FlipsiColor ${{ steps.version.outputs.version }}
+
+            KI-gestützte Bild- & Videofarbkorrektur für alle Kameras.
+
+            ### Downloads
+            - **Windows:** `FlipsiColor-${{ steps.version.outputs.version }}-setup.exe` (Inno Setup Installer)
+            - **Linux (Ubuntu/Debian):** `FlipsiColor-${{ steps.version.outputs.version }}-linux.deb`
+            - **Linux (universell):** `FlipsiColor-${{ steps.version.outputs.version }}.AppImage`
+
+            ### Neu in v0.4.0
+            - VapourSynth als optionales Video-Backend (FFmpeg bleibt Standard)
+            - Linux-Installer: .deb + .AppImage
+            - Cross-Platform CI/CD (Windows + Linux)
+
+            ### Systemanforderungen
+            - Windows 10 (19041+) oder neuer / Ubuntu 20.04+ / Debian 11+
+            - 8 GB RAM
+            - GPU empfohlen (DirectML auf Windows, CPU auf Linux)
+            - FFmpeg installiert (Linux: `apt install ffmpeg`)
+            - libraw (Linux: `apt install libraw-dev`)
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

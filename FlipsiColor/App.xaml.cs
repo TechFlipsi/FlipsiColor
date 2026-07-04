@@ -8,7 +8,7 @@ using FlipsiColor.Utils;
 namespace FlipsiColor;
 
 /// <summary>
-/// FlipsiColor App — KI-gestützte Bild- & Videofarbkorrektur
+/// FlipsiColor App — KI-gestützte Bild- &amp; Videofarbkorrektur
 /// </summary>
 public partial class App : System.Windows.Application
 {
@@ -21,8 +21,8 @@ public partial class App : System.Windows.Application
 
         var log = Serilog.Log.ForContext<App>();
         log.Information("╔══════════════════════════════════╗");
-        log.Information("║  FlipsiColor v0.2.0 gestartet    ║");
-        log.Information("║  KI-Farb- & Videokorrektur       ║");
+        log.Information("║  FlipsiColor v0.4.0 gestartet    ║");
+        log.Information("║  KI-Farb- & Videokorrektur        ║");
         log.Information("╚══════════════════════════════════╝");
 
         // Theme anwenden

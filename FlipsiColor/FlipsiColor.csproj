@@ -6,9 +6,9 @@
     <ApplicationManifest>app.manifest</ApplicationManifest>
     <IncludeNativeLibrariesForSelfExtract>true</IncludeNativeLibrariesForSelfExtract>
     <PublishReadyToRun>true</PublishReadyToRun>
-    <Version>0.3.0</Version>
-    <AssemblyVersion>0.3.0.0</AssemblyVersion>
-    <FileVersion>0.3.0.0</FileVersion>
+    <Version>0.4.0</Version>
+    <AssemblyVersion>0.4.0.0</AssemblyVersion>
+    <FileVersion>0.4.0.0</FileVersion>
     <RootNamespace>FlipsiColor</RootNamespace>
     <OutputType>WinExe</OutputType>
     <TargetFramework>net10.0-windows</TargetFramework>
@@ -20,28 +20,19 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <!-- ONNX Runtime: DirectML for GPU + API -->
+    <!-- Core provides: ONNX Runtime, OpenCvSharp, Serilog, MetadataExtractor, System.Management -->
+    <ProjectReference Include="..\FlipsiColor.Core\FlipsiColor.Core.csproj" />
+  </ItemGroup>
+
+  <!-- WPF-only: DirectML native assemblies on Windows (Core references the NuGet
+       but DirectML native DLLs only flow when referenced from a Windows project). -->
+  <ItemGroup Condition="'$(OS)' == 'Windows_NT' OR '$(RuntimeIdentifier)' == 'win-x64'">
     <PackageReference Include="Microsoft.ML.OnnxRuntime.DirectML" Version="1.23.0" />
+  </ItemGroup>
 
-    <!-- Image Processing -->
-    <PackageReference Include="OpenCvSharp4" Version="4.10.0.*" />
-    <PackageReference Include="OpenCvSharp4.runtime.win" Version="4.10.0.*" />
-    <PackageReference Include="OpenCvSharp4.Extensions" Version="4.10.0.*" />
-
-    <!-- EXIF & Metadata -->
-    <PackageReference Include="MetadataExtractor" Version="2.*" />
-
-    <!-- Logging -->
-    <PackageReference Include="Serilog" Version="4.*" />
-    <PackageReference Include="Serilog.Sinks.File" Version="6.*" />
-    <PackageReference Include="Serilog.Sinks.Console" Version="6.*" />
-    <PackageReference Include="Serilog.Extensions.Logging" Version="8.*" />
-
-    <!-- MVVM -->
+  <ItemGroup>
+    <!-- MVVM — WPF UI-only dependency, not in Core -->
     <PackageReference Include="CommunityToolkit.Mvvm" Version="8.*" />
-
-    <!-- WMI for GPU detection -->
-    <PackageReference Include="System.Management" Version="8.*" />
   </ItemGroup>
 
   <ItemGroup>

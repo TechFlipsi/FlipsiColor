@@ -1,0 +1,13 @@
+[Desktop Entry]
+Version=1.0
+Type=Application
+Name=FlipsiColor
+GenericName=KI Bild- & Videofarbkorrektur
+GenericName[en]=AI Photo & Video Color Correction
+Comment=KI-gestützte Bild- und Videofarbkorrektur für alle Kameras
+Comment[en]=AI-powered photo and video color correction for all cameras
+Exec=FlipsiColor.Avalonia
+Icon=flipsicolor
+Terminal=false
+Categories=Graphics;Photography;Video;AudioVideo;
+Keywords=color;correction;photo;video;ai;raw;ffmpeg;vapoursynth
