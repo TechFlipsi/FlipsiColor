@@ -24,6 +24,19 @@ public enum BetriebsModus
 }
 
 /// <summary>
+/// Video-Backend für die Video-Processing-Pipeline.
+/// FFmpeg = Standard (Frame-basiert mit OpenCvSharp), VapourSynth = optional
+/// (Frame-Level-Processing mit Python-Filter-Pipelines, piped an FFmpeg).
+/// </summary>
+public enum VideoBackend
+{
+    /// <summary>FFmpeg — Standard-Backend, immer verfügbar.</summary>
+    FFmpeg,
+    /// <summary>VapourSynth — optionales Backend für Frame-Level-Filter-Pipelines.</summary>
+    VapourSynth
+}
+
+/// <summary>
 /// Pipeline-Parameter für Bild- und Videokorrektur
 /// </summary>
 public sealed class PipelineParams

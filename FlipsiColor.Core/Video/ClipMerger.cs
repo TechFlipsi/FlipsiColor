@@ -14,7 +14,7 @@ using FlipsiColor.Utils;
 namespace FlipsiColor.Video;
 
 /// <summary>
-/// ClipMerger — Fügt Video-Clips automatisch zusammen (für alle Kameras, nicht nur DJI).
+/// ClipMerger — Fügt Video-Clips automatisch zusammen (für alle Kameras).
 /// Gruppiert Video-Dateien nach Datum/Zeit aus dem Dateinamen oder EXIF-Metadaten.
 /// </summary>
 public sealed class ClipMerger : IDisposable
@@ -35,9 +35,9 @@ public sealed class ClipMerger : IDisposable
     /// </summary>
     private static readonly Regex[] DatumsPatterns =
     [
-        // YYYYMMDD_HHMMSS  (z.B. DJI_20250101_120000_001_D.MP4, GOPR0101_120000.MP4)
+        // YYYYMMDD_HHMMSS  (z.B. CAM_20250101_120000_001_D.MP4, GOPR0101_120000.MP4)
         new(@"(\d{4})(\d{2})(\d{2})[_\s](\d{2})(\d{2})(\d{2})", RegexOptions.IgnoreCase),
-        // YYYYMMDDHHMMSS   (z.B. DJI_20250101120000_001_D.MP4)
+        // YYYYMMDDHHMMSS   (z.B. CAM_20250101120000_001_D.MP4)
         new(@"(\d{4})(\d{2})(\d{2})(\d{2})(\d{2})(\d{2})", RegexOptions.IgnoreCase),
         // YYYY-MM-DD_HH-MM-SS oder YYYY-MM-DD-HH-MM-SS
         new(@"(\d{4})[-](\d{2})[-](\d{2})[_-](\d{2})[-](\d{2})[-](\d{2})", RegexOptions.IgnoreCase),
@@ -80,7 +80,7 @@ public sealed class ClipMerger : IDisposable
         }
         ordner = validierterOrdner;
 
-        // Alle Video-Dateien im Ordner finden (alle Kameras, nicht nur DJI)
+        // Alle Video-Dateien im Ordner finden (alle Kameras)
         var videoDateien = Directory.GetFiles(ordner, "*", SearchOption.TopDirectoryOnly)
             .Where(f => VideoEndungen.Contains(Path.GetExtension(f)))
             .OrderBy(f => f)
@@ -138,7 +138,7 @@ public sealed class ClipMerger : IDisposable
 
     /// <summary>
     /// Findet einen Gruppierungsschlüssel basierend auf Datum/Zeit im Dateinamen.
-    /// Allgemein: extrahiert Datum aus dem Dateinamen (nicht DJI-spezifisch).
+    /// Allgemein: extrahiert Datum aus dem Dateinamen.
     /// </summary>
     private string? GruppierungsSchluesselFinden(string dateiName, string ordner)
     {
@@ -158,7 +158,7 @@ public sealed class ClipMerger : IDisposable
             }
         }
 
-        // 2. Versuch: Sequenz-Nummer am Ende entfernen (z.B. DJI_0001.MP4 → DJI)
+        // 2. Versuch: Sequenz-Nummer am Ende entfernen (z.B. CAM_0001.MP4 → CAM)
         var ohneNummer = Regex.Replace(nameOhneExt, @"[\d_]+$", "");
         if (!string.IsNullOrEmpty(ohneNummer) && ohneNummer != nameOhneExt)
         {

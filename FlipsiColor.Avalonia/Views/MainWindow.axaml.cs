@@ -32,6 +32,7 @@ public partial class MainWindow : Window
             DragDrop.SetAllowDrop(dropBorder, true);
             DragDrop.AddDragOverHandler(dropBorder, OnDragOver);
             DragDrop.AddDropHandler(dropBorder, OnDrop);
+            DragDrop.AddDragLeaveHandler(dropBorder, OnDragLeave);
         }
 
         // Callbacks für Dialoge setzen (StorageProvider)
@@ -65,11 +66,25 @@ public partial class MainWindow : Window
     private void OnDragOver(object? sender, DragEventArgs e)
     {
         e.DragEffects = DragDropEffects.Copy;
+        // Border-Highlight via Classes
+        if (sender is Border border)
+            border.Classes.Add("dragOver");
+    }
+
+    /// <summary>Drag-Leave: Border-Highlight entfernen.</summary>
+    private void OnDragLeave(object? sender, DragEventArgs e)
+    {
+        if (sender is Border border)
+            border.Classes.Remove("dragOver");
     }
 
     /// <summary>Drop: mehrere Dateien empfangen (Bilder UND Videos).</summary>
     private void OnDrop(object? sender, DragEventArgs e)
     {
+        // Border-Highlight entfernen
+        if (sender is Border border)
+            border.Classes.Remove("dragOver");
+
         if (DataContext is not MainViewModel vm) return;
 
         // Avalonia 12: e.DataTransfer (IDataTransfer) statt e.Data

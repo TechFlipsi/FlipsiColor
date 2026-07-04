@@ -1,0 +1,20 @@
+Package: flipsicolor
+Version: 0.4.0
+Section: graphics
+Priority: optional
+Architecture: amd64
+Depends: ffmpeg, libraw-dev
+Maintainer: TechFlipsi <support@techflipsi.com>
+Description: FlipsiColor — KI-gestützte Bild- & Videofarbkorrektur
+ FlipsiColor ist eine KI-gestützte Anwendung für Bild- und Videofarbkorrektur.
+ Sie unterstützt alle Kameras (RAW-Formate) und nutzt ONNX-Modelle für
+ intelligente Bildverbesserung.
+ .
+ Features:
+  - KI-Bild-Restauration (NAFNet, Restormer, RealHAT-GAN)
+  - Gesichts-Restauration (CodeFormer)
+  - Hochskalierung (RealESRGAN)
+  - Farb-LUT-Transformation (AiLUT)
+  - Videofarbkorrektur mit FFmpeg und optionalem VapourSynth
+  - RAW-Unterstützung (CR2, CR3, NEF, ARW, DNG, ORF, RW2)
+Homepage: https://github.com/TechFlipsi/FlipsiColor

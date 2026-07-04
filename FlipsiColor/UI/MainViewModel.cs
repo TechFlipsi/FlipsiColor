@@ -1,5 +1,7 @@
 using System;
 using System.Collections.ObjectModel;
+using System.IO;
+using System.Linq;
 using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Media.Imaging;
@@ -25,7 +27,7 @@ public partial class MainViewModel : ObservableObject, IDisposable
     private readonly VideoPipeline _videoPipeline;
     private readonly AutoUpdater _autoUpdater;
 
-    [ObservableProperty] private string _title = "FlipsiColor v0.3.0";
+    [ObservableProperty] private string _title = "FlipsiColor v0.4.0";
     [ObservableProperty] private bool _gpuVerfuegbar;
     [ObservableProperty] private string _gpuName = "";
     [ObservableProperty] private bool _updateVerfuegbar;
@@ -44,14 +46,14 @@ public partial class MainViewModel : ObservableObject, IDisposable
     [ObservableProperty] private double _videoFortschritt;
     [ObservableProperty] private string _videoInfo = "";
 
-    // DJI Auto-Merge
-    private readonly DjiAutoMerge _djiAutoMerge = new();
-    [ObservableProperty] private ObservableCollection<DjiAutoMerge.ClipGruppe> _clipGruppen = [];
-    [ObservableProperty] private bool _djiAutoMergeAktiv;
-    [ObservableProperty] private bool _djiMergeLaeuft;
-    [ObservableProperty] private double _djiMergeFortschritt;
-    [ObservableProperty] private string _djiOrdner = "";
-    [ObservableProperty] private DjiAutoMerge.ClipGruppe? _ausgewaehlteGruppe;
+    // Clip-Merge — generische Video-Clip-Zusammenführung für alle Kameras
+    private readonly ClipMerger _clipMerger = new();
+    [ObservableProperty] private ObservableCollection<ClipMerger.ClipGruppe> _clipGruppen = [];
+    [ObservableProperty] private bool _clipMergeFarbkorrekturAktiv;
+    [ObservableProperty] private bool _clipMergeLaeuft;
+    [ObservableProperty] private double _clipMergeFortschritt;
+    [ObservableProperty] private string _clipOrdner = "";
+    [ObservableProperty] private ClipMerger.ClipGruppe? _ausgewaehlteGruppe;
 
     // Pipeline Controls
     [ObservableProperty] private float _belichtung;
@@ -79,7 +81,27 @@ public partial class MainViewModel : ObservableObject, IDisposable
     // Theme
     [ObservableProperty] private string _aktuellesTheme = "System";
 
+    // Drag & Drop Dateiliste
+    [ObservableProperty] private ObservableCollection<DateiEintrag> _dateiListe = [];
+
     public ObservableCollection<string> VerfuegbareSprachen { get; } = new() { "de", "en", "es", "fr", "it", "pt_BR", "ja" };
+
+    /// <summary>
+    /// Unterstützte Bild-Dateiendungen für Drag &amp; Drop und Dateiauswahl.
+    /// </summary>
+    public static readonly HashSet<string> BildEndungen = new(StringComparer.OrdinalIgnoreCase)
+    {
+        ".jpg", ".jpeg", ".png", ".tif", ".tiff", ".bmp",
+        ".raw", ".cr2", ".cr3", ".nef", ".arw", ".dng", ".orf", ".rw2"
+    };
+
+    /// <summary>
+    /// Unterstützte Video-Dateiendungen für Drag &amp; Drop und Dateiauswahl.
+    /// </summary>
+    public static readonly HashSet<string> VideoEndungen = new(StringComparer.OrdinalIgnoreCase)
+    {
+        ".mp4", ".mov", ".avi", ".mkv"
+    };
 
     public MainViewModel()
     {
@@ -133,7 +155,68 @@ public partial class MainViewModel : ObservableObject, IDisposable
         _ => BetriebsModus.Ask
     };
 
-    /// <summary>Öffentliche Methode für Drag&Drop (von Code-Behind)</summary>
+    // ===== Drag & Drop Dateiliste =====
+
+    /// <summary>
+    /// Fügt Dateien zur Dateiliste hinzu (von Drag &amp; Drop oder Ordner-Auswahl).
+    /// Unterstützt einzelne Dateien und Ordner (rekursiv).
+    /// </summary>
+    public void DateienHinzufuegen(string[] pfade)
+    {
+        foreach (var pfad in pfade)
+        {
+            if (Directory.Exists(pfad))
+            {
+                // Ordner: rekursiv alle unterstützten Dateien laden
+                var dateien = Directory.GetFiles(pfad, "*", SearchOption.AllDirectories)
+                    .Where(f => IstUnterstuetzteDatei(f));
+                foreach (var datei in dateien)
+                    DateiListe.Add(new DateiEintrag(datei));
+            }
+            else if (File.Exists(pfad) && IstUnterstuetzteDatei(pfad))
+            {
+                DateiListe.Add(new DateiEintrag(pfad));
+            }
+        }
+
+        StatusText = DateiListe.Count > 0
+            ? $"{DateiListe.Count} Datei(en) geladen"
+            : "Keine unterstützten Dateien gefunden";
+    }
+
+    /// <summary>
+    /// Prüft ob eine Datei ein unterstütztes Bild- oder Video-Format ist.
+    /// </summary>
+    public static bool IstUnterstuetzteDatei(string pfad)
+    {
+        var ext = Path.GetExtension(pfad);
+        return BildEndungen.Contains(ext) || VideoEndungen.Contains(ext);
+    }
+
+    /// <summary>
+    /// Entfernt einen einzelnen Eintrag aus der Dateiliste.
+    /// </summary>
+    [RelayCommand]
+    private void DateiEntfernen(DateiEintrag eintrag)
+    {
+        if (eintrag != null)
+        {
+            DateiListe.Remove(eintrag);
+            StatusText = $"Entfernt: {eintrag.Dateiname}";
+        }
+    }
+
+    /// <summary>
+    /// Leert die komplette Dateiliste.
+    /// </summary>
+    [RelayCommand]
+    private void DateiListeLeeren()
+    {
+        DateiListe.Clear();
+        StatusText = "Dateiliste geleert";
+    }
+
+    /// <summary>Öffentliche Methode für Drag&amp;Drop (von Code-Behind)</summary>
     public bool LoadBild(string pfad)
     {
         try
@@ -143,7 +226,7 @@ public partial class MainViewModel : ObservableObject, IDisposable
                 BildPfad = pfad;
                 BildGeladen = true;
                 PipelineBild = null; // Original wird erst nach Pipeline angezeigt
-                StatusText = $"Geladen: {System.IO.Path.GetFileName(pfad)}";
+                StatusText = $"Geladen: {Path.GetFileName(pfad)}";
                 return true;
             }
             else
@@ -320,7 +403,7 @@ public partial class MainViewModel : ObservableObject, IDisposable
             if (dialog.ShowDialog() == true)
             {
                 StyleLutPfad = dialog.FileName;
-                StyleLutName = System.IO.Path.GetFileNameWithoutExtension(dialog.FileName);
+                StyleLutName = Path.GetFileNameWithoutExtension(dialog.FileName);
                 StatusText = $"StyleLUT geladen: {StyleLutName}";
             }
         }
@@ -358,7 +441,7 @@ public partial class MainViewModel : ObservableObject, IDisposable
                     VideoPfad = dialog.FileName;
                     VideoGeladen = true;
                     VideoInfo = $"{_videoPipeline.Breite}x{_videoPipeline.Hoehe}, {_videoPipeline.Fps:F1}fps, {_videoPipeline.Dauer:F1}s";
-                    StatusText = $"Video geladen: {System.IO.Path.GetFileName(dialog.FileName)}";
+                    StatusText = $"Video geladen: {Path.GetFileName(dialog.FileName)}";
                 }
                 else
                 {
@@ -469,21 +552,21 @@ public partial class MainViewModel : ObservableObject, IDisposable
         }
     }
 
-    // ===== DJI Auto-Merge Commands =====
+    // ===== Clip-Merge Commands =====
 
     [RelayCommand]
-    private void DjiOrdnerOeffnen()
+    private void ClipOrdnerOeffnen()
     {
         try
         {
-            var ordner = FolderPicker.OpenFolder("Ordner mit DJI Video-Clips auswählen");
+            var ordner = FolderPicker.OpenFolder("Ordner mit Video-Clips auswählen");
 
             if (!string.IsNullOrEmpty(ordner))
             {
-                DjiOrdner = ordner;
-                ClipGruppen = new ObservableCollection<DjiAutoMerge.ClipGruppe>(
-                    _djiAutoMerge.ClipsGruppieren(DjiOrdner));
-                StatusText = $"{ClipGruppen.Count} Clip-Gruppen erkannt in {DjiOrdner}";
+                ClipOrdner = ordner;
+                ClipGruppen = new ObservableCollection<ClipMerger.ClipGruppe>(
+                    _clipMerger.ClipsGruppieren(ClipOrdner));
+                StatusText = $"{ClipGruppen.Count} Clip-Gruppen erkannt in {ClipOrdner}";
             }
         }
         catch (Exception ex)
@@ -493,20 +576,20 @@ public partial class MainViewModel : ObservableObject, IDisposable
     }
 
     [RelayCommand]
-    private async Task DjiMergeAusfuehrenAsync()
+    private async Task ClipMergeAusfuehrenAsync()
     {
-        if (AusgewaehlteGruppe == null || DjiMergeLaeuft) return;
+        if (AusgewaehlteGruppe == null || ClipMergeLaeuft) return;
 
-        DjiMergeLaeuft = true;
+        ClipMergeLaeuft = true;
         StatusText = $"Füge {AusgewaehlteGruppe.ClipAnzahl} Clips zusammen...";
 
-        var fortschritt = new Progress<double>(p => DjiMergeFortschritt = p);
+        var fortschritt = new Progress<double>(p => ClipMergeFortschritt = p);
 
         try
         {
-            var ausgabeOrdner = System.IO.Path.Combine(DjiOrdner, "FlipsiColor_Merged");
+            var ausgabeOrdner = Path.Combine(ClipOrdner, "FlipsiColor_Merged");
 
-            if (DjiAutoMergeAktiv)
+            if (ClipMergeFarbkorrekturAktiv)
             {
                 // Zusammenfügen + Farbkorrektur
                 var param = new PipelineParams
@@ -525,49 +608,49 @@ public partial class MainViewModel : ObservableObject, IDisposable
                     Modus = ModusFromString()
                 };
 
-                var ergebnis = await _djiAutoMerge.ClipsZusammenfuegenMitFarbkorrekturAsync(
+                var ergebnis = await _clipMerger.ClipsZusammenfuegenMitFarbkorrekturAsync(
                     AusgewaehlteGruppe, ausgabeOrdner, _modelManager, _colorManager, param, fortschritt);
 
                 if (ergebnis != null)
-                    StatusText = $"Fertig: {System.IO.Path.GetFileName(ergebnis)} (Farbkorrektur angewendet)";
+                    StatusText = $"Fertig: {Path.GetFileName(ergebnis)} (Farbkorrektur angewendet)";
                 else
                     StatusText = "Zusammenfügen mit Farbkorrektur fehlgeschlagen";
             }
             else
             {
                 // Nur Zusammenfügen
-                var ergebnis = await _djiAutoMerge.ClipsZusammenfuegenAsync(
+                var ergebnis = await _clipMerger.ClipsZusammenfuegenAsync(
                     AusgewaehlteGruppe, ausgabeOrdner, fortschritt);
 
                 if (ergebnis != null)
-                    StatusText = $"Fertig: {System.IO.Path.GetFileName(ergebnis)} (ohne Farbkorrektur)";
+                    StatusText = $"Fertig: {Path.GetFileName(ergebnis)} (ohne Farbkorrektur)";
                 else
                     StatusText = "Zusammenfügen fehlgeschlagen";
             }
         }
         catch (Exception ex)
         {
-            StatusText = $"DJI Merge Fehler: {ex.Message}";
+            StatusText = $"Clip-Merge Fehler: {ex.Message}";
         }
         finally
         {
-            DjiMergeLaeuft = false;
+            ClipMergeLaeuft = false;
         }
     }
 
     [RelayCommand]
-    private async Task DjiAlleMergenAsync()
+    private async Task ClipAlleMergenAsync()
     {
-        if (ClipGruppen.Count == 0 || DjiMergeLaeuft) return;
+        if (ClipGruppen.Count == 0 || ClipMergeLaeuft) return;
 
-        DjiMergeLaeuft = true;
+        ClipMergeLaeuft = true;
         var erledigt = 0;
         var gesamt = ClipGruppen.Count;
         StatusText = $"Verarbeite {gesamt} Clip-Gruppen...";
 
         try
         {
-            var ausgabeOrdner = System.IO.Path.Combine(DjiOrdner, "FlipsiColor_Merged");
+            var ausgabeOrdner = Path.Combine(ClipOrdner, "FlipsiColor_Merged");
             var param = new PipelineParams
             {
                 Belichtung = Belichtung,
@@ -586,23 +669,23 @@ public partial class MainViewModel : ObservableObject, IDisposable
 
             foreach (var gruppe in ClipGruppen)
             {
-                if (DjiAutoMergeAktiv)
+                if (ClipMergeFarbkorrekturAktiv)
                 {
                     var fortschritt = new Progress<double>(p =>
-                        DjiMergeFortschritt = (erledigt + p) / gesamt);
-                    await _djiAutoMerge.ClipsZusammenfuegenMitFarbkorrekturAsync(
+                        ClipMergeFortschritt = (erledigt + p) / gesamt);
+                    await _clipMerger.ClipsZusammenfuegenMitFarbkorrekturAsync(
                         gruppe, ausgabeOrdner, _modelManager, _colorManager, param, fortschritt);
                 }
                 else
                 {
                     var fortschritt = new Progress<double>(p =>
-                        DjiMergeFortschritt = (erledigt + p) / gesamt);
-                    await _djiAutoMerge.ClipsZusammenfuegenAsync(
+                        ClipMergeFortschritt = (erledigt + p) / gesamt);
+                    await _clipMerger.ClipsZusammenfuegenAsync(
                         gruppe, ausgabeOrdner, fortschritt);
                 }
 
                 erledigt++;
-                DjiMergeFortschritt = (double)erledigt / gesamt;
+                ClipMergeFortschritt = (double)erledigt / gesamt;
             }
 
             StatusText = $"Alle {gesamt} Gruppen verarbeitet (Ausgabe: {ausgabeOrdner})";
@@ -613,7 +696,7 @@ public partial class MainViewModel : ObservableObject, IDisposable
         }
         finally
         {
-            DjiMergeLaeuft = false;
+            ClipMergeLaeuft = false;
         }
     }
 
@@ -623,6 +706,52 @@ public partial class MainViewModel : ObservableObject, IDisposable
         _videoPipeline.Dispose();
         _modelManager.Dispose();
         _autoUpdater.Dispose();
-        _djiAutoMerge.Dispose();
+        _clipMerger.Dispose();
+    }
+}
+
+/// <summary>
+/// Ein Eintrag in der Drag &amp; Drop Dateiliste.
+/// </summary>
+public sealed class DateiEintrag
+{
+    /// <summary>Vollständiger Dateipfad.</summary>
+    public string Pfad { get; }
+
+    /// <summary>Dateiname ohne Pfad.</summary>
+    public string Dateiname => Path.GetFileName(Pfad);
+
+    /// <summary>Dateityp (Bild oder Video).</summary>
+    public string Typ { get; }
+
+    /// <summary>Dateigröße als formatierter String.</summary>
+    public string Groesse { get; }
+
+    /// <summary>
+    /// Erstellt einen neuen DateiEintrag aus einem Dateipfad.
+    /// </summary>
+    /// <param name="pfad">Vollständiger Pfad zur Datei.</param>
+    public DateiEintrag(string pfad)
+    {
+        Pfad = pfad;
+        var ext = Path.GetExtension(pfad);
+        Typ = MainViewModel.BildEndungen.Contains(ext) ? "Bild" :
+              MainViewModel.VideoEndungen.Contains(ext) ? "Video" : "Unbekannt";
+
+        try
+        {
+            var bytes = new FileInfo(pfad).Length;
+            Groesse = bytes switch
+            {
+                < 1024 => $"{bytes} B",
+                < 1024 * 1024 => $"{bytes / 1024.0:F1} KB",
+                < 1024 * 1024 * 1024 => $"{bytes / (1024.0 * 1024):F1} MB",
+                _ => $"{bytes / (1024.0 * 1024 * 1024):F2} GB"
+            };
+        }
+        catch
+        {
+            Groesse = "—";
+        }
     }
 }

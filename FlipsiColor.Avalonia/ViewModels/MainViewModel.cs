@@ -50,7 +50,7 @@ public partial class MainViewModel : ObservableObject, IDisposable
     [ObservableProperty] private double _videoFortschritt;
     [ObservableProperty] private string _videoInfo = "";
 
-    // Clip-Merge (allgemein, nicht DJI-spezifisch)
+    // Clip-Merge (allgemein, für alle Kameras)
     [ObservableProperty] private ObservableCollection<ClipMerger.ClipGruppe> _clipGruppen = [];
     [ObservableProperty] private bool _clipMergeAktiv;
     [ObservableProperty] private bool _clipMergeLaeuft;
@@ -563,7 +563,7 @@ public partial class MainViewModel : ObservableObject, IDisposable
         }
     }
 
-    // ===== Clip-Merge Commands (allgemein, nicht DJI) =====
+    // ===== Clip-Merge Commands (allgemein, für alle Kameras) =====
 
     [RelayCommand]
     private async Task ClipOrdnerOeffnenAsync()
@@ -632,7 +632,7 @@ public partial class MainViewModel : ObservableObject, IDisposable
         }
         catch (Exception ex)
         {
-            StatusText = $"{Lokalisierung.T("Status.DJIMergeFehler")}: {ex.Message}";
+            StatusText = $"{Lokalisierung.T("Status.MergeFehler")}: {ex.Message}";
         }
         finally
         {

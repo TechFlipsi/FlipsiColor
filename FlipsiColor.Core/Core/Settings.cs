@@ -46,6 +46,9 @@ public sealed class Settings
     // Betriebsmodus
     public BetriebsModus Modus { get; set; } = BetriebsModus.Ask;
 
+    // Video-Backend: FFmpeg (Standard) oder VapourSynth (optional, Frame-Level-Processing)
+    public VideoBackend VideoBackend { get; set; } = VideoBackend.FFmpeg;
+
     // Fenster
     public int FensterBreite { get; set; } = 1200;
     public int FensterHoehe { get; set; } = 800;
