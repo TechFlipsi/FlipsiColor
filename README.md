@@ -1,6 +1,6 @@
 # FlipsiColor
 
-[![Build](https://img.shields.io/github/actions/workflow/status/TechFlipsi/FlipsiColor/build.yml?branch=main&label=Build)](https://github.com/TechFlipsi/FlipsiColor/actions)
+[![Build](https://img.shields.io/github/actions/workflow/status/TechFlipsi/FlipsiColor/ci.yml?branch=main&label=Build)](https://github.com/TechFlipsi/FlipsiColor/actions)
 [![Version](https://img.shields.io/github/v/release/TechFlipsi/FlipsiColor?label=Version)](https://github.com/TechFlipsi/FlipsiColor/releases/latest)
 [![License](https://img.shields.io/github/license/TechFlipsi/FlipsiColor?label=License)](https://github.com/TechFlipsi/FlipsiColor/LICENSE)
 [![Downloads](https://img.shields.io/github/downloads/TechFlipsi/FlipsiColor/total?label=Downloads)](https://github.com/TechFlipsi/FlipsiColor/releases)
