@@ -37,9 +37,12 @@ public sealed class AutoUpdater : IDisposable
     public long DownloadGroesse { get; private set; }
     public UpdateKanal Kanal { get; set; } = UpdateKanal.Stable;
 
+    public bool AutoUpdate { get; set; } = false; // Wenn true: Update wird automatisch installiert ohne User-Klick
+
     public event EventHandler<bool>? UpdateVerfuegbarChanged;
     public event EventHandler<string>? NeueVersionChanged;
     public event EventHandler<string>? FehlerAufgetreten;
+    public event EventHandler<(long empfangen, long gesamt)>? DownloadFortschritt;
 
     private readonly Version _aktuelleVersion;
     private string? _ignorierteVersion;
@@ -166,6 +169,13 @@ public sealed class AutoUpdater : IDisposable
                 UpdateVerfuegbarChanged?.Invoke(this, true);
                 NeueVersionChanged?.Invoke(this, tagStr);
                 gefunden = true;
+
+                // Auto-Update: Wenn aktiviert, automatisch herunterladen und installieren
+                if (AutoUpdate && !string.IsNullOrEmpty(DownloadUrl))
+                {
+                    Log.Information("Auto-Update aktiviert — Starte automatischen Download...");
+                    _ = UpdateStartenAsync();
+                }
                 break;
             }
 
@@ -247,9 +257,13 @@ public sealed class AutoUpdater : IDisposable
             await using var file = new FileStream(tempPfad, FileMode.Create, FileAccess.Write, FileShare.None);
             var buffer = new byte[81920];
             int gelesen;
+            long empfangen = 0;
+            long gesamt = response.Content.Headers.ContentLength ?? DownloadGroesse;
             while ((gelesen = await content.ReadAsync(buffer.AsMemory())) > 0)
             {
                 await file.WriteAsync(buffer.AsMemory(0, gelesen));
+                empfangen += gelesen;
+                DownloadFortschritt?.Invoke(this, (empfangen, gesamt));
             }
             await file.FlushAsync();
 
