@@ -89,3 +89,23 @@ jobs:
           - GPU empfohlen (DirectML)
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+    - name: Discord Release Notification
+      if: startsWith(github.ref, 'refs/tags/v')
+      env:
+        DISCORD_WEBHOOK: ${{ secrets.DISCORD_WEBHOOK_URL }}
+      run: |
+        $version = "${{ steps.version.outputs.version }}"
+        $body = @{
+          username = "FlipsiColor Release"
+          embeds = @(@{
+            title = "🎨 FlipsiColor v$version"
+            color = 3447003
+            description = "Neue Version verfügbar!"
+            fields = @(
+              @{ name = "📦 Download"; value = "[GitHub Release](https://github.com/TechFlipsi/FlipsiColor/releases/latest)" }
+            )
+          })
+        } | ConvertTo-Json -Depth 5
+        Invoke-RestMethod -Uri $env:DISCORD_WEBHOOK -Method Post -Body $body -ContentType "application/json"
+      shell: pwsh
