@@ -16,6 +16,7 @@
     <ApplicationManifest>app.manifest</ApplicationManifest>
     <IncludeNativeLibrariesForSelfExtract>true</IncludeNativeLibrariesForSelfExtract>
     <PublishReadyToRun>true</PublishReadyToRun>
+    <ApplicationIcon>Assets\flipsicolor.ico</ApplicationIcon>
   </PropertyGroup>
 
   <ItemGroup>

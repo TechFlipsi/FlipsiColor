@@ -17,6 +17,7 @@
     <UseWPF>true</UseWPF>
     <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
     <EnableWindowsTargeting>true</EnableWindowsTargeting>
+    <ApplicationIcon>Assets\flipsicolor.ico</ApplicationIcon>
   </PropertyGroup>
 
   <ItemGroup>
