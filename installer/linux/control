@@ -18,3 +18,4 @@ Description: FlipsiColor — KI-gestützte Bild- & Videofarbkorrektur
   - Videofarbkorrektur mit FFmpeg und optionalem VapourSynth
   - RAW-Unterstützung (CR2, CR3, NEF, ARW, DNG, ORF, RW2)
 Homepage: https://github.com/TechFlipsi/FlipsiColor
+
