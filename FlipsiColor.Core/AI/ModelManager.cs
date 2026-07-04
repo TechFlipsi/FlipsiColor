@@ -34,6 +34,21 @@ public sealed class ModelManager : IDisposable
     private bool _disposed;
 
     /// <summary>
+    /// GitHub API URL für Modell-Version-Check.
+    /// </summary>
+    private const string ModelsApiUrl = "https://api.github.com/repos/TechFlipsi/FlipsiColor-Models/releases";
+
+    /// <summary>
+    /// Aktuell verfügbare Modell-Version (von GitHub Releases).
+    /// </summary>
+    public string AktuelleModellVersion { get; private set; } = "v0.1";
+
+    /// <summary>
+    /// Event wenn eine neuere Modell-Version verfügbar ist.
+    /// </summary>
+    public event EventHandler<string>? NeueModellVersionVerfuegbar;
+
+    /// <summary>
     /// Erstellt einen sicheren HttpClient mit Redirect-Beschränkung.
     /// </summary>
     private static HttpClient CreateSafeHttpClient()
@@ -118,6 +133,141 @@ public sealed class ModelManager : IDisposable
                 info.Heruntergeladen ? "bereits vorhanden" : "nicht vorhanden");
         }
     }
+
+    /// <summary>
+    /// Prüft ob alle erforderlichen Modelle lokal vorhanden und vollständig sind.
+    /// </summary>
+    public bool AlleErforderlichenModelleVorhanden()
+    {
+        foreach (var info in _modelle.Values.Where(m => m.Erforderlich))
+        {
+            var pfad = ModellPfad(info.Id);
+            if (!File.Exists(pfad))
+            {
+                Log.Warning("Erforderliches Modell fehlt: {Name}", info.Name);
+                return false;
+            }
+            // Dateigröße prüfen — verhindert unvollständige Downloads
+            var groesse = new FileInfo(pfad).Length;
+            if (groesse < info.GroesseBytes / 2) // Toleranz: mindestens halbe erwartete Größe
+            {
+                Log.Warning("Modell {Name} unvollständig: {Ist} bytes (erwartet {Erwartet})", info.Name, groesse, info.GroesseBytes);
+                return false;
+            }
+        }
+        return true;
+    }
+
+    /// <summary>
+    /// Prüft lokal ob ein Modell vollständig ist (Datei existiert + Größe stimmt).
+    /// </summary>
+    public bool IstModellVollstaendig(ModellId id)
+    {
+        if (!_modelle.TryGetValue(id, out var info))
+            return false;
+        var pfad = ModellPfad(id);
+        if (!File.Exists(pfad))
+            return false;
+        var groesse = new FileInfo(pfad).Length;
+        // Toleranz: mindestens 90% der erwarteten Größe
+        return groesse >= info.GroesseBytes * 0.9;
+    }
+
+    /// <summary>
+    /// Prüft ob eine neuere Modell-Version auf GitHub verfügbar ist.
+    /// Vergleicht den neuesten Release-Tag mit der lokal bekannten Version.
+    /// </summary>
+    public async Task<bool> ModellVersionPruefenAsync()
+    {
+        try
+        {
+            var request = new HttpRequestMessage(HttpMethod.Get, ModelsApiUrl);
+            request.Headers.UserAgent.ParseAdd("FlipsiColor/ModelCheck");
+
+            using var response = await _http.SendAsync(request);
+            response.EnsureSuccessStatusCode();
+
+            var json = await response.Content.ReadAsStringAsync();
+            using var doc = JsonDocument.Parse(json);
+            var releases = doc.RootElement.EnumerateArray();
+
+            string? neuesterTag = null;
+            foreach (var release in releases)
+            {
+                var tag = release.GetProperty("tag_name").GetString();
+                if (!string.IsNullOrEmpty(tag))
+                {
+                    neuesterTag = tag;
+                    break; // Erster Release = neuester
+                }
+            }
+
+            if (!string.IsNullOrEmpty(neuesterTag) && neuesterTag != AktuelleModellVersion)
+            {
+                Log.Information("Neue Modell-Version verfügbar: {Neu} (aktuell: {Aktuell})", neuesterTag, AktuelleModellVersion);
+                AktuelleModellVersion = neuesterTag;
+                NeueModellVersionVerfuegbar?.Invoke(this, neuesterTag);
+                return true;
+            }
+
+            Log.Information("Modell-Version aktuell: {Version}", AktuelleModellVersion);
+            return false;
+        }
+        catch (Exception ex)
+        {
+            Log.Warning("Modell-Version-Check fehlgeschlagen: {Fehler}", SecurityValidator.BereinigeExceptionFuerLog(ex.Message));
+            return false;
+        }
+    }
+
+    /// <summary>
+    /// Prüft ob eine Download-URL erreichbar ist (HTTP HEAD Request).
+    /// </summary>
+    public async Task<bool> UrlErreichbarAsync(string url)
+    {
+        try
+        {
+            var request = new HttpRequestMessage(HttpMethod.Head, url);
+            request.Headers.UserAgent.ParseAdd("FlipsiColor/UrlCheck");
+            using var response = await _http.SendAsync(request, HttpCompletionOption.ResponseHeadersRead);
+            return response.IsSuccessStatusCode;
+        }
+        catch
+        {
+            return false;
+        }
+    }
+
+    /// <summary>
+    /// Lädt alle erforderlichen Modelle herunter falls sie fehlen.
+    /// Gibt true zurück wenn alle erforderlichen Modelle bereit sind.
+    /// </summary>
+    public async Task<bool> AlleErforderlichenModelleSicherstellenAsync()
+    {
+        bool alleOk = true;
+        foreach (var info in _modelle.Values.Where(m => m.Erforderlich))
+        {
+            if (!await ModellSicherstellenAsync(info.Id))
+            {
+                Log.Error("Erforderliches Modell konnte nicht geladen werden: {Name}", info.Name);
+                alleOk = false;
+            }
+        }
+        return alleOk;
+    }
+
+    /// <summary>
+    /// Gibt zurück wie viele Modelle (erforderlich + optional) bereits heruntergeladen sind.
+    /// </summary>
+    public int ModelleHeruntergeladen => _modelle.Values.Count(m => m.Heruntergeladen);
+    public int ModelleGesamt => _modelle.Count;
+    public int ModelleErforderlich => _modelle.Values.Count(m => m.Erforderlich);
+
+    /// <summary>
+    /// Gibt alle Modell-Infos zurück (für UI-Anzeige).
+    /// </summary>
+    public System.Collections.Generic.IEnumerable<ModellInfo> GetAllModellInfos()
+        => _modelle.Values;
 
     /// <summary>
     /// Stellt sicher dass ein Modell heruntergeladen und geladen ist.
