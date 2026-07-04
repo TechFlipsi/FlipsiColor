@@ -1,0 +1,367 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:vm="clr-namespace:FlipsiColor.ViewModels"
+        xmlns:views="clr-namespace:FlipsiColor.Views"
+        x:Class="FlipsiColor.Views.MainWindow"
+        x:CompileBindings="False"
+        Title="{Binding Title}"
+        Width="1200" Height="800"
+        WindowStartupLocation="CenterScreen"
+        MinWidth="800" MinHeight="600">
+
+    <Window.DataContext>
+        <vm:MainViewModel/>
+    </Window.DataContext>
+
+    <Grid>
+        <Grid.ColumnDefinitions>
+            <ColumnDefinition Width="260"/>
+            <ColumnDefinition Width="*"/>
+            <ColumnDefinition Width="300"/>
+        </Grid.ColumnDefinitions>
+
+        <!-- ═══ Sidebar ═══ -->
+        <Border Grid.Column="0" Background="{DynamicResource BgSecondaryBrush}"
+                BorderBrush="{DynamicResource BorderBrush}" BorderThickness="0,0,1,0">
+            <ScrollViewer VerticalScrollBarVisibility="Auto">
+                <StackPanel Margin="16">
+
+                    <!-- Logo -->
+                    <TextBlock Text="FlipsiColor" FontSize="24" FontWeight="Bold"
+                               Foreground="{DynamicResource AccentPrimaryBrush}" Margin="0,0,0,24"/>
+
+                    <!-- Tab-Steuerung -->
+                    <TextBlock Text="{Binding ., Converter={StaticResource Loc}, ConverterParameter='Sidebar.Ansicht'}" FontWeight="SemiBold" Margin="0,0,0,8"/>
+                    <TabControl x:Name="MainTabs" Margin="0,0,0,16"
+                                BorderThickness="0" Padding="0"
+                                Background="Transparent">
+
+                        <!-- ═══ TAB 1: Bild ═══ -->
+                        <TabItem Header="{Binding ., Converter={StaticResource Loc}, ConverterParameter='Bild.Tab'}">
+                            <StackPanel Margin="0,8,0,0">
+                                <!-- Modus -->
+                                <TextBlock Text="{Binding ., Converter={StaticResource Loc}, ConverterParameter='Bild.Modus'}" FontWeight="SemiBold" Margin="0,0,0,8"/>
+                                <ComboBox SelectedIndex="{Binding ModusIndex}"
+                                          Margin="0,0,0,16">
+                                    <ComboBoxItem Content="Fragen"/>
+                                    <ComboBoxItem Content="Lernen"/>
+                                    <ComboBoxItem Content="Auto"/>
+                                </ComboBox>
+
+                                <!-- Intensität -->
+                                <TextBlock Text="{Binding ., Converter={StaticResource Loc}, ConverterParameter='Bild.Intensitaet'}" FontWeight="SemiBold" Margin="0,0,0,8"/>
+                                <ComboBox SelectedIndex="{Binding IntensitaetIndex}" Margin="0,0,0,16">
+                                    <ComboBoxItem Content="{Binding ., Converter={StaticResource Loc}, ConverterParameter='Bild.Intensitaet.Leicht'}"/>
+                                    <ComboBoxItem Content="{Binding ., Converter={StaticResource Loc}, ConverterParameter='Bild.Intensitaet.Mittel'}"/>
+                                    <ComboBoxItem Content="{Binding ., Converter={StaticResource Loc}, ConverterParameter='Bild.Intensitaet.Stark'}"/>
+                                </ComboBox>
+
+                                <!-- Buttons -->
+                                <Button Content="{Binding ., Converter={StaticResource Loc}, ConverterParameter='Bild.Oeffnen'}" Command="{Binding BildOeffnenCommand}" Margin="0,0,0,8"/>
+                                <Button Content="{Binding ., Converter={StaticResource Loc}, ConverterParameter='Bild.PipelineStarten'}" Command="{Binding PipelineAusfuehrenCommand}" Margin="0,0,0,8"/>
+                                <Button Content="{Binding ., Converter={StaticResource Loc}, ConverterParameter='Bild.Zuruecksetzen'}" Command="{Binding ZuruecksetzenCommand}" Margin="0,0,0,8"/>
+
+                                <!-- Hochskalieren -->
+                                <TextBlock Text="{Binding ., Converter={StaticResource Loc}, ConverterParameter='Bild.Hochskalieren'}" FontWeight="SemiBold" Margin="0,8,0,4"/>
+                                <ComboBox SelectedIndex="{Binding HochskalierenFaktor}" Margin="0,0,0,8">
+                                    <ComboBoxItem Content="{Binding ., Converter={StaticResource Loc}, ConverterParameter='Bild.Hochskalieren.Aus'}"/>
+                                    <ComboBoxItem Content="2x (RealESRGAN)"/>
+                                    <ComboBoxItem Content="3x"/>
+                                    <ComboBoxItem Content="4x"/>
+                                </ComboBox>
+
+                                <!-- Gesichtswiederherstellung -->
+                                <CheckBox Content="{Binding ., Converter={StaticResource Loc}, ConverterParameter='Bild.Gesichtswiederherstellung'}"
+                                          IsChecked="{Binding GesichtswiederherstellungAktiv}"
+                                          FontSize="11"
+                                          Margin="0,4,0,8"/>
+
+                                <!-- Farbstil-LUT -->
+                                <TextBlock Text="{Binding ., Converter={StaticResource Loc}, ConverterParameter='Bild.FarbstilLUT'}" FontWeight="SemiBold" Margin="0,4,0,4"/>
+                                <StackPanel Orientation="Horizontal" Margin="0,0,0,4">
+                                    <Button Content="{Binding ., Converter={StaticResource Loc}, ConverterParameter='Bild.Laden'}" Command="{Binding StyleLutLadenCommand}"
+                                            Padding="6,3" FontSize="11" Margin="0,0,4,0"/>
+                                    <Button Content="{Binding ., Converter={StaticResource Loc}, ConverterParameter='Bild.Entfernen'}" Command="{Binding StyleLutEntfernenCommand}"
+                                            Classes="secondary"
+                                            Padding="6,3" FontSize="11"/>
+                                </StackPanel>
+                                <TextBlock Text="{Binding StyleLutName}" FontSize="10"
+                                           Foreground="{DynamicResource TextSecondaryBrush}"
+                                           Margin="0,0,0,8"/>
+
+                                <!-- Verzerrungs-Raster -->
+                                <CheckBox Content="{Binding ., Converter={StaticResource Loc}, ConverterParameter='Bild.VerzerrungsRaster'}"
+                                          IsChecked="{Binding DistortionGridAktiv}"
+                                          Margin="0,8,0,4"/>
+                                <Button Content="{Binding ., Converter={StaticResource Loc}, ConverterParameter='Bild.Kalibrieren'}"
+                                        Command="{Binding DistortionGridKalibrierenCommand}"
+                                        Classes="secondary"
+                                        Padding="8,4" FontSize="11" Margin="0,0,0,8"/>
+
+                                <!-- Farbkalibrierung -->
+                                <CheckBox Content="{Binding ., Converter={StaticResource Loc}, ConverterParameter='Bild.Farbkalibrierung'}"
+                                          IsChecked="{Binding ColorCalibrationAktiv}"
+                                          Margin="0,4,0,4"/>
+                                <Button Content="{Binding ., Converter={StaticResource Loc}, ConverterParameter='Bild.Kalibrieren'}"
+                                        Command="{Binding ColorCalibrationKalibrierenCommand}"
+                                        Classes="secondary"
+                                        Padding="8,4" FontSize="11" Margin="0,0,0,8"/>
+
+                                <!-- Progress -->
+                                <ProgressBar Height="4"
+                                             IsIndeterminate="True"
+                                             IsVisible="{Binding PipelineLaeuft}"
+                                             Margin="0,4,0,4"/>
+                            </StackPanel>
+                        </TabItem>
+
+                        <!-- ═══ TAB 2: Video ═══ -->
+                        <TabItem Header="{Binding ., Converter={StaticResource Loc}, ConverterParameter='Video.Tab'}">
+                            <StackPanel Margin="0,8,0,0">
+                                <TextBlock Text="{Binding ., Converter={StaticResource Loc}, ConverterParameter='Video.Pipeline'}" FontWeight="Bold" FontSize="14" Margin="0,0,0,4"/>
+                                <TextBlock Text="{Binding ., Converter={StaticResource Loc}, ConverterParameter='Video.Beschreibung'}" TextWrapping="Wrap" FontSize="11"
+                                           Foreground="{DynamicResource TextSecondaryBrush}" Margin="0,0,0,12"/>
+
+                                <Button Content="{Binding ., Converter={StaticResource Loc}, ConverterParameter='Video.Oeffnen'}" Command="{Binding VideoOeffnenCommand}" Margin="0,0,0,8"/>
+                                <TextBlock Text="{Binding VideoPfad}" FontSize="10"
+                                           Foreground="{DynamicResource TextSecondaryBrush}"
+                                           TextWrapping="Wrap" Margin="0,0,0,8"/>
+                                <TextBlock Text="{Binding VideoInfo}" FontSize="10"
+                                           Foreground="{DynamicResource TextSecondaryBrush}"
+                                           Margin="0,0,0,12"/>
+
+                                <Button Content="{Binding ., Converter={StaticResource Loc}, ConverterParameter='Video.PipelineStarten'}"
+                                        Command="{Binding VideoPipelineAusfuehrenCommand}"
+                                        Margin="0,0,0,8"/>
+
+                                <ProgressBar Value="{Binding VideoFortschritt}" Maximum="1" Height="6"
+                                             IsVisible="{Binding VideoPipelineLaeuft}"
+                                             Margin="0,4,0,4"/>
+                            </StackPanel>
+                        </TabItem>
+
+                        <!-- ═══ TAB 3: Clips zusammenfügen ═══ -->
+                        <TabItem Header="{Binding ., Converter={StaticResource Loc}, ConverterParameter='Clips.Tab'}">
+                            <StackPanel Margin="0,8,0,0">
+                                <TextBlock Text="{Binding ., Converter={StaticResource Loc}, ConverterParameter='Clips.Titel'}" FontWeight="Bold" FontSize="14" Margin="0,0,0,4"/>
+                                <TextBlock Text="{Binding ., Converter={StaticResource Loc}, ConverterParameter='Clips.Beschreibung'}" TextWrapping="Wrap" FontSize="11"
+                                           Foreground="{DynamicResource TextSecondaryBrush}" Margin="0,0,0,12"/>
+
+                                <Button Content="{Binding ., Converter={StaticResource Loc}, ConverterParameter='Clips.OrdnerOeffnen'}" Command="{Binding ClipOrdnerOeffnenCommand}" Margin="0,0,0,8"/>
+                                <TextBlock Text="{Binding ClipOrdner}" FontSize="10"
+                                           Foreground="{DynamicResource TextSecondaryBrush}"
+                                           TextWrapping="Wrap" Margin="0,0,0,12"/>
+
+                                <!-- Farbkorrektur Toggle -->
+                                <Border Background="{DynamicResource BgTertiaryBrush}" CornerRadius="8" Padding="12" Margin="0,0,0,12">
+                                    <StackPanel>
+                                        <CheckBox Content="{Binding ., Converter={StaticResource Loc}, ConverterParameter='Clips.Farbkorrektur'}"
+                                                  IsChecked="{Binding ClipMergeAktiv}"
+                                                  FontWeight="SemiBold" Margin="0,0,0,4"/>
+                                        <TextBlock Text="{Binding ., Converter={StaticResource Loc}, ConverterParameter='Clips.Farbkorrektur.Info'}" TextWrapping="Wrap" FontSize="10"
+                                                   Foreground="{DynamicResource TextSecondaryBrush}"/>
+                                    </StackPanel>
+                                </Border>
+
+                                <!-- Clip-Gruppen Liste -->
+                                <TextBlock Text="{Binding ., Converter={StaticResource Loc}, ConverterParameter='Clips.GruppenErkannt'}" FontWeight="SemiBold" Margin="0,0,0,8"/>
+                                <ListBox ItemsSource="{Binding ClipGruppen}"
+                                         SelectedItem="{Binding AusgewaehlteGruppe}"
+                                         Height="120" Margin="0,0,0,8">
+                                    <ListBox.ItemTemplate>
+                                        <DataTemplate>
+                                            <StackPanel Margin="2">
+                                                <TextBlock Text="{Binding GruppenName}" FontWeight="SemiBold" FontSize="11"/>
+                                                <TextBlock FontSize="10" Foreground="{DynamicResource TextSecondaryBrush}">
+                                                    <Run Text="{Binding ClipAnzahl, Mode=OneWay}"/>
+                                                    <Run Text="{Binding ., Converter={StaticResource Loc}, ConverterParameter='Clips.Clips'}"/>
+                                                    <Run Text="{Binding GesamtGroesse, Mode=OneWay}"/>
+                                                </TextBlock>
+                                            </StackPanel>
+                                        </DataTemplate>
+                                    </ListBox.ItemTemplate>
+                                </ListBox>
+
+                                <Button Content="{Binding ., Converter={StaticResource Loc}, ConverterParameter='Clips.AusgewaehlteZusammenfuegen'}"
+                                        Command="{Binding ClipMergeAusfuehrenCommand}"
+                                        Margin="0,0,0,8"/>
+                                <Button Content="{Binding ., Converter={StaticResource Loc}, ConverterParameter='Clips.AlleZusammenfuegen'}"
+                                        Command="{Binding AlleClipsMergenCommand}"
+                                        Margin="0,0,0,8"/>
+
+                                <ProgressBar Value="{Binding ClipMergeFortschritt}" Maximum="1" Height="6"
+                                             IsVisible="{Binding ClipMergeLaeuft}"
+                                             Margin="0,4,0,4"/>
+                            </StackPanel>
+                        </TabItem>
+
+                        <!-- ═══ TAB 4: Einstellungen ═══ -->
+                        <TabItem Header="{Binding ., Converter={StaticResource Loc}, ConverterParameter='Einstellungen.Tab'}">
+                            <StackPanel Margin="0,8,0,0">
+                                <!-- Sprache -->
+                                <TextBlock Text="{Binding ., Converter={StaticResource Loc}, ConverterParameter='Einstellungen.Sprache'}" FontWeight="SemiBold" Margin="0,0,0,8"/>
+                                <ComboBox SelectedIndex="{Binding SpracheIndex}"
+                                          Margin="0,0,0,16">
+                                    <ComboBoxItem Content="{Binding ., Converter={StaticResource Loc}, ConverterParameter='Einstellungen.Sprache.Deutsch'}"/>
+                                    <ComboBoxItem Content="{Binding ., Converter={StaticResource Loc}, ConverterParameter='Einstellungen.Sprache.Englisch'}"/>
+                                </ComboBox>
+
+                                <!-- Design -->
+                                <TextBlock Text="{Binding ., Converter={StaticResource Loc}, ConverterParameter='Einstellungen.Design'}" FontWeight="SemiBold" Margin="0,0,0,8"/>
+                                <ComboBox SelectedIndex="{Binding DesignIndex}" Margin="0,0,0,16">
+                                    <ComboBoxItem Content="{Binding ., Converter={StaticResource Loc}, ConverterParameter='Sidebar.Dunkel'}"/>
+                                    <ComboBoxItem Content="{Binding ., Converter={StaticResource Loc}, ConverterParameter='Sidebar.Hell'}"/>
+                                    <ComboBoxItem Content="{Binding ., Converter={StaticResource Loc}, ConverterParameter='Sidebar.System'}"/>
+                                </ComboBox>
+
+                                <!-- Auto-Update -->
+                                <CheckBox Content="{Binding ., Converter={StaticResource Loc}, ConverterParameter='Einstellungen.AutoUpdate'}"
+                                          IsChecked="{Binding AutoUpdateAktiv}"
+                                          Margin="0,8,0,16"/>
+
+                                <!-- Modell-Verzeichnis -->
+                                <TextBlock Text="{Binding ., Converter={StaticResource Loc}, ConverterParameter='Einstellungen.ModellVerzeichnis'}" FontWeight="SemiBold" Margin="0,0,0,4"/>
+                                <TextBlock Text="{Binding ModellVerzeichnis}" FontSize="10"
+                                           Foreground="{DynamicResource TextSecondaryBrush}"
+                                           TextWrapping="Wrap" Margin="0,0,0,12"/>
+
+                                <!-- Modelle neu herunterladen -->
+                                <Button Content="{Binding ., Converter={StaticResource Loc}, ConverterParameter='Einstellungen.ModellNeuHerunterladen'}"
+                                        Command="{Binding ModelleNeuHerunterladenCommand}"
+                                        Classes="secondary"
+                                        Margin="0,0,0,8"/>
+                            </StackPanel>
+                        </TabItem>
+                    </TabControl>
+
+                    <!-- GPU Info -->
+                    <Border Background="{DynamicResource BgTertiaryBrush}" CornerRadius="8" Padding="12" Margin="0,8,0,0">
+                        <StackPanel>
+                            <TextBlock Text="{Binding ., Converter={StaticResource Loc}, ConverterParameter='Sidebar.GPU'}" FontWeight="SemiBold" FontSize="12"/>
+                            <TextBlock Text="{Binding GpuName}" FontSize="11"
+                                       Foreground="{DynamicResource TextSecondaryBrush}" TextWrapping="Wrap"/>
+                        </StackPanel>
+                    </Border>
+
+                    <!-- Update -->
+                    <Border Background="{DynamicResource BgTertiaryBrush}" CornerRadius="8" Padding="12" Margin="0,8,0,0"
+                            IsVisible="{Binding UpdateVerfuegbar}">
+                        <StackPanel>
+                            <TextBlock Text="{Binding ., Converter={StaticResource Loc}, ConverterParameter='Sidebar.UpdateVerfuegbar'}" FontWeight="SemiBold"
+                                       Foreground="{DynamicResource AccentSecondaryBrush}"/>
+                            <TextBlock Text="{Binding NeueVersion}" FontSize="11"/>
+                            <StackPanel Orientation="Horizontal" Margin="0,8,0,0">
+                                <Button Content="{Binding ., Converter={StaticResource Loc}, ConverterParameter='Sidebar.Installieren'}" Command="{Binding UpdateStartenCommand}"
+                                        Padding="8,4" Margin="0,0,8,0" FontSize="11"/>
+                                <Button Content="{Binding ., Converter={StaticResource Loc}, ConverterParameter='Sidebar.Ignorieren'}" Command="{Binding UpdateIgnorierenCommand}"
+                                        Classes="secondary"
+                                        Padding="8,4" FontSize="11"/>
+                            </StackPanel>
+                        </StackPanel>
+                    </Border>
+
+                    <!-- Status -->
+                    <TextBlock Text="{Binding StatusText}" FontSize="11"
+                               Foreground="{DynamicResource TextSecondaryBrush}"
+                               VerticalAlignment="Bottom" Margin="0,24,0,0"
+                               TextWrapping="Wrap"/>
+                </StackPanel>
+            </ScrollViewer>
+        </Border>
+
+        <!-- ═══ Canvas Area (Drag & Drop) ═══ -->
+        <Border x:Name="DropBorder" Grid.Column="1" Background="{DynamicResource BgPrimaryBrush}"
+                BorderBrush="{DynamicResource BorderBrush}" BorderThickness="2">
+            <Grid>
+                <!-- Bild-Vorschau -->
+                <Image Source="{Binding PipelineBild}" Stretch="Uniform"
+                       VerticalAlignment="Center" HorizontalAlignment="Center"
+                       Margin="16"/>
+
+                <!-- Platzhalter (wenn kein Bild geladen) -->
+                <TextBlock Text="{Binding ., Converter={StaticResource Loc}, ConverterParameter='Bild.Platzhalter'}"
+                           FontSize="18" Foreground="{DynamicResource TextSecondaryBrush}"
+                           HorizontalAlignment="Center" VerticalAlignment="Center"
+                           IsVisible="{Binding BildGeladen, Converter={StaticResource InverseBoolToVis}}"/>
+
+                <!-- Datei-Liste (Drag & Drop) -->
+                <Border Background="{DynamicResource BgSecondaryBrush}"
+                        VerticalAlignment="Bottom" HorizontalAlignment="Stretch"
+                        BorderBrush="{DynamicResource BorderBrush}" BorderThickness="0,1,0,0"
+                        IsVisible="{Binding DateiListe.Count, Converter={StaticResource BoolToVis}}">
+                    <StackPanel Margin="8">
+                        <Grid>
+                            <TextBlock Text="{Binding ., Converter={StaticResource Loc}, ConverterParameter='DateiListe.Titel'}" FontWeight="SemiBold" FontSize="12"/>
+                            <Button Content="{Binding ., Converter={StaticResource Loc}, ConverterParameter='DateiListe.AlleLeeren'}"
+                                    Command="{Binding AlleDateienLeerenCommand}"
+                                    Classes="secondary"
+                                    HorizontalAlignment="Right"
+                                    Padding="6,2" FontSize="10"/>
+                        </Grid>
+                        <ItemsControl ItemsSource="{Binding DateiListe}" Margin="0,4,0,0">
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate>
+                                    <Grid Margin="0,2,0,2">
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="Auto"/>
+                                            <ColumnDefinition Width="*"/>
+                                            <ColumnDefinition Width="Auto"/>
+                                        </Grid.ColumnDefinitions>
+                                        <TextBlock Text="{Binding Icon}" Grid.Column="0" Margin="0,0,4,0"/>
+                                        <TextBlock Text="{Binding Dateiname}" Grid.Column="1" FontSize="11"
+                                                   Foreground="{DynamicResource TextPrimaryBrush}"
+                                                   TextTrimming="CharacterEllipsis"/>
+                                        <Button Content="✕" Grid.Column="2"
+                                                Command="{Binding $parent[ItemsControl].DataContext.DateiEntfernenCommand}"
+                                                CommandParameter="{Binding}"
+                                                Classes="secondary"
+                                                Padding="4,2" FontSize="10"/>
+                                    </Grid>
+                                </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+                    </StackPanel>
+                </Border>
+            </Grid>
+        </Border>
+
+        <!-- ═══ Adjustments Panel ═══ -->
+        <Border Grid.Column="2" Background="{DynamicResource BgSecondaryBrush}"
+                BorderBrush="{DynamicResource BorderBrush}" BorderThickness="1,0,0,0">
+            <ScrollViewer VerticalScrollBarVisibility="Auto">
+                <StackPanel Margin="16">
+                    <TextBlock Text="{Binding ., Converter={StaticResource Loc}, ConverterParameter='Korrektur.Titel'}" FontSize="18" FontWeight="Bold" Margin="0,0,0,16"/>
+
+                    <TextBlock Text="{Binding ., Converter={StaticResource Loc}, ConverterParameter='Korrektur.Belichtung'}" Margin="0,0,0,4"/>
+                    <Slider Minimum="-100" Maximum="100" Value="{Binding Belichtung}" Margin="0,0,0,12"/>
+
+                    <TextBlock Text="{Binding ., Converter={StaticResource Loc}, ConverterParameter='Korrektur.Kontrast'}" Margin="0,0,0,4"/>
+                    <Slider Minimum="-100" Maximum="100" Value="{Binding Kontrast}" Margin="0,0,0,12"/>
+
+                    <TextBlock Text="{Binding ., Converter={StaticResource Loc}, ConverterParameter='Korrektur.Saettigung'}" Margin="0,0,0,4"/>
+                    <Slider Minimum="-100" Maximum="100" Value="{Binding Saettigung}" Margin="0,0,0,12"/>
+
+                    <TextBlock Text="{Binding ., Converter={StaticResource Loc}, ConverterParameter='Korrektur.Vibranz'}" Margin="0,0,0,4"/>
+                    <Slider Minimum="-100" Maximum="100" Value="{Binding Vibranz}" Margin="0,0,0,12"/>
+
+                    <TextBlock Text="{Binding ., Converter={StaticResource Loc}, ConverterParameter='Korrektur.Lichter'}" Margin="0,0,0,4"/>
+                    <Slider Minimum="-100" Maximum="100" Value="{Binding Lichter}" Margin="0,0,0,12"/>
+
+                    <TextBlock Text="{Binding ., Converter={StaticResource Loc}, ConverterParameter='Korrektur.Schatten'}" Margin="0,0,0,4"/>
+                    <Slider Minimum="-100" Maximum="100" Value="{Binding Schatten}" Margin="0,0,0,12"/>
+
+                    <TextBlock Text="{Binding ., Converter={StaticResource Loc}, ConverterParameter='Korrektur.Schaerfe'}" Margin="0,0,0,4"/>
+                    <Slider Minimum="0" Maximum="100" Value="{Binding Schaerfe}" Margin="0,0,0,12"/>
+
+                    <TextBlock Text="{Binding ., Converter={StaticResource Loc}, ConverterParameter='Korrektur.RauschenLuma'}" Margin="0,0,0,4"/>
+                    <Slider Minimum="0" Maximum="100" Value="{Binding RauschenLuma}" Margin="0,0,0,12"/>
+
+                    <TextBlock Text="{Binding ., Converter={StaticResource Loc}, ConverterParameter='Korrektur.RauschenChroma'}" Margin="0,0,0,4"/>
+                    <Slider Minimum="0" Maximum="100" Value="{Binding RauschenChroma}" Margin="0,0,0,12"/>
+
+                    <CheckBox Content="{Binding ., Converter={StaticResource Loc}, ConverterParameter='Korrektur.Objektivkorrektur'}" IsChecked="{Binding Objektivkorrektur}" Margin="0,8,0,0"/>
+                </StackPanel>
+            </ScrollViewer>
+        </Border>
+    </Grid>
+</Window>

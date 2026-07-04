@@ -15,6 +15,7 @@ packages/
 installer-output/
 *.exe
 *.msi
+*.run
 
 ## IDE
 .vscode/

@@ -1,0 +1,78 @@
+<!-- Colors.axaml — Farbdefinitionen für Dark/Light Themes.
+     Avalonia 12: {ThemeResource} existiert NICHT → {DynamicResource} verwenden.
+     ResourceDictionary.ThemeDictionaries für Dark/Light Switching. -->
+<ResourceDictionary xmlns="https://github.com/avaloniaui"
+                    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+
+  <!-- ═══════════ ThemeDictionaries: Dark + Light ═══════════ -->
+  <ResourceDictionary.ThemeDictionaries>
+
+    <!-- ═══ DARK THEME ═══ -->
+    <!-- DarkTheme: Hintergrund #0F1117, Sekundär #1A1D29, Tertiär #252836
+         Text: Primary #E8E8E8, Secondary #8B8FA3
+         Accent: BLAU #0EA5E9 (NICHT Lila!), Secondary #06B6D4 (Cyan) -->
+    <ResourceDictionary x:Key="Dark">
+      <Color x:Key="BgPrimaryColor">#0F1117</Color>
+      <Color x:Key="BgSecondaryColor">#1A1D29</Color>
+      <Color x:Key="BgTertiaryColor">#252836</Color>
+      <Color x:Key="TextPrimaryColor">#E8E8E8</Color>
+      <Color x:Key="TextSecondaryColor">#8B8FA3</Color>
+      <Color x:Key="AccentPrimaryColor">#0EA5E9</Color>
+      <Color x:Key="AccentSecondaryColor">#06B6D4</Color>
+      <Color x:Key="BorderColor">#2D3142</Color>
+      <Color x:Key="SuccessColor">#22C55E</Color>
+      <Color x:Key="WarningColor">#F59E0B</Color>
+      <Color x:Key="ErrorColor">#EF4444</Color>
+      <Color x:Key="HoverColor">#0284C7</Color>
+      <Color x:Key="SelectionColor">#0EA5E9</Color>
+
+      <SolidColorBrush x:Key="BgPrimaryBrush" Color="{DynamicResource BgPrimaryColor}"/>
+      <SolidColorBrush x:Key="BgSecondaryBrush" Color="{DynamicResource BgSecondaryColor}"/>
+      <SolidColorBrush x:Key="BgTertiaryBrush" Color="{DynamicResource BgTertiaryColor}"/>
+      <SolidColorBrush x:Key="TextPrimaryBrush" Color="{DynamicResource TextPrimaryColor}"/>
+      <SolidColorBrush x:Key="TextSecondaryBrush" Color="{DynamicResource TextSecondaryColor}"/>
+      <SolidColorBrush x:Key="AccentPrimaryBrush" Color="{DynamicResource AccentPrimaryColor}"/>
+      <SolidColorBrush x:Key="AccentSecondaryBrush" Color="{DynamicResource AccentSecondaryColor}"/>
+      <SolidColorBrush x:Key="BorderBrush" Color="{DynamicResource BorderColor}"/>
+      <SolidColorBrush x:Key="SuccessBrush" Color="{DynamicResource SuccessColor}"/>
+      <SolidColorBrush x:Key="WarningBrush" Color="{DynamicResource WarningColor}"/>
+      <SolidColorBrush x:Key="ErrorBrush" Color="{DynamicResource ErrorColor}"/>
+      <SolidColorBrush x:Key="HoverBrush" Color="{DynamicResource HoverColor}"/>
+      <SolidColorBrush x:Key="SelectionBrush" Color="{DynamicResource SelectionColor}"/>
+    </ResourceDictionary>
+
+    <!-- ═══ LIGHT THEME ═══ -->
+    <!-- LightTheme: gleiche Accent-Farben (blau/cyan), heller Hintergrund -->
+    <ResourceDictionary x:Key="Light">
+      <Color x:Key="BgPrimaryColor">#FFFFFF</Color>
+      <Color x:Key="BgSecondaryColor">#F1F5F9</Color>
+      <Color x:Key="BgTertiaryColor">#E2E8F0</Color>
+      <Color x:Key="TextPrimaryColor">#1E293B</Color>
+      <Color x:Key="TextSecondaryColor">#64748B</Color>
+      <Color x:Key="AccentPrimaryColor">#0EA5E9</Color>
+      <Color x:Key="AccentSecondaryColor">#06B6D4</Color>
+      <Color x:Key="BorderColor">#CBD5E1</Color>
+      <Color x:Key="SuccessColor">#22C55E</Color>
+      <Color x:Key="WarningColor">#F59E0B</Color>
+      <Color x:Key="ErrorColor">#EF4444</Color>
+      <Color x:Key="HoverColor">#0284C7</Color>
+      <Color x:Key="SelectionColor">#0EA5E9</Color>
+
+      <SolidColorBrush x:Key="BgPrimaryBrush" Color="{DynamicResource BgPrimaryColor}"/>
+      <SolidColorBrush x:Key="BgSecondaryBrush" Color="{DynamicResource BgSecondaryColor}"/>
+      <SolidColorBrush x:Key="BgTertiaryBrush" Color="{DynamicResource BgTertiaryColor}"/>
+      <SolidColorBrush x:Key="TextPrimaryBrush" Color="{DynamicResource TextPrimaryColor}"/>
+      <SolidColorBrush x:Key="TextSecondaryBrush" Color="{DynamicResource TextSecondaryColor}"/>
+      <SolidColorBrush x:Key="AccentPrimaryBrush" Color="{DynamicResource AccentPrimaryColor}"/>
+      <SolidColorBrush x:Key="AccentSecondaryBrush" Color="{DynamicResource AccentSecondaryColor}"/>
+      <SolidColorBrush x:Key="BorderBrush" Color="{DynamicResource BorderColor}"/>
+      <SolidColorBrush x:Key="SuccessBrush" Color="{DynamicResource SuccessColor}"/>
+      <SolidColorBrush x:Key="WarningBrush" Color="{DynamicResource WarningColor}"/>
+      <SolidColorBrush x:Key="ErrorBrush" Color="{DynamicResource ErrorColor}"/>
+      <SolidColorBrush x:Key="HoverBrush" Color="{DynamicResource HoverColor}"/>
+      <SolidColorBrush x:Key="SelectionBrush" Color="{DynamicResource SelectionColor}"/>
+    </ResourceDictionary>
+
+  </ResourceDictionary.ThemeDictionaries>
+
+</ResourceDictionary>

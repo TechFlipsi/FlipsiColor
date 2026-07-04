@@ -1,0 +1,155 @@
+<!-- LightTheme.axaml — Light Mode Styles für ALLE Controls.
+     Gleiche Accent-Farben (blau/cyan), heller Hintergrund.
+     Pitfall: <Styles> root (NICHT <ResourceDictionary>) für Style-Elemente. -->
+<Styles xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+
+  <!-- ═══ Window ═══ -->
+  <Style Selector="Window">
+    <Setter Property="Background" Value="{DynamicResource BgPrimaryBrush}"/>
+    <Setter Property="Foreground" Value="{DynamicResource TextPrimaryBrush}"/>
+  </Style>
+
+  <!-- ═══ TextBlock ═══ -->
+  <Style Selector="TextBlock">
+    <Setter Property="Foreground" Value="{DynamicResource TextPrimaryBrush}"/>
+  </Style>
+
+  <!-- ═══ Button ═══ -->
+  <Style Selector="Button">
+    <Setter Property="Background" Value="{DynamicResource AccentPrimaryBrush}"/>
+    <Setter Property="Foreground" Value="White"/>
+    <Setter Property="Padding" Value="16,8"/>
+    <Setter Property="BorderThickness" Value="0"/>
+    <Setter Property="CornerRadius" Value="6"/>
+    <Setter Property="Cursor" Value="Hand"/>
+  </Style>
+  <Style Selector="Button:pointerover">
+    <Setter Property="Background" Value="{DynamicResource HoverBrush}"/>
+  </Style>
+  <Style Selector="Button:pressed">
+    <Setter Property="Background" Value="{DynamicResource AccentSecondaryBrush}"/>
+  </Style>
+  <Style Selector="Button.secondary">
+    <Setter Property="Background" Value="{DynamicResource BgTertiaryBrush}"/>
+    <Setter Property="Foreground" Value="{DynamicResource TextPrimaryBrush}"/>
+  </Style>
+
+  <!-- ═══ ComboBox ═══ -->
+  <Style Selector="ComboBox">
+    <Setter Property="Background" Value="{DynamicResource BgSecondaryBrush}"/>
+    <Setter Property="Foreground" Value="{DynamicResource TextPrimaryBrush}"/>
+    <Setter Property="BorderBrush" Value="{DynamicResource BorderBrush}"/>
+    <Setter Property="BorderThickness" Value="1"/>
+    <Setter Property="CornerRadius" Value="6"/>
+    <Setter Property="Padding" Value="8,4"/>
+  </Style>
+  <Style Selector="ComboBox:pointerover">
+    <Setter Property="BorderBrush" Value="{DynamicResource AccentPrimaryBrush}"/>
+  </Style>
+  <Style Selector="ComboBox FlyoutPresenter">
+    <Setter Property="Background" Value="{DynamicResource BgPrimaryBrush}"/>
+    <Setter Property="BorderBrush" Value="{DynamicResource BorderBrush}"/>
+    <Setter Property="BorderThickness" Value="1"/>
+  </Style>
+  <Style Selector="ComboBoxItem">
+    <Setter Property="Background" Value="Transparent"/>
+    <Setter Property="Foreground" Value="{DynamicResource TextPrimaryBrush}"/>
+    <Setter Property="Padding" Value="8,4"/>
+  </Style>
+  <Style Selector="ComboBoxItem:pointerover">
+    <Setter Property="Background" Value="{DynamicResource AccentPrimaryBrush}"/>
+    <Setter Property="Foreground" Value="White"/>
+  </Style>
+  <Style Selector="ComboBoxItem:selected">
+    <Setter Property="Background" Value="{DynamicResource SelectionBrush}"/>
+    <Setter Property="Foreground" Value="White"/>
+  </Style>
+
+  <!-- ═══ ListBox ═══ -->
+  <Style Selector="ListBox">
+    <Setter Property="Background" Value="{DynamicResource BgPrimaryBrush}"/>
+    <Setter Property="Foreground" Value="{DynamicResource TextPrimaryBrush}"/>
+    <Setter Property="BorderBrush" Value="{DynamicResource BorderBrush}"/>
+    <Setter Property="BorderThickness" Value="1"/>
+    <Setter Property="CornerRadius" Value="6"/>
+  </Style>
+  <Style Selector="ListBoxItem">
+    <Setter Property="Background" Value="Transparent"/>
+    <Setter Property="Foreground" Value="{DynamicResource TextPrimaryBrush}"/>
+    <Setter Property="Padding" Value="8,4"/>
+  </Style>
+  <Style Selector="ListBoxItem:pointerover">
+    <Setter Property="Background" Value="{DynamicResource BgTertiaryBrush}"/>
+  </Style>
+  <Style Selector="ListBoxItem:selected">
+    <Setter Property="Background" Value="{DynamicResource SelectionBrush}"/>
+    <Setter Property="Foreground" Value="White"/>
+  </Style>
+
+  <!-- ═══ CheckBox ═══ -->
+  <Style Selector="CheckBox">
+    <Setter Property="Foreground" Value="{DynamicResource TextPrimaryBrush}"/>
+    <Setter Property="Background" Value="{DynamicResource BgPrimaryBrush}"/>
+    <Setter Property="BorderBrush" Value="{DynamicResource BorderBrush}"/>
+    <Setter Property="BorderThickness" Value="1"/>
+  </Style>
+  <Style Selector="CheckBox:checked">
+    <Setter Property="Background" Value="{DynamicResource AccentPrimaryBrush}"/>
+    <Setter Property="BorderBrush" Value="{DynamicResource AccentPrimaryBrush}"/>
+  </Style>
+
+  <!-- ═══ Slider ═══ -->
+  <Style Selector="Slider">
+    <Setter Property="Background" Value="{DynamicResource BgTertiaryBrush}"/>
+    <Setter Property="Foreground" Value="{DynamicResource AccentPrimaryBrush}"/>
+  </Style>
+  <Style Selector="Slider /template/ Thumb">
+    <Setter Property="Background" Value="{DynamicResource AccentPrimaryBrush}"/>
+    <Setter Property="BorderBrush" Value="{DynamicResource AccentPrimaryBrush}"/>
+  </Style>
+
+  <!-- ═══ TabControl ═══ -->
+  <Style Selector="TabControl">
+    <Setter Property="Background" Value="Transparent"/>
+    <Setter Property="BorderThickness" Value="0"/>
+  </Style>
+  <Style Selector="TabItem">
+    <Setter Property="Foreground" Value="{DynamicResource TextPrimaryBrush}"/>
+    <Setter Property="Background" Value="Transparent"/>
+    <Setter Property="Padding" Value="8,4"/>
+    <Setter Property="FontSize" Value="12"/>
+    <Setter Property="FontWeight" Value="SemiBold"/>
+  </Style>
+  <Style Selector="TabItem:selected">
+    <Setter Property="Foreground" Value="{DynamicResource AccentPrimaryBrush}"/>
+  </Style>
+
+  <!-- ═══ Border ═══ -->
+  <Style Selector="Border">
+    <Setter Property="BorderBrush" Value="{DynamicResource BorderBrush}"/>
+  </Style>
+
+  <!-- ═══ ProgressBar ═══ -->
+  <Style Selector="ProgressBar">
+    <Setter Property="Background" Value="{DynamicResource BgTertiaryBrush}"/>
+    <Setter Property="Foreground" Value="{DynamicResource AccentPrimaryBrush}"/>
+  </Style>
+
+  <!-- ═══ TextBox ═══ -->
+  <Style Selector="TextBox">
+    <Setter Property="Background" Value="{DynamicResource BgPrimaryBrush}"/>
+    <Setter Property="Foreground" Value="{DynamicResource TextPrimaryBrush}"/>
+    <Setter Property="BorderBrush" Value="{DynamicResource BorderBrush}"/>
+    <Setter Property="BorderThickness" Value="1"/>
+    <Setter Property="CornerRadius" Value="6"/>
+  </Style>
+
+  <!-- ═══ Drag-Over Highlight ═══ -->
+  <Style Selector="Border.dragOver">
+    <Setter Property="BorderBrush" Value="{DynamicResource AccentPrimaryBrush}"/>
+    <Setter Property="BorderThickness" Value="3"/>
+    <Setter Property="Background" Value="{DynamicResource BgTertiaryBrush}"/>
+  </Style>
+
+</Styles>
