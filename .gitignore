@@ -30,4 +30,5 @@ Thumbs.db
 Models/*.onnx
 
 ## Logs
-*.log
+*.log.hermes/
+*.pyc

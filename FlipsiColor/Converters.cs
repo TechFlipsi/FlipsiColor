@@ -42,7 +42,7 @@ public class MatToBitmapSourceConverter : IValueConverter
         => ConvertMat(value as Mat);
 
     public object ConvertBack(object value, Type targetType, object parameter, CultureInfo culture)
-        => throw new NotImplementedException();
+        => System.Windows.Data.Binding.DoNothing;
 
     /// <summary>Converts an OpenCV Mat to WPF BitmapSource (PNG-encoded, UI-thread safe)</summary>
     public static BitmapSource? ConvertMat(Mat? mat)
