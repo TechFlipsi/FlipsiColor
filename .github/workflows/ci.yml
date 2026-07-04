@@ -35,7 +35,7 @@ jobs:
         if: matrix.os == 'ubuntu-latest'
         run: |
           pip install Pillow
-          CI=true dotnet run --project FlipsiColor.TestRunner/FlipsiColor.TestRunner.csproj -c Release --no-build
+          CI=true dotnet run --project FlipsiColor.TestRunner/FlipsiColor.TestRunner.csproj -c Release
 
       - name: Build (Windows)
         if: matrix.os == 'windows-latest'
