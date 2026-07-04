@@ -18,7 +18,7 @@ public class MatToBitmapConverter : IValueConverter
         => ConvertMat(value as Mat);
 
     public object? ConvertBack(object? value, Type targetType, object? parameter, CultureInfo culture)
-        => throw new NotImplementedException();
+        => Avalonia.Data.BindingNotification.UnsetValue;
 
     /// <summary>Converts an OpenCV Mat to Avalonia Bitmap (PNG-encoded, UI-thread safe)</summary>
     public static Bitmap? ConvertMat(Mat? mat)
@@ -75,5 +75,5 @@ public class LocConverter : IValueConverter
     }
 
     public object? ConvertBack(object? value, Type targetType, object? parameter, CultureInfo culture)
-        => throw new NotImplementedException();
+        => Avalonia.Data.BindingNotification.UnsetValue;
 }
