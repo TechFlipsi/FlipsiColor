@@ -69,9 +69,9 @@ public class ThemeManager
             if (key?.GetValue("AppsUseLightTheme") is int value)
                 return value == 0 ? "Dark" : "Light";
         }
-        catch
+        catch (Exception ex)
         {
-            // Fallback
+            Log.Debug("Theme-Fallback: {Fehler}", ex.Message);
         }
         return "Light";
     }

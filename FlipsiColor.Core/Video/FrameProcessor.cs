@@ -50,18 +50,33 @@ public sealed class FrameProcessor : IDisposable
             // Sättigung
             if (Math.Abs(param.Saettigung) > 0.01f)
             {
-                var hsv = new Mat();
-                Cv2.CvtColor(result, hsv, ColorConversionCodes.BGR2HSV);
-                var channels = hsv.Split();
-                channels[1] = channels[1] + new Scalar(param.Saettigung * 50, param.Saettigung * 50, param.Saettigung * 50, 0);
-                Cv2.Merge(channels, hsv);
-                foreach (var c in channels) c.Dispose();
-                arbeit = new Mat();
-                Cv2.CvtColor(hsv, arbeit, ColorConversionCodes.HSV2BGR);
-                hsv.Dispose();
-                result.Dispose();
-                result = arbeit;
-                arbeit = null;
+                Mat? hsv = null;
+                Mat[]? channels = null;
+                try
+                {
+                    hsv = new Mat();
+                    Cv2.CvtColor(result, hsv, ColorConversionCodes.BGR2HSV);
+                    channels = hsv.Split();
+                    var neuG = channels[1] + new Scalar(param.Saettigung * 50, param.Saettigung * 50, param.Saettigung * 50, 0);
+                    channels[1].Dispose();
+                    channels[1] = neuG;
+                    Cv2.Merge(channels, hsv);
+                    foreach (var c in channels) c.Dispose();
+                    channels = null;
+                    arbeit = new Mat();
+                    Cv2.CvtColor(hsv, arbeit, ColorConversionCodes.HSV2BGR);
+                    hsv.Dispose();
+                    hsv = null;
+                    result.Dispose();
+                    result = arbeit;
+                    arbeit = null;
+                }
+                catch
+                {
+                    if (channels != null) foreach (var c in channels) c.Dispose();
+                    hsv?.Dispose();
+                    throw;
+                }
             }
         }
         catch (Exception ex)

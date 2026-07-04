@@ -310,12 +310,8 @@ public static class SecurityValidator
             return false;
         }
 
-        // file:// und andere Schemata blockieren
-        if (uri.Scheme is "file" or "ftp" or "ldap" or "dict" or "gopher")
-        {
-            Log.Warning("URL-Validierung: Schema '{Schema}' blockiert: {Url}", uri.Scheme, url);
-            return false;
-        }
+        // file:// und andere Schemata werden bereits oben durch die HTTPS-Prüfung blockiert.
+        // (Dead Code entfernt — der if-Block war unreachable, da uri.Scheme != HTTPS schon return false ergibt.)
 
         // Loopback / Private-IP-Adressen blockieren (SSRF-Schutz)
         var host = uri.Host;

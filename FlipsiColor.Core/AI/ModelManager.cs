@@ -316,7 +316,10 @@ public sealed class ModelManager : IDisposable
     /// </summary>
     public InferenceSession? Session(ModellId id)
     {
-        return _sessions.GetValueOrDefault(id);
+        lock (_lock)
+        {
+            return _sessions.GetValueOrDefault(id);
+        }
     }
 
     public long CoreGroesseGesamt() => _modelle.Values
@@ -325,7 +328,7 @@ public sealed class ModelManager : IDisposable
         .Where(m => !m.Erforderlich).Sum(m => m.GroesseBytes);
 
     private string ModellPfad(ModellId id) =>
-        Path.Combine(_modelDir, $"{_modelle[id].Name}.onnx");
+        Path.Combine(_modelDir, $"{(_modelle.TryGetValue(id, out var info) ? info.Name : "")}.onnx");
 
     private async Task<bool> ModellHerunterladenAsync(ModellId id)
     {

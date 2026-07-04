@@ -137,8 +137,9 @@ public sealed class VapourSynthProcessor : IDisposable
             proc.WaitForExit(5000);
             return proc.ExitCode == 0 && !string.IsNullOrWhiteSpace(output);
         }
-        catch
+        catch (Exception ex)
         {
+            Log.Debug("Befehl nicht verfügbar: {Fehler}", ex.Message);
             return false;
         }
     }
