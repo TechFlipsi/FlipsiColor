@@ -131,8 +131,12 @@ jobs:
           dotnet publish FlipsiColor.Avalonia/FlipsiColor.Avalonia.csproj -c Release -r linux-x64 --self-contained true -p:PublishSingleFile=true -p:IncludeNativeLibrariesForSelfExtract=true -o installer/build/publish --no-restore
 
       # ── .deb + .AppImage bauen ──
-      - name: Install dpkg-dev
-        run: sudo apt-get install -y dpkg-dev
+      - name: Install dpkg-dev and appimagetool
+        run: |
+          sudo apt-get install -y dpkg-dev
+          wget -q https://github.com/AppImage/AppImageKit/releases/download/continuous/appimagetool-x86_64.AppImage -O /tmp/appimagetool
+          chmod +x /tmp/appimagetool
+          echo "/tmp/appimagetool" >> $GITHUB_PATH
 
       - name: Build Linux Installers (.deb + .AppImage)
         run: |
@@ -181,12 +185,13 @@ jobs:
           name: FlipsiColor-linux-deb
           path: release-artifacts
 
-      # Linux .AppImage herunterladen
+      # Linux .AppImage herunterladen (optional — appimagetool evtl. nicht installiert)
       - name: Download Linux .AppImage
         uses: actions/download-artifact@v4
         with:
           name: FlipsiColor-linux-appimage
           path: release-artifacts
+        continue-on-error: true
 
       - name: List Release Artifacts
         run: ls -la release-artifacts/
