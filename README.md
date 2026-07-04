@@ -1,5 +1,7 @@
 # FlipsiColor
 
+[![Discord](https://img.shields.io/discord/1496261911677894867?label=Discord)](https://discord.gg/zHPhQ7EaqH)
+
 KI-gestützte Bild- & Videofarbkorrektur. Cross-Platform (Linux + Windows) mit Avalonia UI und .NET 10.
 
 ## Features
@@ -77,6 +79,12 @@ dotnet publish FlipsiColor.Avalonia/FlipsiColor.Avalonia.csproj \
   -c Release -r win-x64 --self-contained true \
   -p:PublishSingleFile=true -o publish/win-x64
 ```
+
+## Community
+
+💬 [Discord](https://discord.gg/zHPhQ7EaqH) – Fragen, Feedback, Hilfe, Bug-Reports
+
+Wir suchen Contributors! Siehe [CONTRIBUTING.md](CONTRIBUTING.md) für Build-Anleitung und Code-Standards.
 
 ## Credits
 
