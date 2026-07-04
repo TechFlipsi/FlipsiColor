@@ -1,0 +1,725 @@
+using System;
+using System.Collections.ObjectModel;
+using System.IO;
+using System.Linq;
+using System.Threading.Tasks;
+using Avalonia.Media.Imaging;
+using Avalonia.Threading;
+using CommunityToolkit.Mvvm.ComponentModel;
+using CommunityToolkit.Mvvm.Input;
+using OpenCvSharp;
+
+using FlipsiColor.AI;
+using FlipsiColor.Color;
+using FlipsiColor.Core;
+using FlipsiColor.Image;
+using FlipsiColor.Video;
+
+namespace FlipsiColor.ViewModels;
+
+/// <summary>
+/// Main ViewModel — steuert die komplette App (Avalonia UI Version).
+/// Drag &amp; Drop: mehrere Dateien gleichzeitig (Bilder UND Videos), Datei-Liste im UI.
+/// </summary>
+public partial class MainViewModel : ObservableObject, IDisposable
+{
+    private readonly ModelManager _modelManager;
+    private readonly ColorManager _colorManager;
+    private readonly ImagePipeline _imagePipeline;
+    private readonly VideoPipeline _videoPipeline;
+    private readonly AutoUpdater _autoUpdater;
+    private readonly ClipMerger _clipMerger;
+
+    [ObservableProperty] private string _title = "FlipsiColor v0.4.0";
+    [ObservableProperty] private bool _gpuVerfuegbar;
+    [ObservableProperty] private string _gpuName = "";
+    [ObservableProperty] private bool _updateVerfuegbar;
+    [ObservableProperty] private string _neueVersion = "";
+    [ObservableProperty] private string _aktuellerModus = "Fragen";
+    [ObservableProperty] private int _modusIndex;
+    [ObservableProperty] private bool _bildGeladen;
+    [ObservableProperty] private string _bildPfad = "";
+    [ObservableProperty] private string _statusText = "Bereit";
+    [ObservableProperty] private bool _pipelineLaeuft;
+    [ObservableProperty] private Bitmap? _pipelineBild;
+
+    // Video-Status
+    [ObservableProperty] private bool _videoGeladen;
+    [ObservableProperty] private string _videoPfad = "";
+    [ObservableProperty] private bool _videoPipelineLaeuft;
+    [ObservableProperty] private double _videoFortschritt;
+    [ObservableProperty] private string _videoInfo = "";
+
+    // Clip-Merge (allgemein, nicht DJI-spezifisch)
+    [ObservableProperty] private ObservableCollection<ClipMerger.ClipGruppe> _clipGruppen = [];
+    [ObservableProperty] private bool _clipMergeAktiv;
+    [ObservableProperty] private bool _clipMergeLaeuft;
+    [ObservableProperty] private double _clipMergeFortschritt;
+    [ObservableProperty] private string _clipOrdner = "";
+    [ObservableProperty] private ClipMerger.ClipGruppe? _ausgewaehlteGruppe;
+
+    // Pipeline Controls
+    [ObservableProperty] private float _belichtung;
+    [ObservableProperty] private float _kontrast;
+    [ObservableProperty] private float _saettigung;
+    [ObservableProperty] private float _vibranz;
+    [ObservableProperty] private float _lichter;
+    [ObservableProperty] private float _schatten;
+    [ObservableProperty] private float _schaerfe;
+    [ObservableProperty] private float _rauschenLuma;
+    [ObservableProperty] private float _rauschenChroma;
+    [ObservableProperty] private bool _objektivkorrektur = true;
+    [ObservableProperty] private bool _distortionGridAktiv;
+    [ObservableProperty] private bool _colorCalibrationAktiv;
+    [ObservableProperty] private int _intensitaetIndex = 1; // Mittel
+
+    // Upscaling & Gesichtswiederherstellung
+    [ObservableProperty] private int _hochskalierenFaktor = 1;
+    [ObservableProperty] private bool _gesichtswiederherstellungAktiv;
+
+    // StyleLUT → Farbstil-LUT
+    [ObservableProperty] private string? _styleLutPfad;
+    [ObservableProperty] private string _styleLutName = "";
+
+    // Theme → Design
+    [ObservableProperty] private string _aktuellesTheme = "System";
+
+    // Einstellungen
+    [ObservableProperty] private int _spracheIndex; // 0=Deutsch, 1=Englisch
+    [ObservableProperty] private int _designIndex; // 0=Dunkel, 1=Hell, 2=System
+    [ObservableProperty] private bool _autoUpdateAktiv = true;
+    [ObservableProperty] private string _modellVerzeichnis = "";
+
+    // Datei-Liste (Drag & Drop — mehrere Dateien)
+    [ObservableProperty] private ObservableCollection<DateiEintrag> _dateiListe = [];
+
+    // Callbacks für Dialoge (von Code-Behind gesetzt, da Avalonia StorageProvider)
+    public Func<string, string, string?, Task<string?>>? DateiOeffnenCallback { get; set; }
+    public Func<string, Task<string?>>? OrdnerOeffnenCallback { get; set; }
+    public Action<string>? MeldungAnzeigenCallback { get; set; }
+    public Action<string>? FehlerAnzeigenCallback { get; set; }
+
+    // Sprach-Update Event
+    public event EventHandler? SpracheGeaendert;
+
+    public MainViewModel()
+    {
+        _modelManager = new ModelManager();
+        _colorManager = new ColorManager();
+        _imagePipeline = new ImagePipeline(_modelManager, _colorManager);
+        _videoPipeline = new VideoPipeline(_modelManager, _colorManager);
+        _autoUpdater = new AutoUpdater();
+        _clipMerger = new ClipMerger();
+
+        GPUInfo.Erkennen();
+        GpuVerfuegbar = GPUInfo.GpuVerfuegbar;
+        GpuName = GPUInfo.GpuName;
+
+        _colorManager.Initialisieren();
+
+        // Settings laden
+        try
+        {
+            var settings = Settings.Laden();
+            AktuellesTheme = settings.Theme;
+            SpracheIndex = settings.Sprache == "en" ? 1 : 0;
+            DesignIndex = settings.Theme switch { "Dark" => 0, "Light" => 1, _ => 2 };
+            AutoUpdateAktiv = settings.AutoUpdatePruefen;
+            ModellVerzeichnis = Path.Combine(
+                Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
+                "FlipsiColor", "Models");
+            Lokalisierung.SpracheSetzen(settings.Sprache);
+            Lokalisierung.SpracheGeaendert += (_, _) => SpracheGeaendert?.Invoke(this, EventArgs.Empty);
+        }
+        catch
+        {
+            AktuellesTheme = "Dark";
+            SpracheIndex = 0;
+            DesignIndex = 0;
+        }
+
+        // Auto-Updater Events — Dispatcher.UIThread.Post statt Dispatcher.Invoke
+        // Pitfall: Dispatcher.Invoke() → Dispatcher.UIThread.Post() in Avalonia
+        _autoUpdater.UpdateVerfuegbarChanged += (_, verfuegbar) =>
+            Dispatcher.UIThread.Post(() => UpdateVerfuegbar = verfuegbar);
+        _autoUpdater.NeueVersionChanged += (_, version) =>
+            Dispatcher.UIThread.Post(() => NeueVersion = version);
+    }
+
+    /// <summary>IntensitaetIndex (0/1/2) in den Intensitaet-Enum.</summary>
+    private Intensitaet IntensitaetFromIndex() => IntensitaetIndex switch
+    {
+        0 => Intensitaet.Leicht,
+        2 => Intensitaet.Stark,
+        _ => Intensitaet.Mittel
+    };
+
+    /// <summary>ModusIndex (0/1/2) in den BetriebsModus-Enum (deutsche Begriffe).</summary>
+    private BetriebsModus ModusFromIndex() => ModusIndex switch
+    {
+        1 => BetriebsModus.SmartLearn,
+        2 => BetriebsModus.Turbo,
+        _ => BetriebsModus.Ask
+    };
+
+    // ===== Drag & Drop — mehrere Dateien (Bilder UND Videos) =====
+
+    /// <summary>Fügt mehrere Dateien zur Datei-Liste hinzu (Drag &amp; Drop).</summary>
+    public void DateienHinzufuegen(string[] dateien)
+    {
+        foreach (var datei in dateien)
+        {
+            if (!File.Exists(datei)) continue;
+            var ext = Path.GetExtension(datei).ToLowerInvariant();
+            if (!IstBildDatei(ext) && !IstVideoDatei(ext)) continue;
+
+            // Duplikate vermeiden
+            if (DateiListe.Any(d => d.Pfad == datei)) continue;
+
+            DateiListe.Add(new DateiEintrag
+            {
+                Pfad = datei,
+                Dateiname = Path.GetFileName(datei),
+                IstBild = IstBildDatei(ext),
+                IstVideo = IstVideoDatei(ext)
+            });
+        }
+
+        // Erste Bilddatei automatisch laden
+        var ersteBild = DateiListe.FirstOrDefault(d => d.IstBild);
+        if (ersteBild != null && !BildGeladen)
+        {
+            LoadBild(ersteBild.Pfad);
+        }
+
+        StatusText = $"{DateiListe.Count} Datei(en) geladen";
+    }
+
+    private static bool IstBildDatei(string ext) => ext is ".jpg" or ".jpeg" or ".png" or ".tif" or ".tiff"
+        or ".bmp" or ".cr2" or ".cr3" or ".nef" or ".arw" or ".dng" or ".orf" or ".rw2";
+
+    private static bool IstVideoDatei(string ext) => ext is ".mp4" or ".mov" or ".avi" or ".mkv"
+        or ".m4v" or ".wmv" or ".flv" or ".mxf" or ".mts" or ".m2ts";
+
+    [RelayCommand]
+    private void DateiEntfernen(DateiEintrag eintrag)
+    {
+        DateiListe.Remove(eintrag);
+        StatusText = $"{DateiListe.Count} Datei(en) verbleibend";
+    }
+
+    [RelayCommand]
+    private void AlleDateienLeeren()
+    {
+        DateiListe.Clear();
+        BildGeladen = false;
+        PipelineBild = null;
+        StatusText = "Datei-Liste geleert";
+    }
+
+    /// <summary>Lädt ein Bild in die Pipeline (öffentlich für Drag &amp; Drop).</summary>
+    public bool LoadBild(string pfad)
+    {
+        try
+        {
+            if (_imagePipeline.BildLaden(pfad))
+            {
+                BildPfad = pfad;
+                BildGeladen = true;
+                PipelineBild = null;
+                StatusText = $"{Lokalisierung.T("Status.Geladen")}: {Path.GetFileName(pfad)}";
+                return true;
+            }
+            else
+            {
+                FehlerAnzeigenCallback?.Invoke(Lokalisierung.T("Status.BildKonnteNichtGeladenWerden"));
+                return false;
+            }
+        }
+        catch (Exception ex)
+        {
+            FehlerAnzeigenCallback?.Invoke($"{Lokalisierung.T("Status.Fehler")}: {ex.Message}");
+            return false;
+        }
+    }
+
+    [RelayCommand]
+    private async Task BildOeffnenAsync()
+    {
+        if (DateiOeffnenCallback == null) return;
+        var filter = Lokalisierung.T("Filter.Bilder");
+        var titel = Lokalisierung.T("Dialog.BildOeffnen");
+        var pfad = await DateiOeffnenCallback(titel, filter, null);
+        if (!string.IsNullOrEmpty(pfad))
+            LoadBild(pfad);
+    }
+
+    [RelayCommand]
+    private async Task PipelineAusfuehrenAsync()
+    {
+        if (!BildGeladen || PipelineLaeuft) return;
+
+        PipelineLaeuft = true;
+        StatusText = Lokalisierung.T("Status.PipelineLaeuft");
+
+        var param = new PipelineParams
+        {
+            Belichtung = Belichtung,
+            Kontrast = Kontrast,
+            Saettigung = Saettigung,
+            Vibranz = Vibranz,
+            Lichter = Lichter,
+            Schatten = Schatten,
+            SchaerfeBetrag = Schaerfe,
+            LuminanzRauschen = RauschenLuma / 100f,
+            ChrominanzRauschen = RauschenChroma / 100f,
+            ObjektivkorrekturAktiv = Objektivkorrektur,
+            DistortionGridAktiv = DistortionGridAktiv,
+            ColorCalibrationAktiv = ColorCalibrationAktiv,
+            Intensitaet = IntensitaetFromIndex(),
+            Modus = ModusFromIndex(),
+            HochskalierenFaktor = HochskalierenFaktor,
+            GesichtswiederherstellungAktiv = GesichtswiederherstellungAktiv,
+            StyleLutPfad = StyleLutPfad
+        };
+
+        try
+        {
+            await Task.Run(() => _imagePipeline.PipelineAusfuehren(param));
+
+            // Mat → Avalonia Bitmap auf UI-Thread
+            var mat = _imagePipeline.Ergebnis;
+            if (mat != null && !mat.Empty())
+            {
+                PipelineBild = MatToBitmapConverter.ConvertMat(mat);
+            }
+            StatusText = Lokalisierung.T("Status.PipelineAbgeschlossen");
+        }
+        catch (Exception ex)
+        {
+            StatusText = $"{Lokalisierung.T("Status.PipelineFehler")}: {ex.Message}";
+            FehlerAnzeigenCallback?.Invoke($"{Lokalisierung.T("Status.PipelineFehlgeschlagen")}: {ex.Message}");
+        }
+        finally
+        {
+            PipelineLaeuft = false;
+        }
+    }
+
+    [RelayCommand]
+    private void Zuruecksetzen()
+    {
+        Belichtung = 0; Kontrast = 0; Saettigung = 0; Vibranz = 0;
+        Lichter = 0; Schatten = 0; Schaerfe = 0; RauschenLuma = 0; RauschenChroma = 0;
+        Objektivkorrektur = true;
+        DistortionGridAktiv = false;
+        ColorCalibrationAktiv = false;
+        HochskalierenFaktor = 1;
+        GesichtswiederherstellungAktiv = false;
+        StyleLutPfad = null;
+        StyleLutName = "";
+        StatusText = Lokalisierung.T("Status.ParameterZurueckgesetzt");
+    }
+
+    [RelayCommand]
+    private async Task DistortionGridKalibrierenAsync()
+    {
+        if (DateiOeffnenCallback == null) return;
+        var titel = Lokalisierung.T("Dialog.SchachbrettOeffnen");
+        var filter = "*.jpg;*.jpeg;*.png;*.tif;*.tiff;*.bmp";
+        var pfad = await DateiOeffnenCallback(titel, filter, null);
+        if (string.IsNullOrEmpty(pfad)) return;
+
+        try
+        {
+            var erfolg = _imagePipeline.KalibriereDistortionGrid(pfad);
+            StatusText = erfolg
+                ? Lokalisierung.T("Status.DistortionGridErfolgreich")
+                : Lokalisierung.T("Status.DistortionGridFehlgeschlagen");
+        }
+        catch (Exception ex)
+        {
+            StatusText = $"{Lokalisierung.T("Status.Fehler")}: {ex.Message}";
+        }
+    }
+
+    [RelayCommand]
+    private async Task ColorCalibrationKalibrierenAsync()
+    {
+        if (DateiOeffnenCallback == null) return;
+        var titel = Lokalisierung.T("Dialog.ColorCheckerOeffnen");
+        var filter = "*.jpg;*.jpeg;*.png;*.tif;*.tiff;*.bmp";
+        var pfad = await DateiOeffnenCallback(titel, filter, null);
+        if (string.IsNullOrEmpty(pfad)) return;
+
+        try
+        {
+            var erfolg = _imagePipeline.KalibriereColor(pfad);
+            StatusText = erfolg
+                ? Lokalisierung.T("Status.FarbkalibrierungErfolgreich")
+                : Lokalisierung.T("Status.FarbkalibrierungFehlgeschlagen");
+        }
+        catch (Exception ex)
+        {
+            StatusText = $"{Lokalisierung.T("Status.Fehler")}: {ex.Message}";
+        }
+    }
+
+    [RelayCommand]
+    private async Task StyleLutLadenAsync()
+    {
+        if (DateiOeffnenCallback == null) return;
+        var titel = Lokalisierung.T("Dialog.LutOeffnen");
+        var filter = Lokalisierung.T("Filter.LUT");
+        var pfad = await DateiOeffnenCallback(titel, filter, null);
+        if (string.IsNullOrEmpty(pfad)) return;
+
+        StyleLutPfad = pfad;
+        StyleLutName = Path.GetFileNameWithoutExtension(pfad);
+        StatusText = $"{Lokalisierung.T("Status.FarbstilLutGeladen")}: {StyleLutName}";
+    }
+
+    [RelayCommand]
+    private void StyleLutEntfernen()
+    {
+        StyleLutPfad = null;
+        StyleLutName = "";
+        StatusText = Lokalisierung.T("Status.FarbstilLutEntfernt");
+    }
+
+    // ===== Video Commands =====
+
+    [RelayCommand]
+    private async Task VideoOeffnenAsync()
+    {
+        if (DateiOeffnenCallback == null) return;
+        var filter = Lokalisierung.T("Filter.Videos");
+        var titel = Lokalisierung.T("Dialog.VideoOeffnen");
+        var pfad = await DateiOeffnenCallback(titel, filter, null);
+        if (string.IsNullOrEmpty(pfad)) return;
+
+        if (_videoPipeline.VideoLaden(pfad))
+        {
+            VideoPfad = pfad;
+            VideoGeladen = true;
+            VideoInfo = $"{_videoPipeline.Breite}x{_videoPipeline.Hoehe}, {_videoPipeline.Fps:F1}fps, {_videoPipeline.Dauer:F1}s";
+            StatusText = $"{Lokalisierung.T("Status.VideoGeladen")}: {Path.GetFileName(pfad)}";
+        }
+        else
+        {
+            FehlerAnzeigenCallback?.Invoke(Lokalisierung.T("Status.VideoKonnteNichtGeladenWerden"));
+        }
+    }
+
+    [RelayCommand]
+    private async Task VideoPipelineAusfuehrenAsync()
+    {
+        if (!VideoGeladen || VideoPipelineLaeuft) return;
+
+        VideoPipelineLaeuft = true;
+        VideoFortschritt = 0;
+        StatusText = Lokalisierung.T("Status.VideoPipelineLaeuft");
+
+        var param = new PipelineParams
+        {
+            Belichtung = Belichtung,
+            Kontrast = Kontrast,
+            Saettigung = Saettigung,
+            Vibranz = Vibranz,
+            Lichter = Lichter,
+            Schatten = Schatten,
+            SchaerfeBetrag = Schaerfe,
+            LuminanzRauschen = RauschenLuma / 100f,
+            ChrominanzRauschen = RauschenChroma / 100f,
+            ObjektivkorrekturAktiv = Objektivkorrektur,
+            DistortionGridAktiv = DistortionGridAktiv,
+            ColorCalibrationAktiv = ColorCalibrationAktiv,
+            Intensitaet = IntensitaetFromIndex(),
+            Modus = ModusFromIndex(),
+            HochskalierenFaktor = 1,
+            GesichtswiederherstellungAktiv = GesichtswiederherstellungAktiv,
+            StyleLutPfad = StyleLutPfad
+        };
+
+        try
+        {
+            await Task.Run(() =>
+            {
+                _videoPipeline.PipelineAusfuehren(param, (aktueller, gesamt) =>
+                {
+                    Dispatcher.UIThread.Post(() =>
+                    {
+                        VideoFortschritt = (double)aktueller / gesamt;
+                        StatusText = $"{Lokalisierung.T("Status.VideoVerarbeitung")}: {aktueller}/{gesamt} Frames";
+                    });
+                });
+            });
+
+            StatusText = Lokalisierung.T("Status.VideoPipelineAbgeschlossen");
+        }
+        catch (Exception ex)
+        {
+            StatusText = $"{Lokalisierung.T("Status.VideoPipelineFehler")}: {ex.Message}";
+            FehlerAnzeigenCallback?.Invoke($"{Lokalisierung.T("Status.VideoPipelineFehlgeschlagen")}: {ex.Message}");
+        }
+        finally
+        {
+            VideoPipelineLaeuft = false;
+        }
+    }
+
+    [RelayCommand]
+    private void UpdatePruefen()
+    {
+        try { _autoUpdater.Pruefen(); }
+        catch (Exception ex) { StatusText = $"{Lokalisierung.T("Status.UpdatePruefungFehlgeschlagen")}: {ex.Message}"; }
+    }
+
+    [RelayCommand]
+    private void UpdateStarten()
+    {
+        try { _autoUpdater.UpdateStarten(); }
+        catch (Exception ex) { StatusText = $"{Lokalisierung.T("Status.UpdateFehlgeschlagen")}: {ex.Message}"; }
+    }
+
+    [RelayCommand]
+    private void UpdateIgnorieren()
+    {
+        try { _autoUpdater.Ignorieren(); }
+        catch (Exception ex) { StatusText = $"{Lokalisierung.T("Status.Fehler")}: {ex.Message}"; }
+    }
+
+    [RelayCommand]
+    private void DesignWechseln(string theme)
+    {
+        try
+        {
+            AktuellesTheme = theme;
+            ThemeManager.ApplyTheme(theme);
+            DesignIndex = theme switch { "Dark" => 0, "Light" => 1, _ => 2 };
+
+            var settings = Settings.Laden();
+            settings.Theme = theme;
+            settings.Speichern();
+        }
+        catch (Exception ex)
+        {
+            StatusText = $"{Lokalisierung.T("Status.ThemeFehler")}: {ex.Message}";
+        }
+    }
+
+    // ===== Einstellungen =====
+
+    [RelayCommand]
+    private void SpracheAendern(int index)
+    {
+        var sprache = index == 1 ? "en" : "de";
+        Lokalisierung.SpracheSetzen(sprache);
+        SpracheIndex = index;
+
+        var settings = Settings.Laden();
+        settings.Sprache = sprache;
+        settings.Speichern();
+
+        // UI-Texte aktualisieren
+        SpracheGeaendert?.Invoke(this, EventArgs.Empty);
+    }
+
+    [RelayCommand]
+    private void AutoUpdateAendern(bool aktiv)
+    {
+        AutoUpdateAktiv = aktiv;
+        var settings = Settings.Laden();
+        settings.AutoUpdatePruefen = aktiv;
+        settings.Speichern();
+    }
+
+    [RelayCommand]
+    private async Task ModelleNeuHerunterladenAsync()
+    {
+        StatusText = Lokalisierung.T("Status.ModellNeuHerunterladen");
+        try
+        {
+            // Modell-Verzeichnis leeren und neu herunterladen
+            var modelDir = Path.Combine(
+                Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
+                "FlipsiColor", "Models");
+            if (Directory.Exists(modelDir))
+            {
+                foreach (var f in Directory.GetFiles(modelDir, "*.onnx"))
+                    File.Delete(f);
+            }
+
+            await _modelManager.ModellSicherstellenAsync(ModellId.NAFNet);
+            await _modelManager.ModellSicherstellenAsync(ModellId.RestormerLight);
+            await _modelManager.ModellSicherstellenAsync(ModellId.AiLUTTransform);
+            await _modelManager.ModellSicherstellenAsync(ModellId.EfficientNet);
+
+            StatusText = "Modelle heruntergeladen";
+        }
+        catch (Exception ex)
+        {
+            StatusText = $"{Lokalisierung.T("Status.Fehler")}: {ex.Message}";
+        }
+    }
+
+    // ===== Clip-Merge Commands (allgemein, nicht DJI) =====
+
+    [RelayCommand]
+    private async Task ClipOrdnerOeffnenAsync()
+    {
+        if (OrdnerOeffnenCallback == null) return;
+        var titel = Lokalisierung.T("Dialog.ClipOrdner");
+        var ordner = await OrdnerOeffnenCallback(titel);
+        if (string.IsNullOrEmpty(ordner)) return;
+
+        ClipOrdner = ordner;
+        ClipGruppen = new ObservableCollection<ClipMerger.ClipGruppe>(
+            _clipMerger.ClipsGruppieren(ClipOrdner));
+        StatusText = $"{ClipGruppen.Count} {Lokalisierung.T("Status.ClipGruppenErkannt")} in {ClipOrdner}";
+    }
+
+    [RelayCommand]
+    private async Task ClipMergeAusfuehrenAsync()
+    {
+        if (AusgewaehlteGruppe == null || ClipMergeLaeuft) return;
+
+        ClipMergeLaeuft = true;
+        StatusText = $"{Lokalisierung.T("Status.ClipsZusammenfuegen")} ({AusgewaehlteGruppe.ClipAnzahl})";
+
+        var fortschritt = new Progress<double>(p => ClipMergeFortschritt = p);
+
+        try
+        {
+            var ausgabeOrdner = Path.Combine(ClipOrdner, "FlipsiColor_Merged");
+
+            if (ClipMergeAktiv)
+            {
+                var param = new PipelineParams
+                {
+                    Belichtung = Belichtung,
+                    Kontrast = Kontrast,
+                    Saettigung = Saettigung,
+                    Vibranz = Vibranz,
+                    Lichter = Lichter,
+                    Schatten = Schatten,
+                    SchaerfeBetrag = Schaerfe,
+                    LuminanzRauschen = RauschenLuma / 100f,
+                    ChrominanzRauschen = RauschenChroma / 100f,
+                    ObjektivkorrekturAktiv = Objektivkorrektur,
+                    Intensitaet = IntensitaetFromIndex(),
+                    Modus = ModusFromIndex()
+                };
+
+                var ergebnis = await _clipMerger.ClipsZusammenfuegenMitFarbkorrekturAsync(
+                    AusgewaehlteGruppe, ausgabeOrdner, _modelManager, _colorManager, param, fortschritt);
+
+                if (ergebnis != null)
+                    StatusText = $"{Lokalisierung.T("Status.Fertig")}: {Path.GetFileName(ergebnis)}";
+                else
+                    StatusText = Lokalisierung.T("Status.ZusammenfuegenMitFarbkorrekturFehlgeschlagen");
+            }
+            else
+            {
+                var ergebnis = await _clipMerger.ClipsZusammenfuegenAsync(
+                    AusgewaehlteGruppe, ausgabeOrdner, fortschritt);
+
+                if (ergebnis != null)
+                    StatusText = $"{Lokalisierung.T("Status.Fertig")}: {Path.GetFileName(ergebnis)}";
+                else
+                    StatusText = Lokalisierung.T("Status.ZusammenfuegenFehlgeschlagen");
+            }
+        }
+        catch (Exception ex)
+        {
+            StatusText = $"{Lokalisierung.T("Status.DJIMergeFehler")}: {ex.Message}";
+        }
+        finally
+        {
+            ClipMergeLaeuft = false;
+        }
+    }
+
+    [RelayCommand]
+    private async Task AlleClipsMergenAsync()
+    {
+        if (ClipGruppen.Count == 0 || ClipMergeLaeuft) return;
+
+        ClipMergeLaeuft = true;
+        var erledigt = 0;
+        var gesamt = ClipGruppen.Count;
+        StatusText = $"Verarbeite {gesamt} Clip-Gruppen...";
+
+        try
+        {
+            var ausgabeOrdner = Path.Combine(ClipOrdner, "FlipsiColor_Merged");
+            var param = new PipelineParams
+            {
+                Belichtung = Belichtung,
+                Kontrast = Kontrast,
+                Saettigung = Saettigung,
+                Vibranz = Vibranz,
+                Lichter = Lichter,
+                Schatten = Schatten,
+                SchaerfeBetrag = Schaerfe,
+                LuminanzRauschen = RauschenLuma / 100f,
+                ChrominanzRauschen = RauschenChroma / 100f,
+                ObjektivkorrekturAktiv = Objektivkorrektur,
+                Intensitaet = IntensitaetFromIndex(),
+                Modus = ModusFromIndex()
+            };
+
+            foreach (var gruppe in ClipGruppen)
+            {
+                if (ClipMergeAktiv)
+                {
+                    var fortschritt = new Progress<double>(p =>
+                        ClipMergeFortschritt = (erledigt + p) / gesamt);
+                    await _clipMerger.ClipsZusammenfuegenMitFarbkorrekturAsync(
+                        gruppe, ausgabeOrdner, _modelManager, _colorManager, param, fortschritt);
+                }
+                else
+                {
+                    var fortschritt = new Progress<double>(p =>
+                        ClipMergeFortschritt = (erledigt + p) / gesamt);
+                    await _clipMerger.ClipsZusammenfuegenAsync(
+                        gruppe, ausgabeOrdner, fortschritt);
+                }
+
+                erledigt++;
+                ClipMergeFortschritt = (double)erledigt / gesamt;
+            }
+
+            StatusText = $"{Lokalisierung.T("Status.AlleGruppenVerarbeitet")} ({ausgabeOrdner})";
+        }
+        catch (Exception ex)
+        {
+            StatusText = $"{Lokalisierung.T("Status.FehlerBeimBulkMerge")}: {ex.Message}";
+        }
+        finally
+        {
+            ClipMergeLaeuft = false;
+        }
+    }
+
+    public void Dispose()
+    {
+        _imagePipeline.Dispose();
+        _videoPipeline.Dispose();
+        _modelManager.Dispose();
+        _autoUpdater.Dispose();
+        _clipMerger.Dispose();
+    }
+}
+
+/// <summary>
+/// Ein Eintrag in der Datei-Liste (Drag &amp; Drop).
+/// </summary>
+public sealed class DateiEintrag
+{
+    public string Pfad { get; init; } = "";
+    public string Dateiname { get; init; } = "";
+    public bool IstBild { get; init; }
+    public bool IstVideo { get; init; }
+    public string Icon => IstBild ? "🖼" : IstVideo ? "🎬" : "📄";
+}

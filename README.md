@@ -1,93 +1,82 @@
 # FlipsiColor
 
-**KI-gestützte Bild- & Videofarbkorrektur für Windows**
+KI-gestützte Bild- & Videofarbkorrektur. Cross-Platform (Linux + Windows) mit Avalonia UI und .NET 10.
 
 ## Features
 
-### 🎨 Bild-Korrektur
-- **KI-Farbkorrektur** — 7 ONNX-Modelle (NAFNet, RestormerLight, RealHATGAN, RealESRGAN, CodeFormer, AiLUTTransform, EfficientNet)
-- **RAW-Unterstützung** — CR2, CR3, NEF, ARW, DNG, ORF, RW2 (LibRaw)
-- **Belichtung, Kontrast, Sättigung, Vibranz** — manuelle Regler + KI-Vorschläge
-- **Lichter & Schatten** — selektive Korrektur
-- **Schärfe & Rauschunterdrückung** — Luminanz + Chrominanz
-- **Weißabgleich** — auto + manuelle Farbtemperatur
+- **Bild-Pipeline:** KI-Farbkorrektur mit NAFNet/Restormer, Farbkalibrierung, Verzerrungs-Raster
+- **Video-Pipeline:** Frame-weise Farbkorrektur mit Szenenwechsel-Erkennung und Audio-Erhaltung
+- **Clips zusammenfügen:** Automatische Video-Clip-Gruppierung und Zusammenführung (alle Kameras)
+- **Hochskalieren:** RealESRGAN (2x/3x/4x)
+- **Gesichtswiederherstellung:** CodeFormer
+- **Farbstil-LUT:** .cube LUT-Dateien laden und anwenden
+- **Dark/Light Design:** Mit Live-Switch, blaue Akzentfarbe (#0EA5E9)
+- **Drag & Drop:** Mehrere Dateien gleichzeitig (Bilder UND Videos)
+- **Lokalisierung:** Deutsch / Englisch umschaltbar
 
-### 🔲 Objektivkorrektur (v0.3.0 NEU)
-- **Lensfun-Integration** — Verzeichnung, Vignetting, chromatische Aberration via Lensfun-Datenbank
-- **Distortion Grid** — Kalibrierung mit Schachbrett-Referenzmuster (OpenCV calibrateCamera + undistort)
-- **Color Calibration** — Macbeth ColorChecker 24-Feld-Kalibrierung + Graukarten-Weißabgleich
+## Architektur
 
-### 🎬 Video & DJI
-- **Video-Pipeline** — Frame-Video-Verarbeitung mit FFMPEG
-- **DJI Auto-Merge** — automatisches Zusammenfügen von DJI Clips (Osmo 360, Pocket 4) + optionale Farbkorrektur
-- **Szenenerkennung** — KI-basierte automatische Parameter-Vorschläge
+```
+FlipsiColor.Core/          # Plattneutrale Business Logic (net10.0)
+  AI/                       # ModelManager, ModelDownloader, InferenceEngine
+  Color/                    # ColorManager, ColorCalibration, LensCorrector, StyleLUT
+  Image/                    # ImagePipeline, RawDecoder, ExifReader
+  Video/                    # VideoPipeline, FrameProcessor, SceneDetector, ClipMerger
+  Core/                     # Settings, Pipeline, PipelineParams, AutoUpdater
+  Utils/                    # Logger, SecurityValidator
 
-### 🖥 System
-- **Dark/Light Theme** — System-Erkennung + manueller Wechsel
-- **Auto-Updater** — GitHub Releases API, Downgrade-Schutz
-- **GPU-Beschleunigung** — DirectML (CUDA Fallback)
-- **EXIF-Leser** — MetadataExtractor (reines .NET)
-
-## Systemanforderungen
-
-- Windows 10 (19041+) oder neuer
-- 8 GB RAM
-- GPU empfohlen (DirectML)
-
-## Build
-
-```bash
-dotnet publish FlipsiColor/FlipsiColor.csproj -c Release -r win-x64 --self-contained true -o FlipsiColor/publish
+FlipsiColor.Avalonia/       # Avalonia UI (net10.0, cross-platform)
+  ViewModels/               # MainViewModel (MVVM)
+  Views/                    # MainWindow.axaml
+  Styles/                   # DarkTheme.axaml, LightTheme.axaml, Colors.axaml
+  Converters/               # MatToBitmapConverter, BoolToVisibilityConverter, LocConverter
 ```
 
-## Tech Stack
+## KI-Modelle
 
-- .NET 10 / C# / WPF
-- OpenCvSharp4 (Image Processing, CalibrateCamera, Undistort)
-- ONNX Runtime + DirectML (KI-Inferenz)
-- Lensfun (Objektivkorrektur via P/Invoke)
-- Serilog (Logging)
-- CommunityToolkit.Mvvm (MVVM)
-- LibRaw.Native (RAW-Decoder)
-- MetadataExtractor (EXIF)
-- FFMPEG (Video)
+Die App lädt 7 ONNX-Modelle automatisch von GitHub Releases herunter:
 
-## Pipeline-Architektur
+| Modell | Verwendung |
+|--------|-----------|
+| NAFNet | Bild-Restauration |
+| RestormerLight | Bild-Enhancement |
+| RealESRGAN | Hochskalierung (2x/3x/4x) |
+| CodeFormer | Gesichtswiederherstellung |
+| AiLUTTransform | KI-Farbtransformation |
+| EfficientNet | Bildklassifikation |
+| RealHATGAN | HDR-Enhancement |
 
-Die Bild-Pipeline verarbeitet in 10 Schritten:
+## Download
 
-1. **Weißabgleich** — Auto-WB oder manuelle Farbtemperatur
-2. **Belichtung** — Helligkeitsanpassung
-3. **Kontrast** — Alpha/Beta-Korrektur
-4. **Lichter** — selektive Aufhellung heller Bereiche
-5. **Schatten** — selektive Aufhellung dunkler Bereiche
-6. **Sättigung & Vibranz** — HSV-basierte Farbkorrektur
-7. **Schärfe** — Unsharp Masking (GaussianBlur + AddWeighted)
-8. **Rauschunterdrückung** — Luminanz (Gaussian) + Chrominanz
-9. **Objektivkorrektur** — Lensfun (Verzeichnung, TCA, Vignetting)
-10. **Distortion Grid** — OpenCV calibrateCamera + undistort (optional)
-11. **Color Calibration** — Macbeth ColorChecker / Graukarte (optional)
+### Linux
+```bash
+# Installer von GitHub Releases herunterladen
+# FlipsiColor-vX.Y.Z-Linux-x64-Installer.run
+chmod +x FlipsiColor-*.run
+./FlipsiColor-*.run
+```
 
-## v0.3.0 — Advanced Color & Lens Correction
+### Windows
+```
+FlipsiColor-vX.Y.Z-Windows-x64-Installer.exe ausführen.
+```
 
-Neue Features inspiriert durch [Marco Ravich's Feature Request](https://github.com/Video-Capture-Guide/VCG-Deinterlacer/issues/13):
+## Entwicklung
 
-### Distortion Grid Korrektur
-- Schachbrett-Referenzmuster fotografieren → Kalibrierung
-- OpenCV `FindChessboardCorners` + `CalibrateCamera` + `Undistort`
-- Kalibrierung speicherbar als JSON
+```bash
+# Build
+dotnet build FlipsiColor.sln
 
-### Color Calibration
-- **ColorChecker-Modus:** Erkennt 24-Feld Macbeth ColorChecker, berechnet 3×3 Farb-Transfer-Matrix via Least-Squares (SVD)
-- **Graukarten-Modus:** Erkennt neutrale Graufläche, berechnet Weißabgleich-Matrix
-- **Auto-Modus:** Versucht ColorChecker, fällt auf Graukarte zurück
-- Kalibrierung speicherbar als JSON
+# Linux Publish (self-contained)
+dotnet publish FlipsiColor.Avalonia/FlipsiColor.Avalonia.csproj \
+  -c Release -r linux-x64 --self-contained true \
+  -p:PublishSingleFile=true -o publish/linux-x64
 
-### Lensfun Objektivkorrektur (fertig implementiert)
-- P/Invoke der Lensfun C-API (`lf_modifier_create`, `apply_subpixel_geometry_distortion`, `apply_color_modification`)
-- Verzeichnungskorrektur via `Cv2.Remap` pro Kanal
-- Vignetting-Korrektur in-place
-- Chromatische Aberration (TCA)
+# Windows Publish (self-contained)
+dotnet publish FlipsiColor.Avalonia/FlipsiColor.Avalonia.csproj \
+  -c Release -r win-x64 --self-contained true \
+  -p:PublishSingleFile=true -o publish/win-x64
+```
 
 ## Credits
 
@@ -96,11 +85,7 @@ Neue Features inspiriert durch [Marco Ravich's Feature Request](https://github.c
 
 ### Verwendete KI-Modelle
 
-| Modell              | Rolle        |
-|---------------------|--------------|
-| **GLM-5.2**         | Hauptmodell  |
-| **GLM-5.2**         | Sub-Agenten  |
-
-## Lizenz
-
-GPL-3.0-or-later © 2026 Fabian Kirchweger (TechFlipsi)
+| Modell | Rolle |
+|--------|-------|
+| GLM-5.2 | Hauptmodell |
+| GLM-5.2 | Sub-Agenten |

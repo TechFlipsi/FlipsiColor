@@ -1,0 +1,42 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
+    <RootNamespace>FlipsiColor</RootNamespace>
+    <Version>0.4.0</Version>
+    <AssemblyVersion>0.4.0.0</AssemblyVersion>
+    <FileVersion>0.4.0.0</FileVersion>
+    <Platforms>x64</Platforms>
+    <RuntimeIdentifiers>linux-x64;win-x64</RuntimeIdentifiers>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <!-- ONNX Runtime: CPU (cross-platform). DirectML wird zur Laufzeit auf Windows geladen. -->
+    <PackageReference Include="Microsoft.ML.OnnxRuntime" Version="1.23.0" />
+    <!-- DirectML nur auf Windows (NuGet restore). Native DLL wird zur Laufzeit via OperatingSystem.IsWindows() geladen. -->
+    <PackageReference Include="Microsoft.ML.OnnxRuntime.DirectML" Version="1.23.0"
+                      Condition="'$(OS)' == 'Windows_NT' OR '$(RuntimeIdentifier)' == 'win-x64'" />
+
+    <!-- OpenCvSharp4: plattformübergreifend. Kein .runtime.win-only (Windows-only).
+         linux-x64 + win-x64 Runtime-Pakete. NuGet wählt native Assets nach RID automatisch. -->
+    <PackageReference Include="OpenCvSharp4" Version="4.10.0.*" />
+    <PackageReference Include="OpenCvSharp4.Extensions" Version="4.10.0.*" />
+    <PackageReference Include="OpenCvSharp4.runtime.linux-x64" Version="4.10.0.20240717"
+                      Condition="'$(OS)' != 'Windows_NT' OR '$(RuntimeIdentifier)' == 'linux-x64'" />
+    <PackageReference Include="OpenCvSharp4.runtime.win" Version="4.10.0.*"
+                      Condition="'$(OS)' == 'Windows_NT' OR '$(RuntimeIdentifier)' == 'win-x64'" />
+
+    <!-- EXIF & Metadata -->
+    <PackageReference Include="MetadataExtractor" Version="2.*" />
+
+    <!-- Logging -->
+    <PackageReference Include="Serilog" Version="4.*" />
+    <PackageReference Include="Serilog.Sinks.File" Version="6.*" />
+    <PackageReference Include="Serilog.Sinks.Console" Version="6.*" />
+    <PackageReference Include="Serilog.Extensions.Logging" Version="8.*" />
+  </ItemGroup>
+
+</Project>

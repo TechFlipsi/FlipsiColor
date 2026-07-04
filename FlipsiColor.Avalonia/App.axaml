@@ -1,0 +1,23 @@
+<Application xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:local="clr-namespace:FlipsiColor"
+             x:Class="FlipsiColor.App"
+             RequestedThemeVariant="Dark">
+    <Application.Styles>
+        <FluentTheme/>
+        <StyleInclude Source="avares://FlipsiColor.Avalonia/Styles/DarkTheme.axaml"/>
+        <StyleInclude Source="avares://FlipsiColor.Avalonia/Styles/LightTheme.axaml"/>
+    </Application.Styles>
+
+    <Application.Resources>
+        <ResourceDictionary>
+            <ResourceDictionary.MergedDictionaries>
+                <ResourceInclude Source="avares://FlipsiColor.Avalonia/Styles/Colors.axaml"/>
+            </ResourceDictionary.MergedDictionaries>
+            <local:BoolToVisibilityConverter x:Key="BoolToVis"/>
+            <local:InverseBoolToVisibilityConverter x:Key="InverseBoolToVis"/>
+            <local:MatToBitmapConverter x:Key="MatToBmp"/>
+            <local:LocConverter x:Key="Loc"/>
+        </ResourceDictionary>
+    </Application.Resources>
+</Application>
