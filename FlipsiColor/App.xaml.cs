@@ -51,16 +51,29 @@ public partial class App : System.Windows.Application
                 // Modelle asynchron herunterladen
                 _ = System.Windows.Threading.Dispatcher.CurrentDispatcher.InvokeAsync(async () =>
                 {
-                    await loadingWindow.LadeModelleAsync();
-                    loadingWindow.Close();
-
-                    // Hauptfenster anzeigen
-                    var mainWindow = new MainWindow
+                    try
                     {
-                        DataContext = new MainViewModel()
-                    };
-                    mainWindow.Show();
-                    log.Information("MainWindow angezeigt (nach Modell-Download).");
+                        await loadingWindow.LadeModelleAsync();
+                        loadingWindow.Close();
+
+                        // Hauptfenster anzeigen
+                        var mainWindow = new MainWindow
+                        {
+                            DataContext = new MainViewModel()
+                        };
+                        mainWindow.Show();
+                        log.Information("MainWindow angezeigt (nach Modell-Download).");
+                    }
+                    catch (Exception ex)
+                    {
+                        log.Error(ex, "Fehler beim Modell-Download");
+                        loadingWindow.Close();
+                        System.Windows.MessageBox.Show(
+                            $"Modelle konnten nicht heruntergeladen werden:\n\n{ex.Message}",
+                            "FlipsiColor — Fehler",
+                            MessageBoxButton.OK,
+                            MessageBoxImage.Warning);
+                    }
                 });
             }
             else

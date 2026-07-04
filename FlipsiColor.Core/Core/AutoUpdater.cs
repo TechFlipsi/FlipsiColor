@@ -100,7 +100,7 @@ public sealed class AutoUpdater : IDisposable
             var request = new HttpRequestMessage(HttpMethod.Get, url);
             request.Headers.UserAgent.ParseAdd($"FlipsiColor/{_aktuelleVersion}");
 
-            var response = await _http.SendAsync(request);
+            using var response = await _http.SendAsync(request);
             response.EnsureSuccessStatusCode();
 
             var json = await response.Content.ReadAsStringAsync();
@@ -332,7 +332,8 @@ public sealed class AutoUpdater : IDisposable
         if (_disposed) return;
         _disposed = true;
         _pruefTimer?.Dispose();
-        _http.Dispose();
+        // _http ist static und wird NICHT pro-Instanz disposed
+        // (siehe ModelManager-Kommentar — mehrere Instanzen teilen sich denselben HttpClient)
     }
 }
 

@@ -70,7 +70,7 @@ public sealed class VideoPipeline : IDisposable
                 new[] { "-v", "error", "-select_streams", "v:0",
                         "-show_entries", "stream=width,height,r_frame_rate,nb_frames,duration",
                         "-of", "csv=p=0", validierterPfad });
-            var probe = new Process { StartInfo = probePsi };
+            using var probe = new Process { StartInfo = probePsi };
             probe.Start();
             var output = probe.StandardOutput.ReadToEnd();
             probe.WaitForExit(10000);
@@ -145,7 +145,7 @@ public sealed class VideoPipeline : IDisposable
             var framePattern = Path.Combine(tempDir, "frame_%06d.png");
             var extractPsi = SecurityValidator.SichereProcessStartInfo("ffmpeg",
                 new[] { "-i", _videoPfad!, "-vsync", "0", framePattern });
-            var extract = new Process { StartInfo = extractPsi };
+            using var extract = new Process { StartInfo = extractPsi };
             extract.Start();
             extract.WaitForExit(300000); // 5 Min Timeout
 
@@ -208,7 +208,7 @@ public sealed class VideoPipeline : IDisposable
                             "-c:v", "libx264", "-crf", "18", outputPfad });
             }
 
-            var encode = new Process { StartInfo = encodePsi };
+            using var encode = new Process { StartInfo = encodePsi };
             encode.Start();
             encode.WaitForExit(300000);
 
@@ -246,7 +246,7 @@ public sealed class VideoPipeline : IDisposable
         {
             var psi = SecurityValidator.SichereProcessStartInfo("ffmpeg",
                 new[] { "-i", videoPfad, "-vn", "-acodec", "aac", "-b:a", "192k", audioPfad, "-y" });
-            var extractAudio = new Process { StartInfo = psi };
+            using var extractAudio = new Process { StartInfo = psi };
             extractAudio.Start();
             extractAudio.WaitForExit(120000);
 
