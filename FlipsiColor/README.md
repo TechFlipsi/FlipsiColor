@@ -99,7 +99,7 @@ Neue Features inspiriert durch [Marco Ravich's Feature Request](https://github.c
 | Modell              | Rolle        |
 |---------------------|--------------|
 | **GLM-5.2**         | Hauptmodell  |
-| **DeepSeek V4 Pro** | Sub-Agenten  |
+| **GLM-5.2**         | Sub-Agenten  |
 
 ## Lizenz
 
