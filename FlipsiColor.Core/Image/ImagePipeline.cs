@@ -337,7 +337,7 @@ public sealed class ImagePipeline : IDisposable
                 bild = neuesBild;
             }
 
-            // 8. Objektivkorrektur — EXIF-Daten verwenden
+            // 8. Objektivkorrektur — manuelle Auswahl oder EXIF-Daten verwenden
             if (param.ObjektivkorrekturAktiv)
             {
                 var (kamera, objektiv, brennweite, blende) = ExifFuerObjektivkorrekturLesen(param);
@@ -1061,6 +1061,8 @@ public sealed class ImagePipeline : IDisposable
     /// <summary>
     /// Liest EXIF-Daten (Kamera, Objektiv, Brennweite, Blende) aus den in BildLaden
     /// gespeicherten Werten oder den PipelineParams. Fällt auf hardcoded Werte zurück.
+    /// Wenn manuelle Kamera/Objektiv in PipelineParams gesetzt sind, werden diese
+    /// statt der EXIF-Daten verwendet.
     /// </summary>
     private (string Kamera, string Objektiv, float Brennweite, float Blende) ExifFuerObjektivkorrekturLesen(PipelineParams param)
     {
@@ -1068,25 +1070,45 @@ public sealed class ImagePipeline : IDisposable
         const string fallbackKamera = "Canon";
         const string fallbackObjektiv = "EF-S 18-55mm";
 
-        // EXIF aus PipelineParams (von BildLaden gefüllt)
-        string kamera = !string.IsNullOrWhiteSpace(param.ExifKamera) ? param.ExifKamera :
-                        !string.IsNullOrWhiteSpace(_exifKamera) ? _exifKamera! : fallbackKamera;
-        string objektiv = !string.IsNullOrWhiteSpace(param.ExifObjektiv) ? param.ExifObjektiv :
-                         !string.IsNullOrWhiteSpace(_exifObjektiv) ? _exifObjektiv! : fallbackObjektiv;
-        float brennweite = param.ExifBrennweite ?? _exifBrennweite;
-        float blende = param.ExifBlende ?? _exifBlende;
+        // Manuelle Auswahl hat Vorrang vor EXIF-Daten
+        // Wenn beide manuell gesetzt → verwende manuelle Werte statt EXIF
+        bool manuellVerwenden = !string.IsNullOrWhiteSpace(param.ManuelleKamera) &&
+                                 !string.IsNullOrWhiteSpace(param.ManuellesObjektiv);
 
-        if (param.ExifKamera == null && _exifKamera == null)
+        string kamera;
+        string objektiv;
+
+        if (manuellVerwenden)
         {
-            Log.Warning("Objektivkorrektur: Keine EXIF-Daten verfügbar — verwende Fallback-Werte " +
-                        "(Canon, EF-S 18-55mm, 35mm, f/5.6)");
+            // Manuelle Auswahl — EXIF wird ignoriert
+            kamera = param.ManuelleKamera!;
+            objektiv = param.ManuellesObjektiv!;
+            Log.Information("Objektivkorrektur: Manuelle Auswahl — Kamera={Kamera}, Objektiv={Objektiv}",
+                kamera, objektiv);
         }
         else
         {
-            Log.Information("Objektivkorrektur: EXIF — Kamera={Kamera}, Objektiv={Objektiv}, " +
-                            "Brennweite={Brennweite}mm, Blende=f/{Blende}",
-                kamera, objektiv, brennweite, blende);
+            // EXIF aus PipelineParams (von BildLaden gefüllt)
+            kamera = !string.IsNullOrWhiteSpace(param.ExifKamera) ? param.ExifKamera :
+                        !string.IsNullOrWhiteSpace(_exifKamera) ? _exifKamera! : fallbackKamera;
+            objektiv = !string.IsNullOrWhiteSpace(param.ExifObjektiv) ? param.ExifObjektiv :
+                         !string.IsNullOrWhiteSpace(_exifObjektiv) ? _exifObjektiv! : fallbackObjektiv;
+
+            if (param.ExifKamera == null && _exifKamera == null)
+            {
+                Log.Warning("Objektivkorrektur: Keine EXIF-Daten verfügbar — verwende Fallback-Werte " +
+                            "(Canon, EF-S 18-55mm, 35mm, f/5.6)");
+            }
+            else
+            {
+                Log.Information("Objektivkorrektur: EXIF — Kamera={Kamera}, Objektiv={Objektiv}, " +
+                                "Brennweite={Brennweite}mm, Blende=f/{Blende}",
+                    kamera, objektiv, _exifBrennweite, _exifBlende);
+            }
         }
+
+        float brennweite = param.ExifBrennweite ?? _exifBrennweite;
+        float blende = param.ExifBlende ?? _exifBlende;
 
         return (kamera, objektiv, brennweite, blende);
     }

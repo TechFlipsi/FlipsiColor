@@ -11,6 +11,8 @@ using System.Threading;
 using System.Threading.Tasks;
 
 using FlipsiColor.Utils;
+using SharpCompress.Archives;
+using SharpCompress.Common;
 
 // SecurityValidator wird über Utils-Namespace importiert
 
@@ -78,13 +80,26 @@ public sealed class VapourSynthInstaller
 
     /// <summary>
     /// Absoluter Pfad zu vspipe.
-    /// Windows: vapoursynth/vspipe.exe
+    /// Windows: vapoursynth/vspipe.exe ODER vspipe.bat (R76 Portable nutet .bat)
     /// Linux:  vapoursynth/bin/vspipe (falls portable), sonst via pip im PATH.
     /// </summary>
     public string VspipePfad =>
         OperatingSystem.IsWindows()
             ? Path.Combine(BasisVerzeichnis, "vspipe.exe")
             : Path.Combine(BasisVerzeichnis, "bin", "vspipe");
+
+    /// <summary>
+    /// Prüft ob vspipe verfügbar ist — akzeptiert sowohl .exe als auch .bat.
+    /// </summary>
+    private bool VspipeVorhanden()
+    {
+        if (OperatingSystem.IsWindows())
+        {
+            return File.Exists(Path.Combine(BasisVerzeichnis, "vspipe.exe")) ||
+                   File.Exists(Path.Combine(BasisVerzeichnis, "vspipe.bat"));
+        }
+        return File.Exists(VspipePfad);
+    }
 
     /// <summary>
     /// Absoluter Pfad zum plugins-Ordner (Windows portable Installation).
@@ -116,13 +131,13 @@ public sealed class VapourSynthInstaller
                 if (OperatingSystem.IsWindows())
                 {
                     // Windows: portable Installation prüfen
-                    if (!File.Exists(VspipePfad))
+                    if (!VspipeVorhanden())
                     {
-                        Log.Debug("IstInstalliert: vspipe.exe nicht gefunden: {Pfad}", VspipePfad);
+                        Log.Debug("IstInstalliert: vspipe nicht gefunden in {Pfad}", BasisVerzeichnis);
                         return false;
                     }
 
-                    // ffms2 Plugin prüfen (typischerweise ffms2.dll)
+                    // ffms2 Plugin prüfen — auch in Unterordnern (z.B. ffms2-5.0-msvc/)
                     bool ffms2Gefunden = PluginDateiVorhanden("ffms2");
                     if (!ffms2Gefunden)
                     {
@@ -259,12 +274,7 @@ public sealed class VapourSynthInstaller
     /// </summary>
     private async Task<bool> InstalliereWindowsAsync(CancellationToken cancellationToken)
     {
-        // 7z CLI für .7z Dateien erforderlich
-        bool siebenZipVerfuegbar = IstBefehlVerfuegbar("7z");
-        if (!siebenZipVerfuegbar)
-        {
-            Log.Warning("7z CLI nicht verfügbar — ffms2 und vsort Plugins können nicht entpackt werden");
-        }
+        // SharpCompress ist eingebettet — kein externes 7z CLI mehr nötig!
 
         // Installationsverzeichnis vorbereiten
         Directory.CreateDirectory(BasisVerzeichnis);
@@ -291,19 +301,8 @@ public sealed class VapourSynthInstaller
 
             string ffms2Archiv = await LadeDateiHerunterAsync(Ffms2Url, tempVerzeichnis, cancellationToken);
             FireProgress("Entpacke ffms2 Plugin", 2, 4);
-
-            if (siebenZipVerfuegbar)
-            {
-                Entpacke7z(ffms2Archiv, PluginPfad);
-                Log.Information("ffms2 Plugin entpackt nach {Pfad}", PluginPfad);
-            }
-            else
-            {
-                throw new InvalidOperationException(
-                    "ffms2 Plugin ist eine .7z-Datei, aber 7z CLI ist nicht installiert. " +
-                    "Bitte installieren Sie 7z (z.B. 'apt install p7zip-full' oder 'choco install 7zip') " +
-                    "und versuchen Sie es erneut.");
-            }
+            Entpacke7z(ffms2Archiv, PluginPfad);
+            Log.Information("ffms2 Plugin entpackt nach {Pfad}", PluginPfad);
 
             // --- Schritt 3: VSORT-Windows-x64.v15.16.7z entpacken ---
             cancellationToken.ThrowIfCancellationRequested();
@@ -311,18 +310,8 @@ public sealed class VapourSynthInstaller
 
             string vsortArchiv = await LadeDateiHerunterAsync(VsortUrl, tempVerzeichnis, cancellationToken);
             FireProgress("Entpacke vs-mlrt ONNX Runtime", 3, 4);
-
-            if (siebenZipVerfuegbar)
-            {
-                Entpacke7z(vsortArchiv, PluginPfad);
-                Log.Information("vs-mlrt ONNX Runtime entpackt nach {Pfad}", PluginPfad);
-            }
-            else
-            {
-                throw new InvalidOperationException(
-                    "vs-mlrt ONNX Runtime ist eine .7z-Datei, aber 7z CLI ist nicht installiert. " +
-                    "Bitte installieren Sie 7z und versuchen Sie es erneut.");
-            }
+            Entpacke7z(vsortArchiv, PluginPfad);
+            Log.Information("vs-mlrt ONNX Runtime entpackt nach {Pfad}", PluginPfad);
 
             // --- Schritt 4: scripts.v15.16.7z entpacken ---
             cancellationToken.ThrowIfCancellationRequested();
@@ -330,18 +319,8 @@ public sealed class VapourSynthInstaller
 
             string scriptsArchiv = await LadeDateiHerunterAsync(VsortScriptsUrl, tempVerzeichnis, cancellationToken);
             FireProgress("Entpacke vs-mlrt Scripts", 4, 4);
-
-            if (siebenZipVerfuegbar)
-            {
-                Entpacke7z(scriptsArchiv, PluginPfad);
-                Log.Information("vs-mlrt Scripts entpackt nach {Pfad}", PluginPfad);
-            }
-            else
-            {
-                throw new InvalidOperationException(
-                    "vs-mlrt Scripts ist eine .7z-Datei, aber 7z CLI ist nicht installiert. " +
-                    "Bitte installieren Sie 7z und versuchen Sie es erneut.");
-            }
+            Entpacke7z(scriptsArchiv, PluginPfad);
+            Log.Information("vs-mlrt Scripts entpackt nach {Pfad}", PluginPfad);
 
             // --- Verifikation ---
             FireProgress("Verifiziere Installation", 4, 4);
@@ -547,35 +526,29 @@ public sealed class VapourSynthInstaller
     }
 
     /// <summary>
-    /// Entpackt eine .7z-Datei mit dem 7z CLI.
-    /// Voraussetzung: 7z ist im PATH verfügbar.
+    /// Entpackt eine .7z-Datei mit SharpCompress (kein externes 7z CLI nötig).
+    /// Funktioniert auf jedem PC unabhängig von installierter Software.
     /// </summary>
     private void Entpacke7z(string archivPfad, string zielVerzeichnis)
     {
-        if (!IstBefehlVerfuegbar("7z"))
+        try
+        {
+            using var archive = ArchiveFactory.OpenArchive(archivPfad, new SharpCompress.Readers.ReaderOptions());
+            foreach (var entry in archive.Entries)
+            {
+                if (!entry.IsDirectory)
+                {
+                    entry.WriteToDirectory(zielVerzeichnis,
+                        new ExtractionOptions(extractFullPath: true, overwrite: true));
+                }
+            }
+            Log.Debug("SharpCompress entpackt: {Archiv} → {Ziel}", archivPfad, zielVerzeichnis);
+        }
+        catch (Exception ex)
         {
             throw new InvalidOperationException(
-                "7z CLI ist nicht verfügbar. Bitte installieren Sie 7z (p7zip-full auf Linux, 7zip auf Windows) " +
-                "um .7z-Dateien zu entpacken.");
+                $"Entpacken von {Path.GetFileName(archivPfad)} fehlgeschlagen: {ex.Message}", ex);
         }
-
-        // 7z x <archiv> -o<ziel> -y  (x = mit Pfaden entpacken, -y = alle Fragen mit Ja beantworten)
-        var psi = SecurityValidator.SichereProcessStartInfo("7z",
-            new[] { "x", archivPfad, $"-o{zielVerzeichnis}", "-y" });
-
-        using var proc = new Process { StartInfo = psi };
-        proc.Start();
-        string output = proc.StandardOutput.ReadToEnd();
-        string error = proc.StandardError.ReadToEnd();
-        proc.WaitForExit(120000); // 2 Minuten Timeout für große Archive
-
-        if (proc.ExitCode != 0)
-        {
-            throw new InvalidOperationException(
-                $"7z entpacken fehlgeschlagen (ExitCode {proc.ExitCode}): {error}");
-        }
-
-        Log.Debug("7z entpackt: {Archiv} → {Ziel}", archivPfad, zielVerzeichnis);
     }
 
     /// <summary>
@@ -602,19 +575,40 @@ public sealed class VapourSynthInstaller
 
     /// <summary>
     /// Prüft ob ein Befehl (Executable) im PATH verfügbar ist.
-    /// Windows: where <cmd>, Linux: which <cmd>.
+    /// Windows: where <cmd> + Standard-Installationspfade, Linux: which <cmd>.
     /// </summary>
     private static bool IstBefehlVerfuegbar(string befehl)
     {
         try
         {
+            // Zuerst PATH prüfen
             var checker = OperatingSystem.IsWindows() ? "where" : "which";
             var psi = SecurityValidator.SichereProcessStartInfo(checker, new[] { befehl });
             using var proc = new Process { StartInfo = psi };
             proc.Start();
             var output = proc.StandardOutput.ReadToEnd();
             proc.WaitForExit(5000);
-            return proc.ExitCode == 0 && !string.IsNullOrWhiteSpace(output);
+            if (proc.ExitCode == 0 && !string.IsNullOrWhiteSpace(output))
+                return true;
+
+            // Windows: Auch Standard-Installationspfade prüfen (z.B. 7-Zip)
+            if (OperatingSystem.IsWindows() && befehl == "7z")
+            {
+                string[] pfade = {
+                    @"C:\Program Files\7-Zip\7z.exe",
+                    @"C:\Program Files (x86)\7-Zip\7z.exe"
+                };
+                foreach (var pfad in pfade)
+                {
+                    if (File.Exists(pfad))
+                    {
+                        Log.Debug("7z gefunden unter: {Pfad}", pfad);
+                        return true;
+                    }
+                }
+            }
+
+            return false;
         }
         catch (Exception ex)
         {

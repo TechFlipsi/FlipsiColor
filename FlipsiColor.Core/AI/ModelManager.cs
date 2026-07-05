@@ -239,17 +239,17 @@ public sealed class ModelManager : IDisposable
     }
 
     /// <summary>
-    /// Lädt alle erforderlichen Modelle herunter falls sie fehlen.
-    /// Gibt true zurück wenn alle erforderlichen Modelle bereit sind.
+    /// Lädt ALLE Modelle herunter (erforderlich + optional) falls sie fehlen.
+    /// Gibt true zurück wenn alle Modelle bereit sind.
     /// </summary>
-    public async Task<bool> AlleErforderlichenModelleSicherstellenAsync()
+    public async Task<bool> AlleModelleSicherstellenAsync()
     {
         bool alleOk = true;
-        foreach (var info in _modelle.Values.Where(m => m.Erforderlich))
+        foreach (var info in _modelle.Values)
         {
             if (!await ModellSicherstellenAsync(info.Id))
             {
-                Log.Error("Erforderliches Modell konnte nicht geladen werden: {Name}", info.Name);
+                Log.Error("Modell konnte nicht geladen werden: {Name}", info.Name);
                 alleOk = false;
             }
         }

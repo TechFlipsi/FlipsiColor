@@ -34,3 +34,5 @@ Models/*.onnx
 *.pyc
 installer/build/
 deb-staging/
+publish-windows/
+publish/

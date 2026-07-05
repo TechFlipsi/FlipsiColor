@@ -66,9 +66,156 @@ public partial class MainViewModel : ObservableObject, IDisposable
     [ObservableProperty] private float _rauschenLuma;
     [ObservableProperty] private float _rauschenChroma;
     [ObservableProperty] private bool _objektivkorrektur = true;
+    private bool _initialisiert;
     [ObservableProperty] private bool _distortionGridAktiv;
     [ObservableProperty] private bool _colorCalibrationAktiv;
     [ObservableProperty] private int _intensitaetIndex = 1; // Mittel
+
+    // Manuelle Kamera/Objektiv-Auswahl für Objektivkorrektur
+    [ObservableProperty] private ObservableCollection<string> _verfuegbareKameras = [];
+    [ObservableProperty] private string? _ausgewaehlteKamera;
+    [ObservableProperty] private ObservableCollection<string> _verfuegbareObjektive = [];
+    [ObservableProperty] private string? _ausgewaehltesObjektiv;
+    [ObservableProperty] private bool _lensfunInstalliert;
+    private readonly LensfunInstaller _lensfunInstaller = new();
+
+    /// <summary>
+    /// Wird aufgerufen wenn Objektivkorrektur aktiviert/deaktiviert wird.
+    /// Bei Aktivierung: prüft ob Lensfun installiert ist und startet ggf. Installation.
+    /// Lädt außerdem die verfügbaren Kameras aus der Datenbank.
+    /// </summary>
+    partial void OnObjektivkorrekturChanged(bool value)
+    {
+        if (!_initialisiert) return;
+        if (!value) return;
+
+        // Lensfun-Installation prüfen
+        LensfunInstalliert = _lensfunInstaller.IstInstalliert;
+        if (!LensfunInstalliert)
+        {
+            System.Diagnostics.Debug.WriteLine("Lensfun nicht installiert — starte automatische Installation");
+            _ = InstalliereLensfunAsync();
+        }
+        else
+        {
+            // Kameras aus Datenbank laden
+            LadeVerfuegbareKameras();
+        }
+    }
+
+    /// <summary>
+    /// Wird aufgerufen wenn die ausgewählte Kamera sich ändert.
+    /// Lädt die verfügbaren Objektive für diese Kamera.
+    /// </summary>
+    partial void OnAusgewaehlteKameraChanged(string? value)
+    {
+        VerfuegbareObjektive.Clear();
+        if (!string.IsNullOrWhiteSpace(value))
+        {
+            LadeVerfuegbareObjektive(value);
+        }
+    }
+
+    /// <summary>
+    /// Lädt die verfügbaren Kamera-Hersteller aus der Lensfun-Datenbank.
+    /// </summary>
+    private void LadeVerfuegbareKameras()
+    {
+        try
+        {
+            using var corrector = new LensCorrector();
+            if (corrector.Initialisieren())
+            {
+                var kameras = corrector.ListeKameras();
+                VerfuegbareKameras.Clear();
+                foreach (var k in kameras)
+                    VerfuegbareKameras.Add(k);
+                System.Diagnostics.Debug.WriteLine($"Lensfun: {kameras.Count} Kamera-Hersteller geladen");
+            }
+        }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"Lensfun: LadeVerfuegbareKameras fehlgeschlagen: {ex.Message}");
+        }
+    }
+
+    /// <summary>
+    /// Lädt die verfügbaren Objektive für eine Kamera aus der Lensfun-Datenbank.
+    /// </summary>
+    private void LadeVerfuegbareObjektive(string kamera)
+    {
+        try
+        {
+            using var corrector = new LensCorrector();
+            if (corrector.Initialisieren())
+            {
+                var objektive = corrector.ListeObjektive(kamera);
+                VerfuegbareObjektive.Clear();
+                foreach (var o in objektive)
+                    VerfuegbareObjektive.Add(o);
+                System.Diagnostics.Debug.WriteLine($"Lensfun: {objektive.Count} Objektive für '{kamera}' geladen");
+            }
+        }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"Lensfun: LadeVerfuegbareObjektive fehlgeschlagen: {ex.Message}");
+        }
+    }
+
+    /// <summary>
+    /// Installiert Lensfun asynchron (Windows: ZIP herunterladen + entpacken).
+    /// Nach erfolgreicher Installation werden die verfügbaren Kameras geladen.
+    /// </summary>
+    private async Task InstalliereLensfunAsync()
+    {
+        if (InstallationLaeuft) return;
+
+        InstallationLaeuft = true;
+        InstallationsText = "Installiere Lensfun...";
+        StatusText = "Installiere Lensfun...";
+
+        _lensfunInstaller.InstallationsFortschritt += OnLensfunInstallationsFortschritt;
+
+        try
+        {
+            var erfolg = await _lensfunInstaller.InstallierenAsync();
+            LensfunInstalliert = _lensfunInstaller.IstInstalliert;
+
+            if (erfolg && LensfunInstalliert)
+            {
+                InstallationsText = "Lensfun aktiv";
+                StatusText = "Lensfun installiert — Kameras werden geladen";
+                LadeVerfuegbareKameras();
+            }
+            else
+            {
+                InstallationsText = "Lensfun-Installation fehlgeschlagen";
+                StatusText = "Lensfun-Installation fehlgeschlagen";
+            }
+        }
+        catch (Exception ex)
+        {
+            InstallationsText = $"Lensfun-Installation fehlgeschlagen: {ex.Message}";
+            StatusText = $"Lensfun-Installation fehlgeschlagen: {ex.Message}";
+        }
+        finally
+        {
+            _lensfunInstaller.InstallationsFortschritt -= OnLensfunInstallationsFortschritt;
+            InstallationLaeuft = false;
+        }
+    }
+
+    /// <summary>
+    /// Callback für den LensfunInstaller-Progress — aktualisiert UI auf dem UI-Thread.
+    /// </summary>
+    private void OnLensfunInstallationsFortschritt(object? sender, LensfunInstallFortschritt e)
+    {
+        System.Windows.Application.Current.Dispatcher.Invoke(() =>
+        {
+            InstallationsFortschritt = (int)Math.Clamp(e.Prozent, 0, 100);
+            InstallationsText = e.Schritt;
+        });
+    }
 
     // Upscaling & Gesichtswiederherstellung
     [ObservableProperty] private int _hochskalierenFaktor = 1;
@@ -91,8 +238,49 @@ public partial class MainViewModel : ObservableObject, IDisposable
     [ObservableProperty] private bool _vapourSynthAktivSichtbar;
     private readonly VapourSynthInstaller _vapourSynthInstaller = new();
 
-    /// <summary>Wird aufgerufen wenn VideoBackend sich ändert — aktualisiert Sichtbarkeit.</summary>
-    partial void OnVideoBackendChanged(VideoBackend value) => UpdateVapourSynthSichtbarkeit();
+    /// <summary>
+    /// Wird aufgerufen wenn VideoBackend sich ändert.
+    /// Bei VapourSynth: automatische Verifikation + Installation falls nötig.
+    /// </summary>
+    partial void OnVideoBackendChanged(VideoBackend value)
+    {
+        UpdateVapourSynthSichtbarkeit();
+
+        if (!_initialisiert) return;
+
+        // Einstellung speichern
+        try
+        {
+            var settings = Settings.Laden();
+            settings.VideoBackend = value;
+            settings.Speichern();
+        }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"VideoBackend-Einstellung konnte nicht gespeichert werden: {ex.Message}");
+        }
+
+        // Nur bei VapourSynth prüfen/installieren
+        if (value != VideoBackend.VapourSynth) return;
+        if (InstallationLaeuft) return;
+
+        // Verifikation: Ist VapourSynth installiert UND fehlerfrei?
+        bool installiert = _vapourSynthInstaller.IstInstalliert;
+        VapourSynthInstalliert = installiert;
+
+        if (!installiert)
+        {
+            // Nicht installiert → automatisch Installation starten (fire-and-forget)
+            System.Diagnostics.Debug.WriteLine("VapourSynth nicht installiert — starte automatische Installation");
+            _ = InstalliereVapourSynthAsync();
+        }
+        else
+        {
+            // Installiert — Status setzen
+            InstallationsText = "VapourSynth aktiv";
+            StatusText = "VapourSynth aktiv";
+        }
+    }
 
     /// <summary>Wird aufgerufen wenn VapourSynthInstalliert sich ändert — aktualisiert Sichtbarkeit.</summary>
     partial void OnVapourSynthInstalliertChanged(bool value) => UpdateVapourSynthSichtbarkeit();
@@ -159,6 +347,9 @@ public partial class MainViewModel : ObservableObject, IDisposable
             System.Windows.Application.Current.Dispatcher.Invoke(() => UpdateVerfuegbar = verfuegbar);
         _autoUpdater.NeueVersionChanged += (_, version) =>
             System.Windows.Application.Current.Dispatcher.Invoke(() => NeueVersion = version);
+
+        // Initialisierung abgeschlossen — ab jetzt dürfen Change-Handler feuern
+        _initialisiert = true;
     }
 
     /// <summary>
@@ -276,17 +467,99 @@ public partial class MainViewModel : ObservableObject, IDisposable
             var dialog = new Microsoft.Win32.OpenFileDialog
             {
                 Filter = "Bilddateien|*.jpg;*.jpeg;*.png;*.tif;*.tiff;*.bmp;*.cr2;*.cr3;*.nef;*.arw;*.dng;*.orf;*.rw2|Alle Dateien|*.*",
-                Title = "Bild öffnen"
+                Title = "Bild öffnen",
+                Multiselect = true
             };
 
             if (dialog.ShowDialog() == true)
             {
+                // Alle ausgewählten Dateien zur Galerie hinzufügen
+                DateienHinzufuegen(dialog.FileNames);
+                // Erste Datei als Vorschau laden
                 LoadBild(dialog.FileName);
             }
         }
         catch (Exception ex)
         {
             System.Windows.MessageBox.Show($"Fehler: {ex.Message}", "Fehler", MessageBoxButton.OK, MessageBoxImage.Error);
+        }
+    }
+
+    /// <summary>
+    /// Öffnet den Datei-Dialog mit Multiselect — je nach aktivem Modus (Bild oder Video).
+    /// Alle ausgewählten Dateien werden zur Galerie hinzugefügt.
+    /// </summary>
+    [RelayCommand]
+    private void Oeffnen()
+    {
+        try
+        {
+            var dialog = new Microsoft.Win32.OpenFileDialog
+            {
+                Filter = "Bilddateien|*.jpg;*.jpeg;*.png;*.tif;*.tiff;*.bmp;*.cr2;*.cr3;*.nef;*.arw;*.dng;*.orf;*.rw2|Videodateien|*.mp4;*.mov;*.avi;*.mkv|Alle Dateien|*.*",
+                Title = "Datei(en) öffnen — Mehrfachauswahl mit Strg/Cmd+Klick",
+                Multiselect = true
+            };
+
+            if (dialog.ShowDialog() == true)
+            {
+                // Alle ausgewählten Dateien zur Galerie hinzufügen
+                DateienHinzufuegen(dialog.FileNames);
+
+                // Erste Bilddatei als Vorschau laden
+                var firstImage = dialog.FileNames
+                    .FirstOrDefault(f => BildEndungen.Contains(System.IO.Path.GetExtension(f)));
+                if (firstImage != null)
+                    LoadBild(firstImage);
+            }
+        }
+        catch (Exception ex)
+        {
+            System.Windows.MessageBox.Show($"Fehler: {ex.Message}", "Fehler", MessageBoxButton.OK, MessageBoxImage.Error);
+        }
+    }
+
+    /// <summary>
+    /// Exportiert das bearbeitete Bild.
+    /// </summary>
+    [RelayCommand]
+    private void Export()
+    {
+        try
+        {
+            if (!BildGeladen || PipelineBild == null)
+            {
+                System.Windows.MessageBox.Show("Bitte zuerst ein Bild laden und die Pipeline ausführen.",
+                    "Export", MessageBoxButton.OK, MessageBoxImage.Information);
+                return;
+            }
+
+            var dialog = new Microsoft.Win32.SaveFileDialog
+            {
+                Filter = "JPEG|*.jpg|PNG|*.png|TIFF|*.tiff|BMP|*.bmp",
+                Title = "Bild exportieren",
+                FileName = System.IO.Path.GetFileNameWithoutExtension(BildPfad) + "_flipsicolor"
+            };
+
+            if (dialog.ShowDialog() == true)
+            {
+                var encoder = dialog.FilterIndex switch
+                {
+                    1 => (System.Windows.Media.Imaging.BitmapEncoder)new System.Windows.Media.Imaging.JpegBitmapEncoder { QualityLevel = 95 },
+                    2 => new System.Windows.Media.Imaging.PngBitmapEncoder(),
+                    3 => new System.Windows.Media.Imaging.TiffBitmapEncoder(),
+                    _ => new System.Windows.Media.Imaging.JpegBitmapEncoder { QualityLevel = 95 }
+                };
+
+                encoder.Frames.Add(System.Windows.Media.Imaging.BitmapFrame.Create(PipelineBild));
+                using var fs = System.IO.File.Create(dialog.FileName);
+                encoder.Save(fs);
+                StatusText = $"Exportiert: {dialog.FileName}";
+            }
+        }
+        catch (Exception ex)
+        {
+            System.Windows.MessageBox.Show($"Export-Fehler: {ex.Message}", "Fehler", MessageBoxButton.OK, MessageBoxImage.Error);
         }
     }
 
@@ -317,7 +590,10 @@ public partial class MainViewModel : ObservableObject, IDisposable
             Modus = ModusFromString(),
             HochskalierenFaktor = HochskalierenFaktor,
             GesichtswiederherstellungAktiv = GesichtswiederherstellungAktiv,
-            StyleLutPfad = StyleLutPfad
+            StyleLutPfad = StyleLutPfad,
+            // Manuelle Kamera/Objektiv-Auswahl (null = EXIF verwenden)
+            ManuelleKamera = AusgewaehlteKamera,
+            ManuellesObjektiv = AusgewaehltesObjektiv
         };
 
         try
@@ -357,6 +633,8 @@ public partial class MainViewModel : ObservableObject, IDisposable
             GesichtswiederherstellungAktiv = false;
             StyleLutPfad = null;
             StyleLutName = "";
+            AusgewaehlteKamera = null;
+            AusgewaehltesObjektiv = null;
             StatusText = "Parameter zurückgesetzt";
         }
         catch (Exception ex)
@@ -508,7 +786,9 @@ public partial class MainViewModel : ObservableObject, IDisposable
             Modus = ModusFromString(),
             HochskalierenFaktor = 1, // Video: kein Upscaling (zu langsam)
             GesichtswiederherstellungAktiv = GesichtswiederherstellungAktiv,
-            StyleLutPfad = StyleLutPfad
+            StyleLutPfad = StyleLutPfad,
+            ManuelleKamera = AusgewaehlteKamera,
+            ManuellesObjektiv = AusgewaehltesObjektiv
         };
 
         try
@@ -578,42 +858,9 @@ public partial class MainViewModel : ObservableObject, IDisposable
         }
     }
 
-    // ===== Video-Backend Commands =====
-
-    /// <summary>
-    /// Wechselt das Video-Backend zwischen FFmpeg und VapourSynth.
-    /// Speichert die Einstellung sofort. Bei VapourSynth-Auswahl wird geprüft,
-    /// ob VapourSynth installiert ist — falls nicht, wird die Installations-UI angezeigt.
-    /// FFmpeg ist sofort aktiv, kein Neustart erforderlich.
-    /// </summary>
-    [RelayCommand]
-    private void WechselBackend(VideoBackend backend)
-    {
-        VideoBackend = backend;
-
-        // Einstellung speichern
-        try
-        {
-            var settings = Settings.Laden();
-            settings.VideoBackend = backend;
-            settings.Speichern();
-            StatusText = "Video-Backend gespeichert";
-        }
-        catch (Exception ex)
-        {
-            StatusText = $"Fehler: {ex.Message}";
-        }
-
-        // Bei VapourSynth: Installations-Status prüfen
-        if (backend == VideoBackend.VapourSynth)
-        {
-            VapourSynthInstalliert = _vapourSynthInstaller.IstInstalliert;
-            if (VapourSynthInstalliert)
-            {
-                InstallationsText = "VapourSynth aktiv";
-            }
-        }
-    }
+    // ===== Video-Backend =====
+    // WechselBackend-Command wird NICHT mehr benötigt — RadioButtons binden
+    // direkt an VideoBackend (TwoWay). OnVideoBackendChanged übernimmt alles.
 
     /// <summary>
     /// Installiert VapourSynth + Plugins asynchron.
@@ -839,7 +1086,7 @@ public partial class MainViewModel : ObservableObject, IDisposable
 /// <summary>
 /// Ein Eintrag in der Drag &amp; Drop Dateiliste.
 /// </summary>
-public sealed class DateiEintrag
+public sealed class DateiEintrag : System.ComponentModel.INotifyPropertyChanged
 {
     /// <summary>Vollständiger Dateipfad.</summary>
     public string Pfad { get; }
@@ -853,8 +1100,23 @@ public sealed class DateiEintrag
     /// <summary>Dateigröße als formatierter String.</summary>
     public string Groesse { get; }
 
+    private System.Windows.Media.Imaging.BitmapSource? _thumbnail;
+    /// <summary>Live-Bildvorschau (Thumbnail) für die Galerie.</summary>
+    public System.Windows.Media.Imaging.BitmapSource? Thumbnail
+    {
+        get => _thumbnail;
+        private set
+        {
+            _thumbnail = value;
+            PropertyChanged?.Invoke(this, new System.ComponentModel.PropertyChangedEventArgs(nameof(Thumbnail)));
+        }
+    }
+
+    public event System.ComponentModel.PropertyChangedEventHandler? PropertyChanged;
+
     /// <summary>
     /// Erstellt einen neuen DateiEintrag aus einem Dateipfad.
+    /// Lädt asynchron ein Thumbnail für Bilddateien.
     /// </summary>
     /// <param name="pfad">Vollständiger Pfad zur Datei.</param>
     public DateiEintrag(string pfad)
@@ -879,5 +1141,65 @@ public sealed class DateiEintrag
         {
             Groesse = "—";
         }
+
+        // Thumbnail asynchron laden (nur bei Bildern)
+        if (Typ == "Bild")
+        {
+            _ = LadeThumbnailAsync();
+        }
+    }
+
+    /// <summary>
+    /// Lädt ein kleines Thumbnail-Bild asynchron aus der Datei.
+    /// Respektiert EXIF-Orientierung damit Hochformat-Bilder nicht quer gedreht werden.
+    /// </summary>
+    private async Task LadeThumbnailAsync()
+    {
+        await System.Windows.Application.Current.Dispatcher.InvokeAsync(() =>
+        {
+            try
+            {
+                // EXIF-Orientierung lesen
+                var rotation = System.Windows.Media.Imaging.Rotation.Rotate0;
+                try
+                {
+                    using var stream = new FileStream(Pfad, FileMode.Open, FileAccess.Read);
+                    var frame = System.Windows.Media.Imaging.BitmapFrame.Create(
+                        stream,
+                        System.Windows.Media.Imaging.BitmapCreateOptions.DelayCreation,
+                        System.Windows.Media.Imaging.BitmapCacheOption.None);
+                    var metadata = frame.Metadata as System.Windows.Media.Imaging.BitmapMetadata;
+                    if (metadata != null && metadata.ContainsQuery("System.Photo.Orientation"))
+                    {
+                        var orient = metadata.GetQuery("System.Photo.Orientation");
+                        if (orient is ushort u)
+                        {
+                            rotation = u switch
+                            {
+                                3 => System.Windows.Media.Imaging.Rotation.Rotate180,
+                                6 => System.Windows.Media.Imaging.Rotation.Rotate90,
+                                8 => System.Windows.Media.Imaging.Rotation.Rotate270,
+                                _ => System.Windows.Media.Imaging.Rotation.Rotate0
+                            };
+                        }
+                    }
+                }
+                catch { /* Metadata nicht lesbar — kein Rotation */ }
+
+                var bitmap = new System.Windows.Media.Imaging.BitmapImage();
+                bitmap.BeginInit();
+                bitmap.CacheOption = System.Windows.Media.Imaging.BitmapCacheOption.OnLoad;
+                bitmap.UriSource = new Uri(Pfad);
+                bitmap.DecodePixelWidth = 400; // Höhere Auflösung für scharfe Thumbnails
+                bitmap.Rotation = rotation;
+                bitmap.EndInit();
+                bitmap.Freeze();
+                Thumbnail = bitmap;
+            }
+            catch
+            {
+                // Thumbnail konnte nicht geladen werden — Dateiname wird angezeigt
+            }
+        }, System.Windows.Threading.DispatcherPriority.Background);
     }
 }

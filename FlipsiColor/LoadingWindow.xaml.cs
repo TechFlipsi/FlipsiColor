@@ -57,12 +57,12 @@ public partial class LoadingWindow : Window, INotifyPropertyChanged
         StatusText = "Prüfe Modell-Version...";
         await _modelManager.ModellVersionPruefenAsync();
 
-        // 3. Erforderliche Modelle herunterladen
-        StatusText = "Lade erforderliche Modelle herunter...";
+        // 3. Alle Modelle herunterladen (erforderlich + optional)
+        StatusText = "Lade alle Modelle herunter...";
         _modelManager.DownloadFortschritt += OnDownloadFortschritt;
         _modelManager.DownloadFehler += OnDownloadFehler;
 
-        await _modelManager.AlleErforderlichenModelleSicherstellenAsync();
+        await _modelManager.AlleModelleSicherstellenAsync();
 
         _modelManager.DownloadFortschritt -= OnDownloadFortschritt;
         _modelManager.DownloadFehler -= OnDownloadFehler;
