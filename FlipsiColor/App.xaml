@@ -12,6 +12,7 @@
             <local:BoolToVisibilityConverter x:Key="BoolToVis"/>
             <local:InverseBoolToVisibilityConverter x:Key="InverseBoolToVis"/>
             <local:MatToBitmapSourceConverter x:Key="MatToBmp"/>
+            <local:VideoBackendToBoolConverter x:Key="BackendToBool"/>
         </ResourceDictionary>
     </Application.Resources>
 </Application>

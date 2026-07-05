@@ -15,6 +15,8 @@ using FlipsiColor.Core;
 using FlipsiColor.Image;
 using FlipsiColor.Video;
 
+using VideoBackend = FlipsiColor.Core.VideoBackend;
+
 namespace FlipsiColor.ViewModels;
 
 /// <summary>
@@ -30,7 +32,7 @@ public partial class MainViewModel : ObservableObject, IDisposable
     private readonly AutoUpdater _autoUpdater;
     private readonly ClipMerger _clipMerger;
 
-    [ObservableProperty] private string _title = "FlipsiColor v0.4.1";
+    [ObservableProperty] private string _title = "FlipsiColor v0.4.2";
     [ObservableProperty] private bool _gpuVerfuegbar;
     [ObservableProperty] private string _gpuName = "";
     [ObservableProperty] private bool _updateVerfuegbar;
@@ -90,6 +92,29 @@ public partial class MainViewModel : ObservableObject, IDisposable
     [ObservableProperty] private bool _autoUpdateAktiv = true;
     [ObservableProperty] private string _modellVerzeichnis = "";
 
+    // Video-Backend (FFmpeg / VapourSynth) — Einstellungen
+    [ObservableProperty] private VideoBackend _videoBackend = VideoBackend.FFmpeg;
+    [ObservableProperty] private bool _vapourSynthInstalliert;
+    [ObservableProperty] private int _installationsFortschritt;
+    [ObservableProperty] private string _installationsText = "";
+    [ObservableProperty] private bool _installationLaeuft;
+    [ObservableProperty] private bool _vapourSynthInstallUiSichtbar;
+    [ObservableProperty] private bool _vapourSynthAktivSichtbar;
+    private readonly VapourSynthInstaller _vapourSynthInstaller = new();
+
+    /// <summary>Wird aufgerufen wenn VideoBackend sich ändert — aktualisiert Sichtbarkeit.</summary>
+    partial void OnVideoBackendChanged(VideoBackend value) => UpdateVapourSynthSichtbarkeit();
+
+    /// <summary>Wird aufgerufen wenn VapourSynthInstalliert sich ändert — aktualisiert Sichtbarkeit.</summary>
+    partial void OnVapourSynthInstalliertChanged(bool value) => UpdateVapourSynthSichtbarkeit();
+
+    /// <summary>Aktualisiert die berechneten Sichtbarkeits-Properties für die Installations-UI.</summary>
+    private void UpdateVapourSynthSichtbarkeit()
+    {
+        VapourSynthInstallUiSichtbar = VideoBackend == VideoBackend.VapourSynth && !VapourSynthInstalliert;
+        VapourSynthAktivSichtbar = VideoBackend == VideoBackend.VapourSynth && VapourSynthInstalliert;
+    }
+
     // Datei-Liste (Drag & Drop — mehrere Dateien)
     [ObservableProperty] private ObservableCollection<DateiEintrag> _dateiListe = [];
 
@@ -130,6 +155,10 @@ public partial class MainViewModel : ObservableObject, IDisposable
                 "FlipsiColor", "Models");
             Lokalisierung.SpracheSetzen(settings.Sprache);
             Lokalisierung.SpracheGeaendert += (_, _) => SpracheGeaendert?.Invoke(this, EventArgs.Empty);
+
+            // Video-Backend aus Settings laden
+            VideoBackend = settings.VideoBackend;
+            VapourSynthInstalliert = _vapourSynthInstaller.IstInstalliert;
         }
         catch
         {
@@ -532,6 +561,104 @@ public partial class MainViewModel : ObservableObject, IDisposable
         var settings = Settings.Laden();
         settings.AutoUpdatePruefen = aktiv;
         settings.Speichern();
+    }
+
+    // ===== Video-Backend Commands =====
+
+    /// <summary>
+    /// Wechselt das Video-Backend zwischen FFmpeg und VapourSynth.
+    /// Speichert die Einstellung sofort. Bei VapourSynth-Auswahl wird geprüft,
+    /// ob VapourSynth installiert ist — falls nicht, wird die Installations-UI angezeigt.
+    /// FFmpeg ist sofort aktiv, kein Neustart erforderlich.
+    /// </summary>
+    [RelayCommand]
+    private void WechselBackend(VideoBackend backend)
+    {
+        VideoBackend = backend;
+
+        // Einstellung speichern
+        try
+        {
+            var settings = Settings.Laden();
+            settings.VideoBackend = backend;
+            settings.Speichern();
+            StatusText = Lokalisierung.T("Video.Backend.Gespeichert");
+        }
+        catch (Exception ex)
+        {
+            StatusText = $"{Lokalisierung.T("Status.Fehler")}: {ex.Message}";
+        }
+
+        // Bei VapourSynth: Installations-Status prüfen
+        if (backend == VideoBackend.VapourSynth)
+        {
+            VapourSynthInstalliert = _vapourSynthInstaller.IstInstalliert;
+            if (VapourSynthInstalliert)
+            {
+                InstallationsText = Lokalisierung.T("Video.Backend.Aktiv");
+            }
+        }
+    }
+
+    /// <summary>
+    /// Installiert VapourSynth + Plugins asynchron.
+    /// Aktualisiert die Progress-Bar und den Status-Text während der Installation.
+    /// Nach erfolgreicher Installation wird "VapourSynth aktiv" angezeigt.
+    /// </summary>
+    [RelayCommand]
+    private async Task InstalliereVapourSynthAsync()
+    {
+        if (InstallationLaeuft) return;
+
+        InstallationLaeuft = true;
+        InstallationsFortschritt = 0;
+        InstallationsText = Lokalisierung.T("Video.Backend.Installiere");
+        StatusText = Lokalisierung.T("Video.Backend.Installiere");
+
+        // Progress-Event abonnieren
+        _vapourSynthInstaller.InstallationsFortschritt += OnVapourSynthInstallationsFortschritt;
+
+        try
+        {
+            var erfolg = await _vapourSynthInstaller.InstallierenAsync();
+            VapourSynthInstalliert = _vapourSynthInstaller.IstInstalliert;
+
+            if (erfolg && VapourSynthInstalliert)
+            {
+                InstallationsFortschritt = 100;
+                InstallationsText = Lokalisierung.T("Video.Backend.Aktiv");
+                StatusText = Lokalisierung.T("Video.Backend.Aktiv");
+            }
+            else
+            {
+                InstallationsText = Lokalisierung.T("Video.Backend.InstallationFehlgeschlagen");
+                StatusText = Lokalisierung.T("Video.Backend.InstallationFehlgeschlagen");
+                FehlerAnzeigenCallback?.Invoke(Lokalisierung.T("Video.Backend.InstallationFehlgeschlagen"));
+            }
+        }
+        catch (Exception ex)
+        {
+            InstallationsText = $"{Lokalisierung.T("Video.Backend.InstallationFehlgeschlagen")}: {ex.Message}";
+            StatusText = $"{Lokalisierung.T("Video.Backend.InstallationFehlgeschlagen")}: {ex.Message}";
+            FehlerAnzeigenCallback?.Invoke($"{Lokalisierung.T("Video.Backend.InstallationFehlgeschlagen")}: {ex.Message}");
+        }
+        finally
+        {
+            _vapourSynthInstaller.InstallationsFortschritt -= OnVapourSynthInstallationsFortschritt;
+            InstallationLaeuft = false;
+        }
+    }
+
+    /// <summary>
+    /// Callback für den VapourSynthInstaller-Progress — aktualisiert UI auf dem UI-Thread.
+    /// </summary>
+    private void OnVapourSynthInstallationsFortschritt(object? sender, VapourSynthInstallFortschritt e)
+    {
+        Dispatcher.UIThread.Post(() =>
+        {
+            InstallationsFortschritt = (int)Math.Clamp(e.Prozent, 0, 100);
+            InstallationsText = e.Schritt;
+        });
     }
 
     [RelayCommand]

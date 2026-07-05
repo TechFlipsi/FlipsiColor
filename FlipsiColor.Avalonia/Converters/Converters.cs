@@ -6,6 +6,8 @@ using Avalonia.Data.Converters;
 using Avalonia.Media.Imaging;
 using OpenCvSharp;
 
+using FlipsiColor.Core;
+
 namespace FlipsiColor;
 
 /// <summary>
@@ -76,4 +78,33 @@ public class LocConverter : IValueConverter
 
     public object? ConvertBack(object? value, Type targetType, object? parameter, CultureInfo culture)
         => Avalonia.Data.BindingNotification.UnsetValue;
+}
+
+/// <summary>
+/// VideoBackend-Enum → Bool Converter für RadioButton IsChecked Bindings.
+/// ConverterParameter = "FFmpeg" oder "VapourSynth".
+/// Convert: true wenn value == ConverterParameter.
+/// ConvertBack: parsed den bool zurück in den VideoBackend-Enum.
+/// </summary>
+public class VideoBackendToBoolConverter : IValueConverter
+{
+    public object? Convert(object? value, Type targetType, object? parameter, CultureInfo culture)
+    {
+        if (value is VideoBackend backend && parameter is string param)
+        {
+            return param == "VapourSynth"
+                ? backend == VideoBackend.VapourSynth
+                : backend == VideoBackend.FFmpeg;
+        }
+        return false;
+    }
+
+    public object? ConvertBack(object? value, Type targetType, object? parameter, CultureInfo culture)
+    {
+        if (value is bool isChecked && isChecked && parameter is string param)
+        {
+            return param == "VapourSynth" ? VideoBackend.VapourSynth : VideoBackend.FFmpeg;
+        }
+        return Avalonia.Data.BindingNotification.UnsetValue;
+    }
 }

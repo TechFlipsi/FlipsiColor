@@ -20,6 +20,9 @@ namespace FlipsiColor.Video;
 ///     libvapoursynth.so auf Linux). Die Software funktioniert auch OHNE VapourSynth.
 ///   - Generiert VapourSynth Python-Scripts für Filter-Pipelines (Belichtung, Kontrast,
 ///     Sättigung, Rauschunterdrückung, Schärfung) basierend auf <see cref="PipelineParams"/>.
+///   - Integriert KI-Modelle über vs-mlrt (vs-onnxruntime): NAFNet (Entrauschen),
+///     RestormerLight (Schärfung), RealESRGAN (Upscaling), RealHATGAN (Upscaling),
+///     CodeFormer (Gesichtswiederherstellung), AiLUTTransform (Farbstil-Lernen).
 ///   - Piped VapourSynth-Output an FFmpeg zur Encoding-Pipeline (stdout → ffmpeg stdin).
 ///   - Ist vollständig cross-platform (Windows + Linux).
 ///
@@ -42,6 +45,26 @@ public sealed class VapourSynthProcessor : IDisposable
     public int Hoehe => _hoehe;
     public double Fps => _fps;
     public int FrameAnzahl => _frameAnzahl;
+
+    /// <summary>
+    /// Modell-Verzeichnis: AppData/Local/FlipsiColor/Models/
+    /// Gleiches Verzeichnis wie ModelManager — die Modelle werden vom ModelManager heruntergeladen.
+    /// </summary>
+    private static string ModellVerzeichnis => Path.Combine(
+        Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
+        "FlipsiColor", "Models");
+
+    /// <summary>
+    /// Erzeugt den Python-Pfad (Forward-Slash, raw-string kompatibel) für ein ONNX-Modell.
+    /// </summary>
+    /// <param name="modellName">Dateiname des Modells ohne .onnx Erweiterung.</param>
+    /// <returns>Pfad im Format r'C:/Users/.../FlipsiColor/Models/NAFNet.onnx'.</returns>
+    private static string ModellPythonPfad(string modellName)
+    {
+        var pfad = Path.Combine(ModellVerzeichnis, modellName + ".onnx");
+        // Forward-Slash für Python-Pfad-Kompatibilität (Cross-Platform)
+        return pfad.Replace('\\', '/');
+    }
 
     /// <summary>
     /// Prüft zur Laufzeit ob VapourSynth installiert ist.
@@ -211,13 +234,20 @@ public sealed class VapourSynthProcessor : IDisposable
     /// den Pipeline-Parametern. Das Script wird von vspipe ausgeführt und per stdout
     /// an FFmpeg gepiped.
     ///
-    /// Filter-Pipeline (in Reihenfolge):
+    /// Pipeline-Phasen:
     ///   1. Source-Load (ffms2 oder LWLibAVSource)
-    ///   2. Belichtung (Brightness/Levels)
-    ///   3. Kontrast (Levels)
-    ///   4. Sättigung (Tweak/HSL)
-    ///   5. Rauschunterdrückung (BM3D oder HQDN3D)
-    ///   6. Schärfung (UnsharpMask)
+    ///   2. Klassische Filter (Belichtung, Kontrast, Sättigung, Rauschunterdrückung)
+    ///   3. KI-Modelle via vs-mlrt (core.ort.Model):
+    ///      a. NAFNet — Entrauschen (LuminanzRauschen > 0.01)
+    ///      b. RestormerLight — Schärfung (SchaerfeBetrag > 0.01)
+    ///      c. RealESRGAN / RealHATGAN — Upscaling (HochskalierenFaktor > 1)
+    ///      d. CodeFormer — Gesichtswiederherstellung (GesichtswiederherstellungAktiv)
+    ///      e. AiLUTTransform — Farbstil-Lernen (AiStilName nicht leer)
+    ///   4. Output-Format: YUV420P8 für FFmpeg-Kompatibilität
+    ///
+    /// KI-Modelle benötigen 32-bit float RGB (RGBS). Konvertierung erfolgt automatisch:
+    ///   clip = clip.resize.Bicubic(format=vs.RGBS)
+    /// Nach der KI-Verarbeitung wird zurück nach YUV420P8 konvertiert.
     /// </summary>
     /// <param name="param">Pipeline-Parameter für Filter-Konfiguration.</param>
     /// <returns>Python-Script-Code als String, oder null bei Fehler.</returns>
@@ -232,9 +262,38 @@ public sealed class VapourSynthProcessor : IDisposable
         // Python-Pfad-Escaping (Backslash → Forward-Slash, einfache Quotes escapen)
         var videoPfadPython = _vspyPath!.Replace('\\', '/').Replace("'", "\\'");
 
+        // Modell-Verfügbarkeit prüfen — nur Modelle einbinden die tatsächlich existieren
+        bool nafnetVerfuegbar = File.Exists(Path.Combine(ModellVerzeichnis, "NAFNet.onnx"));
+        bool restormerVerfuegbar = File.Exists(Path.Combine(ModellVerzeichnis, "RestormerLight.onnx"));
+        bool realEsrganVerfuegbar = File.Exists(Path.Combine(ModellVerzeichnis, "RealESRGAN.onnx"));
+        bool realHatGanVerfuegbar = File.Exists(Path.Combine(ModellVerzeichnis, "RealHATGAN.onnx"));
+        bool codeFormerVerfuegbar = File.Exists(Path.Combine(ModellVerzeichnis, "CodeFormer.onnx"));
+        bool aiLutVerfuegbar = File.Exists(Path.Combine(ModellVerzeichnis, "AiLUTTransform.onnx"));
+
+        // Aktivierungs-Bedingungen für KI-Modelle
+        bool nafnetAktiv = param.LuminanzRauschen > 0.01f && nafnetVerfuegbar;
+        bool restormerAktiv = param.SchaerfeBetrag > 0.01f && restormerVerfuegbar;
+        bool upscalingAktiv = param.HochskalierenFaktor > 1 && (realEsrganVerfuegbar || realHatGanVerfuegbar);
+        bool codeFormerAktiv = param.GesichtswiederherstellungAktiv && codeFormerVerfuegbar;
+        bool aiLutAktiv = !string.IsNullOrWhiteSpace(param.AiStilName) && aiLutVerfuegbar;
+
+        // Mindestens ein KI-Modell aktiv → ort-Plugin needed
+        bool kiModelleAktiv = nafnetAktiv || restormerAktiv || upscalingAktiv || codeFormerAktiv || aiLutAktiv;
+
+        if (kiModelleAktiv)
+        {
+            Log.Information("VapourSynth: KI-Modelle aktiviert — NAFNet={Naf} Restormer={Res} Upscaling={Ups} CodeFormer={Cf} AiLUT={Lut}",
+                nafnetAktiv, restormerAktiv, upscalingAktiv, codeFormerAktiv, aiLutAktiv);
+        }
+
+        // Bestimme Upscaling-Modell: RealHATGAN (bessere Qualität) bevorzugt wenn verfügbar
+        bool useRealHatGan = upscalingAktiv && realHatGanVerfuegbar;
+        bool useRealEsrgan = upscalingAktiv && !useRealHatGan && realEsrganVerfuegbar;
+
         var sb = new StringBuilder();
         sb.AppendLine("# FlipsiColor VapourSynth Filter-Pipeline (auto-generated)");
         sb.AppendLine("# Cross-Platform: Windows + Linux");
+        sb.AppendLine("# Enthält klassische Filter + KI-Modelle via vs-mlrt (vs-onnxruntime)");
         sb.AppendLine("import vapoursynth as vs");
         sb.AppendLine("import sys");
         sb.AppendLine();
@@ -259,6 +318,8 @@ public sealed class VapourSynthProcessor : IDisposable
         sb.AppendLine("height = clip.height");
         sb.AppendLine();
 
+        // ── Klassische Filter (vor KI-Modellen) ──
+
         // ── Belichtung (Brightness) ──
         if (Math.Abs(param.Belichtung) > 0.01f)
         {
@@ -277,21 +338,22 @@ public sealed class VapourSynthProcessor : IDisposable
             sb.AppendLine();
         }
 
-        // ── Sättigung ──
-        if (Math.Abs(param.Saettigung) > 0.01f)
+        // ── Sättigung (nur wenn AiLUTTransform nicht aktiv — AiLUT übernimmt Farbstil) ──
+        if (Math.Abs(param.Saettigung) > 0.01f && !aiLutAktiv)
         {
             var sat = (1.0 + param.Saettigung * 0.5).ToString("F2", CultureInfo.InvariantCulture);
             sb.AppendLine("# ── Sättigung ──");
-            sb.AppendLine($"clip = core.std.Expr(clip, format=vs.RGB24) if clip.format.color_family != vs.RGB else clip");
+            sb.AppendLine("clip = core.std.Expr(clip, format=vs.RGB24) if clip.format.color_family != vs.RGB else clip");
             sb.AppendLine($"clip = core.std.Levels(clip, min_in=64, max_in=224, gamma={sat}, min_out=0, max_out=255, planes=[1,2])");
             sb.AppendLine();
         }
 
-        // ── Luminanz-Rauschunterdrückung ──
-        if (param.LuminanzRauschen > 0.01f)
+        // ── Luminanz-Rauschunterdrückung (klassisch via HQDN3D — nur wenn NAFNet NICHT aktiv) ──
+        // NAFNet übernimmt das Entrauschen wenn aktiv, sonst klassischer HQDN3D-Filter
+        if (param.LuminanzRauschen > 0.01f && !nafnetAktiv)
         {
             var strength = Math.Clamp((int)(param.LuminanzRauschen * 10), 1, 20).ToString(CultureInfo.InvariantCulture);
-            sb.AppendLine("# ── Luminanz-Rauschunterdrückung (HQDN3D) ──");
+            sb.AppendLine("# ── Luminanz-Rauschunterdrückung (HQDN3D — klassisch) ──");
             sb.AppendLine($"clip = core.hqdn3d.Hqdn3d(clip, lum_spac={strength}, lum_tmp={strength}, chrom_spac=0, chrom_tmp=0)");
             sb.AppendLine();
         }
@@ -305,12 +367,180 @@ public sealed class VapourSynthProcessor : IDisposable
             sb.AppendLine();
         }
 
-        // ── Schärfung (UnsharpMask) ──
-        if (param.SchaerfeBetrag > 0.01f)
+        // ── Schärfung (klassisch via Convolution — nur wenn RestormerLight NICHT aktiv) ──
+        // RestormerLight übernimmt die Schärfung wenn aktiv, sonst klassischer Convolution-Filter
+        if (param.SchaerfeBetrag > 0.01f && !restormerAktiv)
         {
-            var amount = (param.SchaerfeBetrag * 1.5).ToString("F2", CultureInfo.InvariantCulture);
-            sb.AppendLine("# ── Schärfung ──");
-            sb.AppendLine($"clip = core.std.Convolution(clip, matrix=[0, -1, 0, -1, 5, -1, 0, -1, 0], divisor=1, planes=[0,1,2])");
+            sb.AppendLine("# ── Schärfung (klassisch — Convolution) ──");
+            sb.AppendLine("clip = core.std.Convolution(clip, matrix=[0, -1, 0, -1, 5, -1, 0, -1, 0], divisor=1, planes=[0,1,2])");
+            sb.AppendLine();
+        }
+
+        // ── KI-Modelle via vs-mlrt (vs-onnxruntime) ──
+        // vs-mlrt API: core.ort.Model(clips, network_path, overlap, tilesize, provider, device_id, verbosity, builtin, builtindir, fp16)
+        // clips: Liste von Input-Clips (32-bit float RGB oder GRAY)
+        // network_path: Pfad zur ONNX-Datei (raw-string mit Forward-Slash)
+        if (kiModelleAktiv)
+        {
+            sb.AppendLine("# ════════════════════════════════════════════");
+            sb.AppendLine("# ── KI-Modelle via vs-mlrt (vs-onnxruntime) ──");
+            sb.AppendLine("# ════════════════════════════════════════════");
+            sb.AppendLine();
+
+            // Provider bestimmen: CUDA auf Nvidia-GPU, sonst CPU
+            // Auf Windows kann auch DML (DirectML) verwendet werden — hier CPU als Fallback
+            sb.AppendLine("# Provider für ONNX Runtime: 'CUDA' für Nvidia, 'DML' für DirectML (Windows), '' für CPU");
+            sb.AppendLine("provider = ''  # CPU als Standard — kann auf 'CUDA' oder 'DML' geändert werden");
+            sb.AppendLine();
+
+            // ── NAFNet: Entrauschen ──
+            // Input: lq, Shape=[B,3,H,W], benötigt >=512x512, tilesize=[512,512], overlap=[32,32]
+            if (nafnetAktiv)
+            {
+                var nafnetPfad = ModellPythonPfad("NAFNet");
+                sb.AppendLine("# ── KI: NAFNet — Entrauschen ──");
+                sb.AppendLine("# Input: lq (32-bit float RGB), Shape=[B,3,H,W], tilesize=[512,512], overlap=[32,32]");
+                sb.AppendLine("try:");
+                sb.AppendLine("    clip = clip.resize.Bicubic(format=vs.RGBS)");
+                sb.AppendLine($"    clip = core.ort.Model([clip], r'{nafnetPfad}', tilesize=[512, 512], overlap=[32, 32], provider=provider, verbosity=2)");
+                sb.AppendLine("    print('NAFNet: Entrauschen abgeschlossen', file=sys.stderr)");
+                sb.AppendLine("except Exception as e:");
+                sb.AppendLine("    print(f'NAFNet fehlgeschlagen: {e}', file=sys.stderr)");
+                sb.AppendLine("    # Fallback: klassische Rauschunterdrückung");
+                sb.AppendLine($"    clip = core.hqdn3d.Hqdn3d(clip, lum_spac={Math.Clamp((int)(param.LuminanzRauschen * 10), 1, 20)}, lum_tmp={Math.Clamp((int)(param.LuminanzRauschen * 10), 1, 20)}, chrom_spac=0, chrom_tmp=0)");
+                sb.AppendLine();
+            }
+
+            // ── RestormerLight: Entschärfen / Schärfung ──
+            // Input: input, Shape=[B,3,H,W], tilesize=[256,256], overlap=[16,16]
+            if (restormerAktiv)
+            {
+                var restormerPfad = ModellPythonPfad("RestormerLight");
+                sb.AppendLine("# ── KI: RestormerLight — Schärfung / Entschärfen ──");
+                sb.AppendLine("# Input: input (32-bit float RGB), Shape=[B,3,H,W], tilesize=[256,256], overlap=[16,16]");
+                sb.AppendLine("try:");
+                sb.AppendLine("    clip = clip.resize.Bicubic(format=vs.RGBS)");
+                sb.AppendLine($"    clip = core.ort.Model([clip], r'{restormerPfad}', tilesize=[256, 256], overlap=[16, 16], provider=provider, verbosity=2)");
+                sb.AppendLine("    print('RestormerLight: Schärfung abgeschlossen', file=sys.stderr)");
+                sb.AppendLine("except Exception as e:");
+                sb.AppendLine("    print(f'RestormerLight fehlgeschlagen: {e}', file=sys.stderr)");
+                sb.AppendLine("    # Fallback: klassische Schärfung");
+                sb.AppendLine("    clip = core.std.Convolution(clip, matrix=[0, -1, 0, -1, 5, -1, 0, -1, 0], divisor=1, planes=[0,1,2])");
+                sb.AppendLine();
+            }
+
+            // ── Upscaling: RealHATGAN (bevorzugt) oder RealESRGAN ──
+            // Input: input, Shape=[B,3,H,W], 4x Upscaling
+            if (useRealHatGan)
+            {
+                var realHatGanPfad = ModellPythonPfad("RealHATGAN");
+                var zielBreite = _breite * param.HochskalierenFaktor;
+                var zielHoehe = _hoehe * param.HochskalierenFaktor;
+                sb.AppendLine("# ── KI: RealHATGAN — 4x Upscaling (bessere Qualität) ──");
+                sb.AppendLine("# Input: input (32-bit float RGB), Shape=[B,3,H,W]");
+                sb.AppendLine("try:");
+                sb.AppendLine("    clip = clip.resize.Bicubic(format=vs.RGBS)");
+                sb.AppendLine($"    clip = core.ort.Model([clip], r'{realHatGanPfad}', provider=provider, verbosity=2)");
+                sb.AppendLine($"    clip = core.resize.Bicubic(clip, width={zielBreite}, height={zielHoehe}, format=vs.RGBS)");
+                sb.AppendLine($"    width = {zielBreite}");
+                sb.AppendLine($"    height = {zielHoehe}");
+                sb.AppendLine("    print('RealHATGAN: Upscaling abgeschlossen', file=sys.stderr)");
+                sb.AppendLine("except Exception as e:");
+                sb.AppendLine("    print(f'RealHATGAN fehlgeschlagen: {e}', file=sys.stderr)");
+                sb.AppendLine($"    clip = core.resize.Lanczos(clip, width={zielBreite}, height={zielHoehe})");
+                sb.AppendLine();
+            }
+            else if (useRealEsrgan)
+            {
+                var realEsrganPfad = ModellPythonPfad("RealESRGAN");
+                var zielBreite = _breite * param.HochskalierenFaktor;
+                var zielHoehe = _hoehe * param.HochskalierenFaktor;
+                sb.AppendLine("# ── KI: RealESRGAN — 4x Upscaling ──");
+                sb.AppendLine("# Input: input (32-bit float RGB), Shape=[B,3,H,W]");
+                sb.AppendLine("try:");
+                sb.AppendLine("    clip = clip.resize.Bicubic(format=vs.RGBS)");
+                sb.AppendLine($"    clip = core.ort.Model([clip], r'{realEsrganPfad}', provider=provider, verbosity=2)");
+                sb.AppendLine($"    clip = core.resize.Bicubic(clip, width={zielBreite}, height={zielHoehe}, format=vs.RGBS)");
+                sb.AppendLine($"    width = {zielBreite}");
+                sb.AppendLine($"    height = {zielHoehe}");
+                sb.AppendLine("    print('RealESRGAN: Upscaling abgeschlossen', file=sys.stderr)");
+                sb.AppendLine("except Exception as e:");
+                sb.AppendLine("    print(f'RealESRGAN fehlgeschlagen: {e}', file=sys.stderr)");
+                sb.AppendLine($"    clip = core.resize.Lanczos(clip, width={zielBreite}, height={zielHoehe})");
+                sb.AppendLine();
+            }
+
+            // ── CodeFormer: Gesichtswiederherstellung ──
+            // Input: x, Shape=[B,3,512,512] + input w (float64 scalar, fidelity weight), fixed 512x512
+            if (codeFormerAktiv)
+            {
+                var codeFormerPfad = ModellPythonPfad("CodeFormer");
+                // Fidelity-Weight basierend auf Intensität: Leicht=0.7, Mittel=0.5, Stark=0.3
+                // Niedrigerer Wert = stärkere Wiederherstellung
+                var fidelityWeight = param.Intensitaet switch
+                {
+                    Intensitaet.Leicht => 0.7,
+                    Intensitaet.Stark => 0.3,
+                    _ => 0.5 // Mittel
+                };
+                sb.AppendLine("# ── KI: CodeFormer — Gesichtswiederherstellung ──");
+                sb.AppendLine("# Input: x (32-bit float RGB, fixed 512x512) + w (fidelity weight)");
+                sb.AppendLine($"# Fidelity-Weight: {fidelityWeight.ToString("F2", CultureInfo.InvariantCulture)} (Intensitaet={param.Intensitaet})");
+                sb.AppendLine("try:");
+                sb.AppendLine("    # Auf 512x512 skalieren für CodeFormer (fixed input size)");
+                sb.AppendLine("    cf_input = core.resize.Bicubic(clip, width=512, height=512, format=vs.RGBS)");
+                sb.AppendLine($"    cf_w = {fidelityWeight.ToString("F2", CultureInfo.InvariantCulture)}");
+                sb.AppendLine($"    clip = core.ort.Model([cf_input, cf_w], r'{codeFormerPfad}', provider=provider, verbosity=2)");
+                sb.AppendLine("    # Zurück auf Originalgröße skalieren");
+                sb.AppendLine("    clip = core.resize.Bicubic(clip, width=width, height=height)");
+                sb.AppendLine("    print('CodeFormer: Gesichtswiederherstellung abgeschlossen', file=sys.stderr)");
+                sb.AppendLine("except Exception as e:");
+                sb.AppendLine("    print(f'CodeFormer fehlgeschlagen: {e}', file=sys.stderr)");
+                sb.AppendLine("    # CodeFormer ist optional — bei Fehler wird der Clip unverändert verwendet");
+                sb.AppendLine();
+            }
+
+            // ── AiLUTTransform: Farbstil-Lernen ──
+            // Input: image, Shape=[B,3,H,W] + input weights=[B,3]
+            if (aiLutAktiv)
+            {
+                var aiLutPfad = ModellPythonPfad("AiLUTTransform");
+                // Stil-Gewichte basierend auf Intensität
+                // Die weights sind [B,3] — pro Kanal (R,G,B) ein Gewicht
+                // Höhere Intensität = stärkere Stil-Übertragung
+                var stilGewicht = param.Intensitaet switch
+                {
+                    Intensitaet.Leicht => 0.3,
+                    Intensitaet.Stark => 1.0,
+                    _ => 0.6 // Mittel
+                };
+                sb.AppendLine("# ── KI: AiLUTTransform — Farbstil-Lernen ──");
+                sb.AppendLine($"# Stil: {param.AiStilName}");
+                sb.AppendLine("# Input: image (32-bit float RGB) + weights=[B,3]");
+                sb.AppendLine($"# Stil-Gewicht: {stilGewicht.ToString("F2", CultureInfo.InvariantCulture)} (Intensitaet={param.Intensitaet})");
+                sb.AppendLine("try:");
+                sb.AppendLine("    clip = clip.resize.Bicubic(format=vs.RGBS)");
+                sb.AppendLine($"    # Stil-Gewichte als [B,3] — gleichmäßig auf R,G,B verteilt");
+                sb.AppendLine($"    ai_weights = [{stilGewicht.ToString("F2", CultureInfo.InvariantCulture)}, {stilGewicht.ToString("F2", CultureInfo.InvariantCulture)}, {stilGewicht.ToString("F2", CultureInfo.InvariantCulture)}]");
+                sb.AppendLine($"    clip = core.ort.Model([clip, ai_weights], r'{aiLutPfad}', provider=provider, verbosity=2)");
+                sb.AppendLine("    print('AiLUTTransform: Farbstil angewendet', file=sys.stderr)");
+                sb.AppendLine("except Exception as e:");
+                sb.AppendLine("    print(f'AiLUTTransform fehlgeschlagen: {e}', file=sys.stderr)");
+                sb.AppendLine("    # Fallback: klassische Sättigung");
+                if (Math.Abs(param.Saettigung) > 0.01f)
+                {
+                    var sat = (1.0 + param.Saettigung * 0.5).ToString("F2", CultureInfo.InvariantCulture);
+                    sb.AppendLine($"    clip = core.std.Levels(clip, min_in=64, max_in=224, gamma={sat}, min_out=0, max_out=255, planes=[1,2])");
+                }
+                sb.AppendLine();
+            }
+
+            // ── Nach KI-Verarbeitung: Format zurück konvertieren ──
+            // KI-Modelle geben RGBS (32-bit float RGB) zurück → zurück nach YUV für weitere Verarbeitung
+            sb.AppendLine("# ── Nach KI-Verarbeitung: Format-Konvertierung ──");
+            sb.AppendLine("# KI-Modelle geben 32-bit float RGB (RGBS) zurück → konvertieren für Output");
+            sb.AppendLine("if clip.format.id == vs.RGBS:");
+            sb.AppendLine("    clip = core.resize.Bicubic(clip, format=vs.YUV420P8, matrix_in='709', matrix='709')");
             sb.AppendLine();
         }
 
@@ -561,7 +791,8 @@ public sealed class VapourSynthProcessor : IDisposable
                    "Installation (Windows):\n" +
                    "1. VapourSynth von https://github.com/vapoursynth/vapoursynth/releases herunterladen\n" +
                    "2. Installer ausführen (x64)\n" +
-                   "3. FFMS2-Plugin installieren (für Source-Load)\n\n" +
+                   "3. FFMS2-Plugin installieren (für Source-Load)\n" +
+                   "4. vs-mlrt (vs-onnxruntime) Plugin installieren (für KI-Modelle)\n\n" +
                    "Alternative: FFmpeg als Video-Backend verwenden (Standard).";
         }
         else
@@ -569,7 +800,8 @@ public sealed class VapourSynthProcessor : IDisposable
             return "VapourSynth ist nicht installiert.\n\n" +
                    "Installation (Linux):\n" +
                    "  pip install vapoursynth\n" +
-                   "  pip install ffms2\n\n" +
+                   "  pip install ffms2\n" +
+                   "  pip install vs-mlrt (für KI-Modelle via ONNX Runtime)\n\n" +
                    "Alternative: FFmpeg als Video-Backend verwenden (Standard).";
         }
     }
