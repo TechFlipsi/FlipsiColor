@@ -201,19 +201,27 @@ jobs:
         with:
           files: release-artifacts/*
           body: |
-            ## FlipsiColor ${{ steps.version.outputs.version }}
+            ## FlipsiColor ${{ steps.version.outputs.version }} — Lensfun Integration & Fehlerbehebungen
 
             KI-gestützte Bild- & Videofarbkorrektur für alle Kameras.
+
+            ### 🐛 Fehlerbehebungen
+            - **App crasht nicht mehr nach Modell-Download** — ShutdownMode auf OnExplicitShutdown gesetzt
+            - **Alle 7 KI-Modelle werden heruntergeladen** — zuvor nur 4 erforderliche, jetzt auch optionale
+            - **Fire-and-forget Crash im Konstruktor behoben** — _initialisiert Flag verhindert vorzeitige Installationen
+            - **Assets/flipsicolor.ico fehlt nicht mehr** — CopyToOutputDirectory im csproj
+            - **VapourSynth: vspipe.bat akzeptiert** — R76 Portable nutzt .bat statt .exe
+
+            ### 🔧 Neue Funktionen
+            - **Lensfun-Integration (Objektivkorrektur)** — automatischer Download+Entpacken auf Windows
+            - **Kamera/Objektiv manuell auswählbar** — oder automatisch aus EXIF-Daten
+            - **VapourSynth Auto-Installation** — beim Umstellen wird automatisch geprüft+installiert
+            - **Lensfun Auto-Installation** — beim Aktivieren der Objektivkorrektur automatisch installiert
 
             ### Downloads
             - **Windows:** `FlipsiColor-${{ steps.version.outputs.version }}-setup.exe` (Inno Setup Installer)
             - **Linux (Ubuntu/Debian):** `FlipsiColor-${{ steps.version.outputs.version }}-linux.deb`
             - **Linux (universell):** `FlipsiColor-${{ steps.version.outputs.version }}.AppImage`
-
-            ### Neu in v0.4.0
-            - VapourSynth als optionales Video-Backend (FFmpeg bleibt Standard)
-            - Linux-Installer: .deb + .AppImage
-            - Cross-Platform CI/CD (Windows + Linux)
 
             ### Systemanforderungen
             - Windows 10 (19041+) oder neuer / Ubuntu 20.04+ / Debian 11+
