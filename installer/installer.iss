@@ -1,10 +1,10 @@
-; FlipsiColor Installer (Inno Setup) — v0.4.1
+; FlipsiColor Installer (Inno Setup) — v0.4.2
 #define AppName "FlipsiColor"
 #define AppExeName "FlipsiColor.exe"
 #define AppPublisher "TechFlipsi"
 #define AppURL "https://github.com/TechFlipsi/FlipsiColor"
 #ifndef AppVersion
-  #define AppVersion "0.4.1"
+  #define AppVersion "0.4.2"
 #endif
 
 [Setup]
@@ -26,7 +26,7 @@ ArchitecturesInstallIn64BitMode=x64compatible
 PrivilegesRequired=lowest
 UninstallDisplayIcon={app}\{#AppExeName}
 SetupIconFile=..\flipsicolor.ico
-; VersionInfo aktualisiert auf 0.4.1
+; VersionInfo aktualisiert auf 0.4.2
 VersionInfoVersion={#AppVersion}.0
 VersionInfoProductVersion={#AppVersion}.0
 

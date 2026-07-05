@@ -22,7 +22,7 @@ public static class Lokalisierung
     private static readonly Dictionary<string, string> De = new()
     {
         // App
-        ["App.Titel"] = "FlipsiColor v0.4.1",
+        ["App.Titel"] = "FlipsiColor v0.4.2",
         ["App.Bereit"] = "Bereit",
 
         // Sidebar
@@ -89,6 +89,16 @@ public static class Lokalisierung
         ["Einstellungen.ModellVerzeichnis"] = "Modell-Verzeichnis",
         ["Einstellungen.ModellNeuHerunterladen"] = "KI-Modelle neu herunterladen",
         ["Einstellungen.Speichern"] = "Speichern",
+
+        // Video-Backend
+        ["Video.Backend.Titel"] = "Video-Backend",
+        ["Video.Backend.FFmpeg"] = "FFmpeg (Standard)",
+        ["Video.Backend.VapourSynth"] = "VapourSynth (Empfohlen für beste Qualität)",
+        ["Video.Backend.Installieren"] = "VapourSynth installieren (~79 MB)",
+        ["Video.Backend.Aktiv"] = "VapourSynth aktiv",
+        ["Video.Backend.Installiere"] = "Installiere...",
+        ["Video.Backend.InstallationFehlgeschlagen"] = "VapourSynth-Installation fehlgeschlagen",
+        ["Video.Backend.Gespeichert"] = "Video-Backend gespeichert",
 
         // Adjustments
         ["Korrektur.Titel"] = "Korrektur",
@@ -164,7 +174,7 @@ public static class Lokalisierung
     private static readonly Dictionary<string, string> En = new()
     {
         // App
-        ["App.Titel"] = "FlipsiColor v0.4.1",
+        ["App.Titel"] = "FlipsiColor v0.4.2",
         ["App.Bereit"] = "Ready",
 
         // Sidebar
@@ -231,6 +241,16 @@ public static class Lokalisierung
         ["Einstellungen.ModellVerzeichnis"] = "Model directory",
         ["Einstellungen.ModellNeuHerunterladen"] = "Re-download AI models",
         ["Einstellungen.Speichern"] = "Save",
+
+        // Video-Backend
+        ["Video.Backend.Titel"] = "Video Backend",
+        ["Video.Backend.FFmpeg"] = "FFmpeg (Standard)",
+        ["Video.Backend.VapourSynth"] = "VapourSynth (Recommended for best quality)",
+        ["Video.Backend.Installieren"] = "Install VapourSynth (~79 MB)",
+        ["Video.Backend.Aktiv"] = "VapourSynth active",
+        ["Video.Backend.Installiere"] = "Installing...",
+        ["Video.Backend.InstallationFehlgeschlagen"] = "VapourSynth installation failed",
+        ["Video.Backend.Gespeichert"] = "Video backend saved",
 
         // Adjustments
         ["Korrektur.Titel"] = "Adjustments",

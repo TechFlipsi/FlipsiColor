@@ -14,14 +14,14 @@
 #   ./build-script.sh --appimage       # Nur .AppImage
 #
 # Author: TechFlipsi
-# Version: 0.4.1
+# Version: 0.4.2
 # =============================================================================
 set -euo pipefail
 
 # ── Konfiguration ──
 APP_NAME="flipsicolor"
 APP_DISPLAY_NAME="FlipsiColor"
-APP_VERSION="0.4.1"
+APP_VERSION="0.4.2"
 APP_EXEC="FlipsiColor.Avalonia"
 ICON_NAME="flipsicolor"
 PROJECT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"

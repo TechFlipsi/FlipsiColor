@@ -5,6 +5,7 @@ using System.Windows;
 using System.Windows.Data;
 using System.Windows.Media.Imaging;
 
+using FlipsiColor.Core;
 using OpenCvSharp;
 
 namespace FlipsiColor;
@@ -52,5 +53,34 @@ public class MatToBitmapSourceConverter : IValueConverter
         using var ms = new MemoryStream(bytes);
         var decoder = new PngBitmapDecoder(ms, BitmapCreateOptions.PreservePixelFormat, BitmapCacheOption.OnLoad);
         return decoder.Frames[0];
+    }
+}
+
+/// <summary>
+/// VideoBackend-Enum → Bool Converter für RadioButton IsChecked Bindings.
+/// ConverterParameter = "FFmpeg" oder "VapourSynth".
+/// Convert: true wenn value == ConverterParameter.
+/// ConvertBack: parsed den bool zurück in den VideoBackend-Enum.
+/// </summary>
+public class VideoBackendToBoolConverter : IValueConverter
+{
+    public object Convert(object value, Type targetType, object parameter, CultureInfo culture)
+    {
+        if (value is VideoBackend backend && parameter is string param)
+        {
+            return param == "VapourSynth"
+                ? backend == VideoBackend.VapourSynth
+                : backend == VideoBackend.FFmpeg;
+        }
+        return false;
+    }
+
+    public object ConvertBack(object value, Type targetType, object parameter, CultureInfo culture)
+    {
+        if (value is bool isChecked && isChecked && parameter is string param)
+        {
+            return param == "VapourSynth" ? VideoBackend.VapourSynth : VideoBackend.FFmpeg;
+        }
+        return System.Windows.Data.Binding.DoNothing;
     }
 }

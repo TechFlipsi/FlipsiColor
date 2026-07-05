@@ -18,6 +18,7 @@
             <local:InverseBoolToVisibilityConverter x:Key="InverseBoolToVis"/>
             <local:MatToBitmapConverter x:Key="MatToBmp"/>
             <local:LocConverter x:Key="Loc"/>
+            <local:VideoBackendToBoolConverter x:Key="BackendToBool"/>
         </ResourceDictionary>
     </Application.Resources>
 </Application>
