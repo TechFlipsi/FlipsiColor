@@ -14,11 +14,8 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <!-- ONNX Runtime: CPU (cross-platform). DirectML wird zur Laufzeit auf Windows geladen. -->
+    <!-- ONNX Runtime: CPU (cross-platform). Liefert native onnxruntime.dll für alle Plattformen. -->
     <PackageReference Include="Microsoft.ML.OnnxRuntime" Version="1.23.0" />
-    <!-- DirectML nur auf Windows (NuGet restore). Native DLL wird zur Laufzeit via OperatingSystem.IsWindows() geladen. -->
-    <PackageReference Include="Microsoft.ML.OnnxRuntime.DirectML" Version="1.23.0"
-                      Condition="'$(OS)' == 'Windows_NT' OR '$(RuntimeIdentifier)' == 'win-x64'" />
 
     <!-- OpenCvSharp4: plattformübergreifend. Kein .runtime.win-only (Windows-only).
          linux-x64 + win-x64 Runtime-Pakete. NuGet wählt native Assets nach RID automatisch. -->
