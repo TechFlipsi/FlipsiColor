@@ -25,11 +25,8 @@
     <ProjectReference Include="..\FlipsiColor.Core\FlipsiColor.Core.csproj" />
   </ItemGroup>
 
-  <!-- WPF-only: DirectML native assemblies on Windows (Core references the NuGet
-       but DirectML native DLLs only flow when referenced from a Windows project). -->
-  <ItemGroup Condition="'$(OS)' == 'Windows_NT' OR '$(RuntimeIdentifier)' == 'win-x64'">
-    <PackageReference Include="Microsoft.ML.OnnxRuntime.DirectML" Version="1.23.0" />
-  </ItemGroup>
+  <!-- DirectML entfernt: NETSDK1152 Konflikt mit OnnxRuntime CPU native DLLs.
+       ModelManager.cs hat try/catch Fallback → CPU-Only auf Windows. -->
 
   <ItemGroup>
     <!-- MVVM — WPF UI-only dependency, not in Core -->

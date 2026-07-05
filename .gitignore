@@ -32,3 +32,5 @@ Models/*.onnx
 ## Logs
 *.log.hermes/
 *.pyc
+installer/build/
+deb-staging/
