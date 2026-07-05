@@ -1,6 +1,10 @@
 # FlipsiColor
 
-**KI-gestützte Bild- & Videofarbkorrektur für Windows**
+**KI-gestützte Bild- & Videofarbkorrektur für Windows & Linux**
+
+> ⚠️ **Status: v0.4.3 — Bild- und Video-Verarbeitung noch nicht getestet!**
+> 
+> Die aktuellen Funktionen (Farbkorrektur, Objektivkorrektur, VapourSynth, KI-Modelle) sind implementiert und kompilieren fehlerfrei, aber die **tatsächliche Bild- und Video-Verarbeitung wurde noch nicht mit echten Dateien getestet**. Fehler bei der Verarbeitung sind wahrscheinlich. Bitte melden Sie Probleme via GitHub Issues.
 
 ## Features
 
