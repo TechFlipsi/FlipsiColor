@@ -1,4 +1,7 @@
 using System;
+using System.Collections.Generic;
+using System.IO;
+using System.Reflection;
 using System.Runtime.InteropServices;
 using OpenCvSharp;
 
@@ -21,7 +24,85 @@ public sealed class LensCorrector : IDisposable
     private const int CropFactorOffset = 32;
 
     /// <summary>
-    /// Initialisiert Lensfun-Datenbank
+    /// Statischer Konstruktor — setzt den DllImportResolver, damit die
+    /// lensfun-Bibliothek aus dem Installationsordner geladen wird.
+    /// Windows: %LOCALAPPDATA%\FlipsiColor\lensfun\liblensfun.dll
+    /// Linux:   liblensfun.so über System-Suchpfade.
+    /// </summary>
+    static LensCorrector()
+    {
+        try
+        {
+            NativeLibrary.SetDllImportResolver(
+                typeof(LensfunNative).Assembly,
+                (libraryName, assembly, searchPath) => ResolveLensfunDll(libraryName, assembly, searchPath));
+            Log.Debug("DllImportResolver für Lensfun registriert");
+        }
+        catch (Exception ex)
+        {
+            Log.Debug("DllImportResolver konnte nicht gesetzt werden: {Fehler}", ex.Message);
+        }
+    }
+
+    /// <summary>
+    /// Resolver für die lensfun-Bibliothek.
+    /// Windows: lädt aus dem Lensfun-Installationsordner (%LOCALAPPDATA%\FlipsiColor\lensfun\).
+    /// Linux:   Standard-Suchpfade (liblensfun.so über System).
+    /// </summary>
+    private static IntPtr ResolveLensfunDll(string libraryName, System.Reflection.Assembly assembly, System.Runtime.InteropServices.DllImportSearchPath? searchPath)
+    {
+        if (libraryName != "lensfun")
+            return IntPtr.Zero;
+
+        // Windows: DLL aus dem Installationsordner laden
+        if (OperatingSystem.IsWindows())
+        {
+            string installPfad = LensfunInstallerPfad;
+            if (File.Exists(installPfad))
+            {
+                // DLL mit absolutem Pfad laden — Windows findet Abhängigkeiten
+                // (libgcc, libglib, etc.) automatisch im selben Verzeichnis.
+                if (NativeLibrary.TryLoad(installPfad, assembly, DllImportSearchPath.ApplicationDirectory, out IntPtr handle))
+                {
+                    Log.Debug("Lensfun-DLL geladen aus: {Pfad}", installPfad);
+                    return handle;
+                }
+            }
+            Log.Debug("Lensfun-DLL nicht im Installationsordner gefunden: {Pfad}", installPfad);
+        }
+
+        // Fallback: Standard-Suchpfade (Linux: liblensfun.so im System)
+        if (searchPath.HasValue && NativeLibrary.TryLoad(libraryName, assembly, searchPath.Value, out IntPtr fallback))
+            return fallback;
+
+        // Linux-Alternative: lib-Präfix
+        if (!OperatingSystem.IsWindows())
+        {
+            if (NativeLibrary.TryLoad("liblensfun", assembly, DllImportSearchPath.System32, out IntPtr linuxHandle))
+                return linuxHandle;
+        }
+
+        return IntPtr.Zero;
+    }
+
+    /// <summary>
+    /// Absoluter Pfad zur liblensfun.dll im Lensfun-Installationsordner (Windows).
+    /// </summary>
+    private static string LensfunInstallerPfad =>
+        Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
+            "FlipsiColor", "lensfun", "liblensfun.dll");
+
+    /// <summary>
+    /// Absoluter Pfad zur lensfun-db-Datenbank im Installationsordner (Windows).
+    /// </summary>
+    private static string LensfunDatenbankPfad =>
+        Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
+            "FlipsiColor", "lensfun", "lensfun-db");
+
+    /// <summary>
+    /// Initialisiert Lensfun-Datenbank.
+    /// Windows: lädt die Datenbank aus dem Installationsordner (lensfun-db/).
+    /// Linux:   lädt die Datenbank aus den Systempfaden.
     /// </summary>
     public bool Initialisieren()
     {
@@ -34,8 +115,28 @@ public sealed class LensCorrector : IDisposable
                 return false;
             }
 
-            LensfunNative.lf_db_load(_lensfunDb);
-            Log.Information("Lensfun: Datenbank geladen");
+            // Auf Windows: Datenbank aus dem Installationsordner laden
+            if (OperatingSystem.IsWindows())
+            {
+                string dbPfad = LensfunDatenbankPfad;
+                if (Directory.Exists(dbPfad))
+                {
+                    int result = LensfunNative.lf_db_load_path(_lensfunDb, dbPfad);
+                    Log.Information("Lensfun: Datenbank geladen aus Installationsordner ({Result})", result);
+                }
+                else
+                {
+                    // Fallback: Standard-Suchpfade
+                    LensfunNative.lf_db_load(_lensfunDb);
+                    Log.Information("Lensfun: Datenbank über Standardpfade geladen (Installationsordner nicht gefunden)");
+                }
+            }
+            else
+            {
+                // Linux: Standard-Suchpfade
+                LensfunNative.lf_db_load(_lensfunDb);
+                Log.Information("Lensfun: Datenbank geladen (Linux Standardpfade)");
+            }
             return true;
         }
         catch (Exception ex)
@@ -46,8 +147,116 @@ public sealed class LensCorrector : IDisposable
     }
 
     /// <summary>
+    /// Gibt alle Kamera-Hersteller (Maker) aus der Lensfun-Datenbank zurück.
+    /// Die Liste ist dedupliziert und alphabetisch sortiert.
+    /// </summary>
+    /// <returns>Liste der Kamera-Hersteller-Namen.</returns>
+    public List<string> ListeKameras()
+    {
+        var hersteller = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+
+        if (_lensfunDb == IntPtr.Zero)
+        {
+            Log.Warning("Lensfun: Datenbank nicht initialisiert — ListeKameras leer");
+            return new List<string>();
+        }
+
+        try
+        {
+            IntPtr camsArray = LensfunNative.lf_db_get_cams(_lensfunDb);
+            if (camsArray == IntPtr.Zero)
+                return new List<string>();
+
+            int offset = 0;
+            while (true)
+            {
+                IntPtr camPtr = Marshal.ReadIntPtr(camsArray, offset);
+                if (camPtr == IntPtr.Zero)
+                    break;
+
+                // Maker ist das erste Feld (Offset 0) in lfCamera — ein lfMLstr (char*)
+                IntPtr makerPtr = Marshal.ReadIntPtr(camPtr, 0);
+                if (makerPtr != IntPtr.Zero)
+                {
+                    string? maker = Marshal.PtrToStringAnsi(makerPtr);
+                    if (!string.IsNullOrWhiteSpace(maker))
+                        hersteller.Add(maker);
+                }
+
+                offset += IntPtr.Size;
+            }
+
+            var result = new List<string>(hersteller);
+            result.Sort(StringComparer.OrdinalIgnoreCase);
+            Log.Debug("Lensfun: {Anzahl} Kamera-Hersteller gefunden", result.Count);
+            return result;
+        }
+        catch (Exception ex)
+        {
+            Log.Warning(ex, "Lensfun: ListeKameras fehlgeschlagen");
+            return new List<string>();
+        }
+    }
+
+    /// <summary>
+    /// Gibt alle Objektiv-Modelle aus der Lensfun-Datenbank zurück.
+    /// Auf Windows werden die Objektive aus dem Installationsordner geladen.
+    /// Die Liste ist dedupliziert und alphabetisch sortiert.
+    /// </summary>
+    /// <param name="kamera">Kamera-Hersteller (wird für zukünftige Mount-Filterung reserviert,
+    /// aktuell werden alle Objektive zurückgegeben).</param>
+    /// <returns>Liste der Objektiv-Bezeichnungen.</returns>
+    public List<string> ListeObjektive(string kamera)
+    {
+        var objektive = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+
+        if (_lensfunDb == IntPtr.Zero)
+        {
+            Log.Warning("Lensfun: Datenbank nicht initialisiert — ListeObjektive leer");
+            return new List<string>();
+        }
+
+        try
+        {
+            IntPtr lensesArray = LensfunNative.lf_db_get_lenses(_lensfunDb);
+            if (lensesArray == IntPtr.Zero)
+                return new List<string>();
+
+            int offset = 0;
+            while (true)
+            {
+                IntPtr lensPtr = Marshal.ReadIntPtr(lensesArray, offset);
+                if (lensPtr == IntPtr.Zero)
+                    break;
+
+                // Model ist das zweite Feld (Offset 8) in lfLens — ein lfMLstr (char*)
+                IntPtr modelPtr = Marshal.ReadIntPtr(lensPtr, 8);
+                if (modelPtr != IntPtr.Zero)
+                {
+                    string? model = Marshal.PtrToStringAnsi(modelPtr);
+                    if (!string.IsNullOrWhiteSpace(model))
+                        objektive.Add(model);
+                }
+
+                offset += IntPtr.Size;
+            }
+
+            var result = new List<string>(objektive);
+            result.Sort(StringComparer.OrdinalIgnoreCase);
+            Log.Debug("Lensfun: {Anzahl} Objektive gefunden (für Kamera={Kamera})",
+                result.Count, kamera ?? "alle");
+            return result;
+        }
+        catch (Exception ex)
+        {
+            Log.Warning(ex, "Lensfun: ListeObjektive fehlgeschlagen");
+            return new List<string>();
+        }
+    }
+
+    /// <summary>
     /// Wendet Objektivkorrektur auf ein Bild an.
-    /// Korrigiert Verzeichnung (Distortion), chromatische Aberration (TCA)
+    /// Korrigiert Verzeichung (Distortion), chromatische Aberration (TCA)
     /// und Vignetting über die Lensfun-Bibliothek.
     /// </summary>
     /// <param name="bild">Eingabebild als OpenCvSharp Mat (BGR oder BGRA, 8-bit).</param>
@@ -322,11 +531,11 @@ public sealed class LensCorrector : IDisposable
 /// P/Invoke Wrapper für lensfun.dll.
 /// FIX #4: DllImport mit SearchPath-Beschränkung — lädt nur aus dem App-Verzeichnis,
 /// nicht aus dem aktuellen Arbeitsverzeichnis oder PATH (verhindert DLL-Hijacking).
+/// Auf Windows wird die DLL über den DllImportResolver (siehe LensCorrector static ctor)
+/// aus dem Lensfun-Installationsordner geladen.
 /// </summary>
 internal static class LensfunNative
 {
-    // FIX #4: DefaultDllImportSearchPaths-Attribut auf jeder P/Invoke-Methode
-    // verhindert DLL-Hijacking — lädt nur aus ApplicationDirectory und System32.
     private const string DllName = "lensfun";
 
     // FIX #4: Sichere DLL-Suchpfade als Konstante
@@ -367,6 +576,14 @@ internal static class LensfunNative
     [System.Runtime.InteropServices.DefaultDllImportSearchPaths(SichereSuchpfade)]
     public static extern int lf_db_load(IntPtr db);
 
+    /// <summary>
+    /// Lädt die Lensfun-Datenbank aus einem bestimmten Verzeichnis.
+    /// Auf Windows wird der Pfad zum lensfun-db/ Ordner im Installationsverzeichnis übergeben.
+    /// </summary>
+    [DllImport(DllName, CallingConvention = CallingConvention.Cdecl)]
+    [System.Runtime.InteropServices.DefaultDllImportSearchPaths(SichereSuchpfade)]
+    public static extern int lf_db_load_path(IntPtr db, string path);
+
     [DllImport(DllName, CallingConvention = CallingConvention.Cdecl)]
     [System.Runtime.InteropServices.DefaultDllImportSearchPaths(SichereSuchpfade)]
     public static extern void lf_db_destroy(IntPtr db);
@@ -378,6 +595,22 @@ internal static class LensfunNative
     [DllImport(DllName, CallingConvention = CallingConvention.Cdecl)]
     [System.Runtime.InteropServices.DefaultDllImportSearchPaths(SichereSuchpfade)]
     public static extern IntPtr lf_db_find_lens(IntPtr db, string lensName);
+
+    /// <summary>
+    /// Gibt alle Kameras in der Datenbank zurück.
+    /// Liefert ein null-terminiertes Array von lfCamera* (lfCamera**).
+    /// </summary>
+    [DllImport(DllName, CallingConvention = CallingConvention.Cdecl)]
+    [System.Runtime.InteropServices.DefaultDllImportSearchPaths(SichereSuchpfade)]
+    public static extern IntPtr lf_db_get_cams(IntPtr db);
+
+    /// <summary>
+    /// Gibt alle Objektive in der Datenbank zurück.
+    /// Liefert ein null-terminiertes Array von lfLens* (lfLens**).
+    /// </summary>
+    [DllImport(DllName, CallingConvention = CallingConvention.Cdecl)]
+    [System.Runtime.InteropServices.DefaultDllImportSearchPaths(SichereSuchpfade)]
+    public static extern IntPtr lf_db_get_lenses(IntPtr db);
 
     /// <summary>
     /// Erstellt einen neuen Lensfun-Modifier für das gegebene Objektiv.

@@ -1,7 +1,9 @@
 using System;
 using System.Linq;
+using System.Runtime.InteropServices;
 using System.Windows;
 using System.Windows.Controls;
+using System.Windows.Interop;
 using System.Windows.Media;
 using FlipsiColor.UI;
 
@@ -12,79 +14,126 @@ namespace FlipsiColor;
 /// </summary>
 public partial class MainWindow : Window
 {
-    /// <summary>
-    /// Originaler Border-Brush für Drag-Over Reset.
-    /// </summary>
     private Brush? _originalDropBorderBrush;
-    /// <summary>
-    /// Originaler Border-Thickness für Drag-Over Reset.
-    /// </summary>
     private Thickness _originalDropBorderThickness;
+
+    // ===== UIPI Fix: ChangeWindowMessageFilterEx =====
+    // Wenn die App elevated läuft (z.B. via Task Scheduler mit höchsten Privilegien),
+    // blockiert Windows UIPI Drag&Drop von Explorer (medium integrity) zur App (high integrity).
+    // Diese P/Invoke erlaubt WM_DROPFILES Nachrichten durch den UIPI-Filter.
+    [DllImport("user32.dll", SetLastError = true)]
+    private static extern bool ChangeWindowMessageFilterEx(IntPtr hWnd, uint msg, uint flag, IntPtr pChangeFilterStruct);
+
+    private const uint MSGFLT_ALLOW = 1;
+    private const uint WM_DROPFILES = 0x0233;
+    private const uint WM_COPYDATA = 0x004A;
+    private const uint WM_COPYGLOBALDATA = 0x0049;
 
     public MainWindow()
     {
         InitializeComponent();
+        Loaded += OnLoaded;
+        SourceInitialized += OnSourceInitialized;
     }
 
-    /// <summary>DragEnter: Accept file drops (images and videos)</summary>
-    private void OnDragEnter(object sender, DragEventArgs e)
+    /// <summary>
+    /// UIPI Fix: Nach Erstellung des Window-Handles die Message-Filter lockern.
+    /// </summary>
+    private void OnSourceInitialized(object? sender, EventArgs e)
+    {
+        var hwnd = new WindowInteropHelper(this).Handle;
+        ChangeWindowMessageFilterEx(hwnd, WM_DROPFILES, MSGFLT_ALLOW, IntPtr.Zero);
+        ChangeWindowMessageFilterEx(hwnd, WM_COPYDATA, MSGFLT_ALLOW, IntPtr.Zero);
+        ChangeWindowMessageFilterEx(hwnd, WM_COPYGLOBALDATA, MSGFLT_ALLOW, IntPtr.Zero);
+    }
+
+    private void OnLoaded(object sender, RoutedEventArgs e)
+    {
+        var vm = DataContext as MainViewModel;
+        if (vm != null)
+        {
+            var themeIndex = vm.AktuellesTheme switch
+            {
+                "Light" => 0,
+                "Dark" => 1,
+                _ => 2
+            };
+            ThemeComboBox.SelectedIndex = themeIndex;
+        }
+    }
+
+    // ===== Modus-Umschalter =====
+
+    private void OnBildModeChecked(object sender, RoutedEventArgs e)
+    {
+        if (VideoBackendPanel != null)
+            VideoBackendPanel.Visibility = Visibility.Collapsed;
+    }
+
+    private void OnVideoModeChecked(object sender, RoutedEventArgs e)
+    {
+        if (VideoBackendPanel != null)
+            VideoBackendPanel.Visibility = Visibility.Visible;
+    }
+
+    private void OnClipsModeChecked(object sender, RoutedEventArgs e)
+    {
+        if (VideoBackendPanel != null)
+            VideoBackendPanel.Visibility = Visibility.Collapsed;
+    }
+
+    // ===== Theme-ComboBox =====
+
+    private void OnThemeChanged(object sender, SelectionChangedEventArgs e)
+    {
+        if (DataContext is not MainViewModel vm) return;
+        if (ThemeComboBox.SelectedIndex < 0) return;
+
+        var theme = ThemeComboBox.SelectedIndex switch
+        {
+            0 => "Light",
+            1 => "Dark",
+            _ => "System"
+        };
+
+        vm.ThemeWechselnCommand.Execute(theme);
+    }
+
+    // ===== Galerie-Auswahl =====
+
+    private void OnGalerieSelectionChanged(object sender, SelectionChangedEventArgs e)
+    {
+        if (DataContext is not MainViewModel vm) return;
+        if (GalerieListe.SelectedItem is not DateiEintrag eintrag) return;
+
+        if (eintrag.Typ == "Bild")
+            vm.LoadBild(eintrag.Pfad);
+    }
+
+    // ===== Drag & Drop — Preview Events (tunneling) + e.Handled = true =====
+    // PreviewDragEnter/Over feuern top-down bevor child controls sie abfangen können.
+    // e.Handled = true ist PFLICHT — ohne zeigt Windows das Sperrsymbol.
+
+    private void OnWindowPreviewDragEnter(object sender, DragEventArgs e)
     {
         if (e.Data.GetDataPresent(DataFormats.FileDrop))
-        {
-            var files = e.Data.GetData(DataFormats.FileDrop) as string[];
-            if (files != null && files.Any(MainViewModel.IstUnterstuetzteDatei))
-            {
-                e.Effects = DragDropEffects.Copy;
-            }
-            else
-            {
-                e.Effects = DragDropEffects.None;
-            }
-        }
+            e.Effects = DragDropEffects.Copy;
         else
-        {
             e.Effects = DragDropEffects.None;
-        }
         e.Handled = true;
     }
 
-    /// <summary>DragOver: Provide visual feedback during drag-over</summary>
-    private void OnDragOver(object sender, DragEventArgs e)
+    private void OnWindowPreviewDragOver(object sender, DragEventArgs e)
     {
         if (e.Data.GetDataPresent(DataFormats.FileDrop))
-        {
-            var files = e.Data.GetData(DataFormats.FileDrop) as string[];
-            if (files != null && files.Any(MainViewModel.IstUnterstuetzteDatei))
-            {
-                e.Effects = DragDropEffects.Copy;
-                ApplyDropHighlight(sender);
-            }
-            else
-            {
-                e.Effects = DragDropEffects.None;
-                RemoveDropHighlight(sender);
-            }
-        }
+            e.Effects = DragDropEffects.Copy;
         else
-        {
             e.Effects = DragDropEffects.None;
-            RemoveDropHighlight(sender);
-        }
         e.Handled = true;
     }
 
-    /// <summary>DragLeave: Remove visual highlight</summary>
-    private void OnDragLeave(object sender, DragEventArgs e)
+    private void OnWindowPreviewDrop(object sender, DragEventArgs e)
     {
-        RemoveDropHighlight(sender);
-        e.Handled = true;
-    }
-
-    /// <summary>Drop: Receive files and add them to the ViewModel file list</summary>
-    private void OnDrop(object sender, DragEventArgs e)
-    {
-        RemoveDropHighlight(sender);
-
         if (e.Data.GetDataPresent(DataFormats.FileDrop) && DataContext is MainViewModel vm)
         {
             var files = e.Data.GetData(DataFormats.FileDrop) as string[];
@@ -92,47 +141,102 @@ public partial class MainWindow : Window
             {
                 vm.DateienHinzufuegen(files);
 
-                // If a single image was dropped, also load it as preview
-                var images = files
+                // Erste Bilddatei als Vorschau laden
+                var firstImage = files
                     .Where(f => !System.IO.Directory.Exists(f) && MainViewModel.BildEndungen.Contains(System.IO.Path.GetExtension(f)))
-                    .ToList();
-                if (images.Count == 1)
-                {
-                    vm.LoadBild(images[0]);
-                }
+                    .FirstOrDefault();
+                if (firstImage != null)
+                    vm.LoadBild(firstImage);
             }
         }
+        e.Handled = true;
     }
 
-    /// <summary>
-    /// Hebt den Drop-Border visuell hervor (Drag-Over Feedback).
-    /// </summary>
-    private void ApplyDropHighlight(object sender)
+    // ===== Alte Drop-Zonen Handler (für Galerie + DropZone Border) =====
+
+    private void OnDragEnterAny(object sender, DragEventArgs e)
     {
-        if (sender is not Border border) return;
-        _originalDropBorderBrush ??= border.BorderBrush;
-        _originalDropBorderThickness = border.BorderThickness;
-        border.BorderBrush = (Brush)FindResource("AccentPrimaryBrush");
-        border.BorderThickness = new Thickness(3);
+        if (e.Data.GetDataPresent(DataFormats.FileDrop))
+            e.Effects = DragDropEffects.Copy;
+        else
+            e.Effects = DragDropEffects.None;
+        e.Handled = true;
     }
 
-    /// <summary>
-    /// Setzt den Drop-Border auf den Originalzustand zurück.
-    /// </summary>
-    private void RemoveDropHighlight(object sender)
+    private void OnDragOverAny(object sender, DragEventArgs e)
     {
-        if (sender is not Border border) return;
+        if (e.Data.GetDataPresent(DataFormats.FileDrop))
+            e.Effects = DragDropEffects.Copy;
+        else
+            e.Effects = DragDropEffects.None;
+        e.Handled = true;
+    }
+
+    private void OnDragLeaveAny(object sender, DragEventArgs e)
+    {
+        e.Handled = true;
+    }
+
+    private void OnDropZoneDrop(object sender, DragEventArgs e)
+    {
+        RemoveDropHighlight();
+
+        if (e.Data.GetDataPresent(DataFormats.FileDrop) && DataContext is MainViewModel vm)
+        {
+            var files = e.Data.GetData(DataFormats.FileDrop) as string[];
+            if (files is { Length: > 0 })
+            {
+                vm.DateienHinzufuegen(files);
+                var firstImage = files
+                    .Where(f => !System.IO.Directory.Exists(f) && MainViewModel.BildEndungen.Contains(System.IO.Path.GetExtension(f)))
+                    .FirstOrDefault();
+                if (firstImage != null)
+                    vm.LoadBild(firstImage);
+            }
+        }
+        e.Handled = true;
+    }
+
+    private void OnGalerieDrop(object sender, DragEventArgs e)
+    {
+        if (e.Data.GetDataPresent(DataFormats.FileDrop) && DataContext is MainViewModel vm)
+        {
+            var files = e.Data.GetData(DataFormats.FileDrop) as string[];
+            if (files is { Length: > 0 })
+            {
+                vm.DateienHinzufuegen(files);
+                var firstImage = files
+                    .Where(f => !System.IO.Directory.Exists(f) && MainViewModel.BildEndungen.Contains(System.IO.Path.GetExtension(f)))
+                    .FirstOrDefault();
+                if (firstImage != null)
+                    vm.LoadBild(firstImage);
+            }
+        }
+        e.Handled = true;
+    }
+
+    private void ApplyDropHighlight()
+    {
+        if (DropZone == null) return;
+        _originalDropBorderBrush ??= DropZone.BorderBrush;
+        _originalDropBorderThickness = DropZone.BorderThickness;
+        DropZone.BorderBrush = (Brush)FindResource("AccentPrimaryBrush");
+        DropZone.BorderThickness = new Thickness(3);
+    }
+
+    private void RemoveDropHighlight()
+    {
+        if (DropZone == null) return;
         if (_originalDropBorderBrush != null)
-            border.BorderBrush = _originalDropBorderBrush;
-        border.BorderThickness = _originalDropBorderThickness;
+            DropZone.BorderBrush = _originalDropBorderBrush;
+        DropZone.BorderThickness = _originalDropBorderThickness;
     }
 
     protected override void OnClosed(EventArgs e)
     {
         base.OnClosed(e);
-
-        // ViewModel disposen
         if (DataContext is MainViewModel vm)
             vm.Dispose();
+        System.Windows.Application.Current.Shutdown();
     }
 }

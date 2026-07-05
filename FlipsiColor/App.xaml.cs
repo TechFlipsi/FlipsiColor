@@ -41,8 +41,8 @@ public partial class App : System.Windows.Application
             log.Information("Modelle: {Heruntergeladen}/{Gesamt} vorhanden ({Erforderlich} erforderlich)",
                 modelManager.ModelleHeruntergeladen, modelManager.ModelleGesamt, modelManager.ModelleErforderlich);
 
-            // LoadingWindow anzeigen wenn Modelle fehlen
-            if (!modelManager.AlleErforderlichenModelleVorhanden())
+            // LoadingWindow anzeigen wenn Modelle fehlen (alle, nicht nur erforderliche)
+            if (modelManager.ModelleHeruntergeladen < modelManager.ModelleGesamt)
             {
                 log.Information("Erforderliche Modelle fehlen — LoadingWindow wird angezeigt");
                 var loadingWindow = new LoadingWindow(modelManager);
@@ -110,5 +110,6 @@ public partial class App : System.Windows.Application
     {
         Logger.Close();
         base.OnExit(e);
+        System.Windows.Application.Current.Shutdown();
     }
 }

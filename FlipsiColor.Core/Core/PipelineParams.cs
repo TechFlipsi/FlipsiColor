@@ -98,4 +98,18 @@ public sealed class PipelineParams
 
     /// <summary>Von EfficientNet erkannte Szene (z.B. "Landschaft", "Porträt")</summary>
     public string? ErkannteSzene { get; set; }
+
+    // ── Manuelle Kamera/Objektiv-Auswahl (statt EXIF) ──
+
+    /// <summary>
+    /// Manuell ausgewählter Kamera-Hersteller (überschreibt EXIF-Daten).
+    /// Wenn null/leer → EXIF-Daten werden verwendet (bestehendes Verhalten).
+    /// </summary>
+    public string? ManuelleKamera { get; set; }
+
+    /// <summary>
+    /// Manuell ausgewähltes Objektiv (überschreibt EXIF-Daten).
+    /// Wenn null/leer → EXIF-Daten werden verwendet (bestehendes Verhalten).
+    /// </summary>
+    public string? ManuellesObjektiv { get; set; }
 }
