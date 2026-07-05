@@ -26,7 +26,7 @@ public partial class App : Application
 
         var log = Serilog.Log.ForContext<App>();
         log.Information("╔══════════════════════════════════╗");
-        log.Information("║  FlipsiColor v0.4.0 gestartet    ║");
+        log.Information("║  FlipsiColor v0.4.1 gestartet    ║");
         log.Information("║  KI-Farb- & Videokorrektur       ║");
         log.Information("║  Avalonia UI — Cross-Platform    ║");
         log.Information("╚══════════════════════════════════╝");

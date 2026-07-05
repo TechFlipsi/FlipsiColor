@@ -41,7 +41,7 @@ public sealed class ModelManager : IDisposable
     /// <summary>
     /// Aktuell verfügbare Modell-Version (von GitHub Releases).
     /// </summary>
-    public string AktuelleModellVersion { get; private set; } = "v0.1";
+    public string AktuelleModellVersion { get; private set; } = "v0.2";
 
     /// <summary>
     /// Event wenn eine neuere Modell-Version verfügbar ist.
@@ -84,44 +84,44 @@ public sealed class ModelManager : IDisposable
         _modelle[ModellId.NAFNet] = new()
         {
             Id = ModellId.NAFNet, Name = "NAFNet",
-            Url = "https://github.com/TechFlipsi/FlipsiColor-Models/releases/download/v0.1/nafnet.onnx",
-            Sha256 = null, GroesseBytes = 17_825_792, Erforderlich = true
+            Url = "https://github.com/TechFlipsi/FlipsiColor-Models/releases/download/v0.2/NAFNet.onnx",
+            Sha256 = null, GroesseBytes = 91_736_251, Erforderlich = true
         };
         _modelle[ModellId.RestormerLight] = new()
         {
             Id = ModellId.RestormerLight, Name = "RestormerLight",
-            Url = "https://github.com/TechFlipsi/FlipsiColor-Models/releases/download/v0.1/restormer_light.onnx",
-            Sha256 = null, GroesseBytes = 25_165_824, Erforderlich = true
+            Url = "https://github.com/TechFlipsi/FlipsiColor-Models/releases/download/v0.2/RestormerLight.onnx",
+            Sha256 = null, GroesseBytes = 109_996_213, Erforderlich = true
         };
         _modelle[ModellId.RealHATGAN] = new()
         {
             Id = ModellId.RealHATGAN, Name = "RealHATGAN",
-            Url = "https://github.com/TechFlipsi/FlipsiColor-Models/releases/download/v0.1/realhatgan.onnx",
-            Sha256 = null, GroesseBytes = 125_829_120, Erforderlich = false
+            Url = "https://github.com/TechFlipsi/FlipsiColor-Models/releases/download/v0.2/RealHATGAN.onnx",
+            Sha256 = null, GroesseBytes = 98_935_714, Erforderlich = false
         };
         _modelle[ModellId.RealESRGAN] = new()
         {
             Id = ModellId.RealESRGAN, Name = "RealESRGAN",
-            Url = "https://github.com/TechFlipsi/FlipsiColor-Models/releases/download/v0.1/realesrgan.onnx",
-            Sha256 = null, GroesseBytes = 67_108_864, Erforderlich = false
+            Url = "https://github.com/TechFlipsi/FlipsiColor-Models/releases/download/v0.2/RealESRGAN.onnx",
+            Sha256 = null, GroesseBytes = 71_636_302, Erforderlich = false
         };
         _modelle[ModellId.CodeFormer] = new()
         {
             Id = ModellId.CodeFormer, Name = "CodeFormer",
-            Url = "https://github.com/TechFlipsi/FlipsiColor-Models/releases/download/v0.1/codeformer.onnx",
-            Sha256 = null, GroesseBytes = 367_001_600, Erforderlich = false
+            Url = "https://github.com/TechFlipsi/FlipsiColor-Models/releases/download/v0.2/CodeFormer.onnx",
+            Sha256 = null, GroesseBytes = 376_798_532, Erforderlich = false
         };
         _modelle[ModellId.AiLUTTransform] = new()
         {
             Id = ModellId.AiLUTTransform, Name = "AiLUTTransform",
-            Url = "https://github.com/TechFlipsi/FlipsiColor-Models/releases/download/v0.1/ailut_transform.onnx",
-            Sha256 = null, GroesseBytes = 8_388_608, Erforderlich = true
+            Url = "https://github.com/TechFlipsi/FlipsiColor-Models/releases/download/v0.2/AiLUTTransform.onnx",
+            Sha256 = null, GroesseBytes = 1_321_508, Erforderlich = true
         };
         _modelle[ModellId.EfficientNet] = new()
         {
             Id = ModellId.EfficientNet, Name = "EfficientNet",
-            Url = "https://github.com/TechFlipsi/FlipsiColor-Models/releases/download/v0.1/efficientnet.onnx",
-            Sha256 = null, GroesseBytes = 4_818_304, Erforderlich = true
+            Url = "https://github.com/TechFlipsi/FlipsiColor-Models/releases/download/v0.2/EfficientNet.onnx",
+            Sha256 = null, GroesseBytes = 21_128_851, Erforderlich = true
         };
 
         // Prüfe welche Modelle bereits lokal existieren
