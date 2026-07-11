@@ -41,7 +41,7 @@ public sealed class CharucoCalibrator : IDisposable
     private int _squaresY = 5;
     private float _squareSize = 0.035f;  // 35mm (wie nullboundary)
     private float _markerSize = 0.0175f; // 17.5mm (wie nullboundary)
-    private PredefinedDictionaryType _dictType = PredefinedDictionaryType.Dict4x4_50;
+    private int _dictId = 0;  // DICT_4X4_50 = 0 (wie nullboundary)
 
     // Kalibrierungsergebnisse
     private double[,]? _kameraMatrix;
@@ -63,9 +63,9 @@ public sealed class CharucoCalibrator : IDisposable
     /// <param name="squaresY">Anzahl der Quadrate in Y-Richtung (Standard: 5).</param>
     /// <param name="squareSize">Quadrat-Größe in Metern (Standard: 0.035 = 35mm).</param>
     /// <param name="markerSize">Marker-Größe in Metern (muss kleiner als squareSize sein, Standard: 0.0175 = 17.5mm).</param>
-    /// <param name="dictType">ArUco-Dictionary-Typ (Standard: DICT_4X4_50 wie nullboundary).</param>
+    /// <param name="dictId">ArUco-Dictionary-ID als int (Standard: 0 = DICT_4X4_50).</param>
     public void SetzeBoardParameter(int squaresX, int squaresY, float squareSize, float markerSize,
-        PredefinedDictionaryType? dictType = null)
+        int? dictId = null)
     {
         if (squaresX < 4 || squaresY < 4)
             throw new ArgumentException("ChArUco-Board muss mindestens 4×4 Quadrate haben");
@@ -76,11 +76,11 @@ public sealed class CharucoCalibrator : IDisposable
         _squaresY = squaresY;
         _squareSize = squareSize;
         _markerSize = markerSize;
-        if (dictType.HasValue)
-            _dictType = dictType.Value;
+        if (dictId.HasValue)
+            _dictId = dictId.Value;
 
         Log.Debug("ChArUco-Board-Parameter gesetzt: {X}×{Y} Squares, Square={Sq}m, Marker={Mk}m, Dict={Dict}",
-            squaresX, squaresY, squareSize, markerSize, _dictType);
+            squaresX, squaresY, squareSize, markerSize, _dictId);
     }
 
     /// <summary>
@@ -104,7 +104,7 @@ public sealed class CharucoCalibrator : IDisposable
 
         try
         {
-            var dict = Cv2.Aruco.GetPredefinedDictionary(_dictType);
+            var dict = Cv2.Aruco.GetPredefinedDictionary(_dictId);
             using var board = new CharucoBoard(_squaresX, _squaresY, _squareSize, _markerSize, dict);
 
             using Mat boardImage = new();
@@ -146,7 +146,7 @@ public sealed class CharucoCalibrator : IDisposable
 
         Log.Information("Starte ChArUco-Kalibrierung mit {Anzahl} Referenzbildern", pfade.Count);
 
-        var dict = Cv2.Aruco.GetPredefinedDictionary(_dictType);
+        var dict = Cv2.Aruco.GetPredefinedDictionary(_dictId);
         using var board = new CharucoBoard(_squaresX, _squaresY, _squareSize, _markerSize, dict);
         var detector = new CharucoDetector(board);
 
@@ -371,7 +371,7 @@ public sealed class CharucoCalibrator : IDisposable
                 Methode = "ChArUco",
                 SquaresX = _squaresX,
                 SquaresY = _squaresY,
-                DictionaryType = _dictType.ToString()
+                DictionaryType = _dictId.ToString()
             };
 
             string json = JsonSerializer.Serialize(daten, KalibrierungsJsonOptionen);
