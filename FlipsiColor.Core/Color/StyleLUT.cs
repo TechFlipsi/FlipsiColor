@@ -33,10 +33,9 @@ public sealed class StyleLUT : IDisposable
     public void IdentityErstellen(int groesse = 33)
     {
         _lut1d = new Mat(1, 256, MatType.CV_8UC3);
-        var indexer = _lut1d.GetGenericIndexer<Vec3b>();
         for (int i = 0; i < 256; i++)
         {
-            indexer[0, i] = new Vec3b((byte)i, (byte)i, (byte)i);
+            _lut1d.Set(0, i, new Vec3b((byte)i, (byte)i, (byte)i));
         }
         _lut3d = null;
         _stilName = "Identity";
