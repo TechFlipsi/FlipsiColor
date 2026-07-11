@@ -21,7 +21,7 @@
          linux-x64 + win-x64 Runtime-Pakete. NuGet wählt native Assets nach RID automatisch. -->
     <PackageReference Include="OpenCvSharp4" Version="4.13.0.*" />
     <PackageReference Include="OpenCvSharp4.Extensions" Version="4.13.0.*" />
-    <PackageReference Include="OpenCvSharp4.runtime.linux-x64" Version="4.13.0.20260627" Condition="'$(OS)' != 'Windows_NT' OR '$(RuntimeIdentifier)' == 'linux-x64'" />
+    <PackageReference Include="OpenCvSharp4.official.runtime.linux-x64" Version="4.13.0.20260627" Condition="'$(OS)' != 'Windows_NT' OR '$(RuntimeIdentifier)' == 'linux-x64'" />
     <PackageReference Include="OpenCvSharp4.runtime.win" Version="4.13.0.*" Condition="'$(OS)' == 'Windows_NT' OR '$(RuntimeIdentifier)' == 'win-x64'" />
 
     <!-- EXIF & Metadata -->
