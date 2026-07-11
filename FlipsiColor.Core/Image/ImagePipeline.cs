@@ -1253,11 +1253,11 @@ public sealed class ImagePipeline : IDisposable
     /// <param name="squaresY">Anzahl Quadrate in Y-Richtung (Standard: 5).</param>
     /// <param name="squareSize">Quadrat-Größe in Metern (Standard: 0.035 = 35mm).</param>
     /// <param name="markerSize">Marker-Größe in Metern (muss kleiner als squareSize sein).</param>
-    /// <param name="dictType">ArUco-Dictionary-Typ (Standard: DICT_4X4_50).</param>
+    /// <param name="dictId">ArUco-Dictionary-ID als int (Standard: 0 = DICT_4X4_50).</param>
     public void SetzeCharucoBoardParameter(int squaresX, int squaresY, float squareSize, float markerSize,
-        OpenCvSharp.Aruco.PredefinedDictionaryType? dictType = null)
+        int? dictId = null)
     {
-        _charucoCalibrator.SetzeBoardParameter(squaresX, squaresY, squareSize, markerSize, dictType);
+        _charucoCalibrator.SetzeBoardParameter(squaresX, squaresY, squareSize, markerSize, dictId);
     }
 
     /// <summary>
