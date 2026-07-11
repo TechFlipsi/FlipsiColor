@@ -25,7 +25,7 @@ public class RawDecoder
     /// </summary>
     private static readonly HashSet<string> RawEndungen = new(StringComparer.OrdinalIgnoreCase)
     {
-        ".cr2", ".cr3", ".nef", ".arw", ".dng", ".orf", ".rw2", ".raw"
+        ".cr2", ".cr3", ".nef", ".arw", ".dng", ".orf", ".rw2", ".raw", ".braw"
     };
 
     /// <summary>

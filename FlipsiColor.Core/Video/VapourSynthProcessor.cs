@@ -177,9 +177,9 @@ public sealed class VapourSynthProcessor : IDisposable
     {
         var videoEndungen = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
         {
-            ".mp4", ".mov", ".avi", ".mkv", ".m4v", ".wmv", ".flv"
+            ".mp4", ".mov", ".avi", ".mkv", ".m4v", ".wmv", ".flv", ".braw"
         };
-        var validierterPfad = SecurityValidator.ValidiereDateiPfad(videoPfad, videoEndungen);
+        var validierterPfad = SecurityValidator.ValidiereDateiPfad(pfad, videoEndungen);
         if (validierterPfad == null)
         {
             Log.Warning("VapourSynthProcessor.VideoLaden: Pfad-Validierung fehlgeschlagen");

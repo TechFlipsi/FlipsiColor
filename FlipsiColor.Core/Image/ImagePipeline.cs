@@ -33,6 +33,7 @@ public sealed class ImagePipeline : IDisposable
     private readonly LensCorrector _lensCorrector;
     private readonly StyleLUT _styleLut;
     private readonly DistortionGridCorrector _distortionGridCorrector;
+    private readonly CharucoCalibrator _charucoCalibrator;
     private readonly ColorCalibration _colorCalibration;
     private readonly InferenceEngine _inferenceEngine;
     private readonly Pipeline _pipelineLogik;
@@ -57,6 +58,7 @@ public sealed class ImagePipeline : IDisposable
         _lensCorrector = new LensCorrector();
         _styleLut = new StyleLUT();
         _distortionGridCorrector = new DistortionGridCorrector();
+        _charucoCalibrator = new CharucoCalibrator();
         _colorCalibration = new ColorCalibration();
         _inferenceEngine = new InferenceEngine(modelManager);
         _pipelineLogik = new Pipeline();
@@ -84,7 +86,7 @@ public sealed class ImagePipeline : IDisposable
         {
             var ext = Path.GetExtension(pfad).ToLowerInvariant();
 
-            if (ext is ".cr2" or ".cr3" or ".nef" or ".arw" or ".dng" or ".orf" or ".rw2" or ".raw")
+            if (ext is ".cr2" or ".cr3" or ".nef" or ".arw" or ".dng" or ".orf" or ".rw2" or ".raw" or ".braw")
             {
                 _aktuellesBild = RawDecoder.Decode(pfad);
             }
@@ -350,6 +352,19 @@ public sealed class ImagePipeline : IDisposable
             if (param.DistortionGridAktiv && _distortionGridCorrector.IstKalibriert)
             {
                 var neuesBild = _distortionGridCorrector.Korrigieren(bild);
+                if (neuesBild != bild)
+                {
+                    bild.Dispose();
+                    bild = neuesBild;
+                }
+            }
+
+            // 9b. ChArUco-Korrektur (Alternative zu Distortion-Grid, nach Objektivkorrektur)
+            // Wird angewendet wenn ChArUco kalibriert ist UND Distortion-Grid NICHT aktiv
+            // (verhindert Doppelkorrektur — beide Methoden korrigieren Linsenverzerrung)
+            if (!param.DistortionGridAktiv && _charucoCalibrator.IstKalibriert)
+            {
+                var neuesBild = _charucoCalibrator.Korrigieren(bild);
                 if (neuesBild != bild)
                 {
                     bild.Dispose();
@@ -1193,6 +1208,82 @@ public sealed class ImagePipeline : IDisposable
         }
         return _distortionGridCorrector.Kalibrieren(validierterPfad);
     }
+
+    /// <summary>
+    /// Kalibriert die Linsenverzerrung anhand von ChArUco-Board-Referenzbildern.
+    /// Alternative zur Schachbrett-Kalibrierung für Kameras/Objektive die nicht
+    /// in der Lensfun-Datenbank enthalten sind (Issue #5).
+    /// FIX #1: Pfad-Validierung gegen Path-Traversal.
+    /// </summary>
+    /// <param name="referenzBildPfade">Liste von Pfaden zu ChArUco-Board-Fotos (empfohlen: 5-15 Bilder).</param>
+    /// <returns>true bei erfolgreicher Kalibrierung.</returns>
+    public bool KalibriereCharuco(IEnumerable<string> referenzBildPfade)
+    {
+        var validiertePfade = new List<string>();
+        foreach (var pfad in referenzBildPfade)
+        {
+            var validierterPfad = SecurityValidator.ValidiereDateiPfad(pfad);
+            if (validierterPfad != null)
+                validiertePfade.Add(validierterPfad);
+        }
+
+        if (validiertePfade.Count == 0)
+        {
+            Log.Warning("KalibriereCharuco: keine gültigen Referenzbilder nach Pfad-Validierung");
+            return false;
+        }
+
+        return _charucoCalibrator.Kalibrieren(validiertePfade);
+    }
+
+    /// <summary>
+    /// Generiert ein ChArUco-Board-Bild zum Ausdrucken und Fotografieren.
+    /// </summary>
+    /// <param name="ausgabePfad">Zieldatei-Pfad (.png oder .jpg).</param>
+    /// <returns>true bei Erfolg.</returns>
+    public bool GeneriereCharucoBoard(string ausgabePfad)
+    {
+        return _charucoCalibrator.BoardGenerieren(ausgabePfad);
+    }
+
+    /// <summary>
+    /// Setzt die ChArUco-Board-Parameter für Kalibrierung und Generierung.
+    /// </summary>
+    /// <param name="squaresX">Anzahl Quadrate in X-Richtung (Standard: 7).</param>
+    /// <param name="squaresY">Anzahl Quadrate in Y-Richtung (Standard: 5).</param>
+    /// <param name="squareSize">Quadrat-Größe in mm.</param>
+    /// <param name="markerSize">Marker-Größe in mm (muss kleiner als squareSize sein).</param>
+    /// <param name="markerDictId">ArUco-Dictionary-ID (Standard: 0 = DICT_ARUCO_ORIGINAL).</param>
+    public void SetzeCharucoBoardParameter(int squaresX, int squaresY, float squareSize, float markerSize, int markerDictId = 0)
+    {
+        _charucoCalibrator.SetzeBoardParameter(squaresX, squaresY, squareSize, markerSize, markerDictId);
+    }
+
+    /// <summary>
+    /// Speichert die ChArUco-Kalibrierung als JSON-Datei.
+    /// </summary>
+    /// <param name="pfad">Zieldatei-Pfad (.json).</param>
+    /// <returns>true bei Erfolg.</returns>
+    public bool SpeichereCharucoKalibrierung(string pfad)
+    {
+        return _charucoCalibrator.Speichern(pfad);
+    }
+
+    /// <summary>
+    /// Lädt eine ChArUco-Kalibrierung aus einer JSON-Datei.
+    /// Akzeptiert auch DistortionGridCorrector-Dateien (format-kompatibel).
+    /// </summary>
+    /// <param name="pfad">Quelldatei-Pfad (.json).</param>
+    /// <returns>true bei Erfolg.</returns>
+    public bool LadeCharucoKalibrierung(string pfad)
+    {
+        return _charucoCalibrator.Laden(pfad);
+    }
+
+    /// <summary>
+    /// Gibt an, ob eine ChArUco-Kalibrierung vorliegt.
+    /// </summary>
+    public bool IstCharucoKalibriert => _charucoCalibrator.IstKalibriert;
 
     /// <summary>
     /// Kalibriert die Farbkalibrierung anhand eines ColorChecker- oder Graukarten-Bilds.
