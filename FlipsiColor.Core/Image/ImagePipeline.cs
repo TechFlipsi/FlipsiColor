@@ -344,8 +344,11 @@ public sealed class ImagePipeline : IDisposable
             {
                 var (kamera, objektiv, brennweite, blende) = ExifFuerObjektivkorrekturLesen(param);
                 var neuesBild = _lensCorrector.Korrigieren(bild, kamera, objektiv, brennweite, blende);
-                bild.Dispose();
-                bild = neuesBild;
+                if (neuesBild != bild)
+                {
+                    bild.Dispose();
+                    bild = neuesBild;
+                }
             }
 
             // 9. Distortion-Grid-Korrektur (nach Objektivkorrektur)
