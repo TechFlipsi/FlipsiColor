@@ -4,6 +4,7 @@ using System.IO;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 using OpenCvSharp;
+using OpenCvSharp.Aruco;
 using FlipsiColor.Utils;
 
 namespace FlipsiColor.Color;
@@ -17,29 +18,30 @@ namespace FlipsiColor.Color;
 /// folgende Vorteile gegenüber reinen Schachbrett-Mustern:
 ///   - Subpixel-genau dank Corner-SubPix-Verfeinerung
 ///   - Robuster bei teilweiser Okklusion (nicht alle Marker müssen sichtbar sein)
-///   - Funktioniert mit beliebigen Board-Größen (nicht nur Standard 9×6)
+///   - Funktioniert mit beliebigen Board-Größen
 ///
-/// Implementiert nach Issue #5 von MarcoRavich:
-///   - Nutzt OpenCV ArUco-Detection (Cv2.Aruco.DetectMarkers)
-///   - Generiert ChArUco-Board-Parameter dynamisch (SquaresX × SquaresY)
-///   - Kalibriert via Cv2.Aruco.CalibrateCameraCharuco
-///   - Speichert/Lädt Ergebnisse als JSON (kompatibel mit DistortionGridCorrector-Format)
+/// Implementiert nach Issue #5 von MarcoRavich.
+/// Verwendet die OpenCvSharp4 ArUco-API (OpenCV 4.7+ Detector-Class-Design):
+///   - CharucoBoard-Klasse zum Erstellen des Boards
+///   - CharucoDetector.DetectBoard für Corner-Detektion
+///   - Board.MatchImagePoints + Cv2.CalibrateCamera für Kalibrierung
 ///
-/// Referenzen:
-///   - @Rosatus' Camera Calibration Workbench (github.com/Rosatus/CameraCalibrationWorkbench)
-///   - @yumashino's Camera Calibration with ChArUco Board (github.com/yumashino/Camera-Calibration-with-ChArUco-Board)
-///   - @nullboundary's CharucoCalibration (github.com/nullboundary/CharucoCalibration)
+/// Referenzen (von MarcoRavich verlinkt):
+///   - nullboundary/CharucoCalibration: DICT_4X4_50, 12×8 Board, calibrateCameraCharuco
+///   - Rosatus/CameraCalibrationWorkbench: Schachbrett + Fisheye-Support, SB-Detektion
+///   - yumashino/Camera-Calibration-with-ChArUco-Board: ChArUco-Detection-Workflow
 /// </summary>
 public sealed class CharucoCalibrator : IDisposable
 {
     private static readonly Serilog.ILogger Log = Serilog.Log.ForContext<CharucoCalibrator>();
 
-    // ChArUco-Board-Parameter (Standard: 7×5 Squares, 40px Square-Größe, 30px Marker-Größe)
+    // ChArUco-Board-Parameter
+    // Standard: 7×5 Squares (wie nullboundary: 12×8 ist möglich, aber 7×5 ist kompakter)
     private int _squaresX = 7;
     private int _squaresY = 5;
-    private float _squareSize = 40f;   // in Pixeln (für Board-Generierung)
-    private float _markerSize = 30f;  // in Pixeln
-    private int _markerDictId = 0;    // DICT_ARUCO_ORIGINAL = 0 (Standard)
+    private float _squareSize = 0.035f;  // 35mm (wie nullboundary)
+    private float _markerSize = 0.0175f; // 17.5mm (wie nullboundary)
+    private PredefinedDictionaryType _dictType = PredefinedDictionaryType.Dict4x4_50;
 
     // Kalibrierungsergebnisse
     private double[,]? _kameraMatrix;
@@ -59,10 +61,11 @@ public sealed class CharucoCalibrator : IDisposable
     /// </summary>
     /// <param name="squaresX">Anzahl der Quadrate in X-Richtung (Standard: 7).</param>
     /// <param name="squaresY">Anzahl der Quadrate in Y-Richtung (Standard: 5).</param>
-    /// <param name="squareSize">Quadrat-Größe in mm (für Kalibrierung) oder Pixeln (für Generierung).</param>
-    /// <param name="markerSize">Marker-Größe in mm oder Pixeln (muss kleiner als squareSize sein).</param>
-    /// <param name="markerDictId">ArUco-Dictionary-ID (Standard: 0 = DICT_ARUCO_ORIGINAL).</param>
-    public void SetzeBoardParameter(int squaresX, int squaresY, float squareSize, float markerSize, int markerDictId = 0)
+    /// <param name="squareSize">Quadrat-Größe in Metern (Standard: 0.035 = 35mm).</param>
+    /// <param name="markerSize">Marker-Größe in Metern (muss kleiner als squareSize sein, Standard: 0.0175 = 17.5mm).</param>
+    /// <param name="dictType">ArUco-Dictionary-Typ (Standard: DICT_4X4_50 wie nullboundary).</param>
+    public void SetzeBoardParameter(int squaresX, int squaresY, float squareSize, float markerSize,
+        PredefinedDictionaryType? dictType = null)
     {
         if (squaresX < 4 || squaresY < 4)
             throw new ArgumentException("ChArUco-Board muss mindestens 4×4 Quadrate haben");
@@ -73,21 +76,24 @@ public sealed class CharucoCalibrator : IDisposable
         _squaresY = squaresY;
         _squareSize = squareSize;
         _markerSize = markerSize;
-        _markerDictId = markerDictId;
-        Log.Debug("ChArUco-Board-Parameter gesetzt: {X}×{Y} Squares, Square={Sq}px, Marker={Mk}px, Dict={Dict}",
-            squaresX, squaresY, squareSize, markerSize, markerDictId);
+        if (dictType.HasValue)
+            _dictType = dictType.Value;
+
+        Log.Debug("ChArUco-Board-Parameter gesetzt: {X}×{Y} Squares, Square={Sq}m, Marker={Mk}m, Dict={Dict}",
+            squaresX, squaresY, squareSize, markerSize, _dictType);
     }
 
     /// <summary>
     /// Generiert ein ChArUco-Board-Bild und speichert es als PNG.
     /// Kann ausgedruckt und als Kalibrierungs-Referenz verwendet werden.
+    /// Nutzt CharucoBoard.GenerateImage (OpenCV 4.7+ API).
     /// </summary>
     /// <param name="ausgabePfad">Zieldatei-Pfad (.png oder .jpg).</param>
-    /// <param name="pixelProMm">Pixel pro Millimeter für die Ausgabe (Standard: 10 = 300 DPI bei 75µm).</param>
+    /// <param name="pixelBreite">Breite des Ausgabebilds in Pixeln (Standard: 1400).</param>
+    /// <param name="pixelHoehe">Höhe des Ausgabebilds in Pixeln (Standard: 1000).</param>
     /// <returns>true bei Erfolg.</returns>
-    public bool BoardGenerieren(string ausgabePfad, int pixelProMm = 10)
+    public bool BoardGenerieren(string ausgabePfad, int pixelBreite = 1400, int pixelHoehe = 1000)
     {
-        // Pfad-Validierung
         var erlaubeEndungen = new HashSet<string>(StringComparer.OrdinalIgnoreCase) { ".png", ".jpg", ".jpeg", ".bmp" };
         var validierterPfad = SecurityValidator.ValidiereAusgabePfad(ausgabePfad, erlaubeEndungen);
         if (validierterPfad == null)
@@ -98,23 +104,15 @@ public sealed class CharucoCalibrator : IDisposable
 
         try
         {
-            // Board-Pixel-Dimensionen berechnen
-            int pixelWidth = (int)(_squaresX * _squareSize * pixelProMm / 10f);
-            int pixelHeight = (int)(_squaresY * _squareSize * pixelProMm / 10f);
+            var dict = Cv2.Aruco.GetPredefinedDictionary(_dictType);
+            using var board = new CharucoBoard(_squaresX, _squaresY, _squareSize, _markerSize, dict);
 
-            // ArUco-Dictionary erstellen
-            var dict = Cv2.Aruco.GetPredefinedDictionary(_markerDictId);
-
-            // ChArUco-Board erstellen
-            var board = new ArucoBoard(_squaresX, _squaresY, _squareSize, _markerSize, dict);
-
-            // Board-Bild generieren
             using Mat boardImage = new();
-            board.Draw(pixelWidth, pixelHeight, boardImage);
+            board.GenerateImage(new Size(pixelBreite, pixelHoehe), boardImage);
             Cv2.ImWrite(validierterPfad, boardImage);
 
             Log.Information("ChArUco-Board generiert: {X}×{Y} Squares → {Pfad} ({W}×{H}px)",
-                _squaresX, _squaresY, validierterPfad, pixelWidth, pixelHeight);
+                _squaresX, _squaresY, validierterPfad, pixelBreite, pixelHoehe);
             return true;
         }
         catch (Exception ex)
@@ -126,9 +124,16 @@ public sealed class CharucoCalibrator : IDisposable
 
     /// <summary>
     /// Kalibriert die Linsenverzerrung anhand eines oder mehrerer ChArUco-Referenzbilder.
-    /// Erkennt ArUco-Marker → interpoliert Schachbrett-Corners → CalibrateCameraCharuco.
+    /// Workflow (OpenCV 4.7+ API):
+    ///   1. CharucoBoard + CharucoDetector erstellen
+    ///   2. Für jedes Bild: DetectBoard → charucoCorners + charucoIds
+    ///   3. Subpixel-Verfeinerung mit CornerSubPix
+    ///   4. Board.MatchImagePoints → objPoints + imgPoints
+    ///   5. Cv2.CalibrateCamera → Kamera-Matrix + Distortion-Koeffizienten
+    ///
+    /// Empfohlen: 5-15 Bilder aus verschiedenen Winkeln (wie nullboundary: decimator%3).
     /// </summary>
-    /// <param name="referenzBildPfade">Liste von Pfaden zu ChArUco-Board-Fotos (mindestens 1, empfohlen 5-15).</param>
+    /// <param name="referenzBildPfade">Liste von Pfaden zu ChArUco-Board-Fotos.</param>
     /// <returns>true bei erfolgreicher Kalibrierung.</returns>
     public bool Kalibrieren(IEnumerable<string> referenzBildPfade)
     {
@@ -141,14 +146,14 @@ public sealed class CharucoCalibrator : IDisposable
 
         Log.Information("Starte ChArUco-Kalibrierung mit {Anzahl} Referenzbildern", pfade.Count);
 
-        var dict = Cv2.Aruco.GetPredefinedDictionary(_markerDictId);
-        var board = new ArucoBoard(_squaresX, _squaresY, _squareSize, _markerSize, dict);
+        var dict = Cv2.Aruco.GetPredefinedDictionary(_dictType);
+        using var board = new CharucoBoard(_squaresX, _squaresY, _squareSize, _markerSize, dict);
+        var detector = new CharucoDetector(board);
 
-        var alleCorners = new List<Mat>();
-        var alleIds = new List<int[]>();
-        var alleObjektPunkte = new List<Mat>();
+        // Sammle alle erkannten Corners und IDs
+        var alleCharucoCorners = new List<Point2f[]>();
+        var alleCharucoIds = new List<int[]>();
         Size imageSize = new();
-
         int erfolgreich = 0;
 
         foreach (var pfad in pfade)
@@ -173,64 +178,81 @@ public sealed class CharucoCalibrator : IDisposable
             using Mat grau = new();
             Cv2.CvtColor(bild, grau, ColorConversionCodes.BGR2GRAY);
 
-            // ArUco-Marker detektieren
-            Cv2.Aruco.DetectMarkers(grau, dict, out Point2f[][] corners, out int[] ids);
-
-            if (ids.Length == 0)
-            {
-                Log.Warning("ChArUco: Keine ArUco-Marker gefunden in Bild {Index} — übersprungen", erfolgreich);
-                continue;
-            }
-
-            // InterpolateCornersCharuco — liefert die Schachbrett-Corners des ChArUco-Boards
-            Cv2.Aruco.InterpolateCornersCharuco(corners, ids, grau, board, out Point2f[] charucoCorners, out int[] charucoIds);
+            // ChArUco-Corners detektieren via CharucoDetector.DetectBoard
+            detector.DetectBoard(grau,
+                out Point2f[] charucoCorners,
+                out int[] charucoIds,
+                out Point2f[][] markerCorners,
+                out int[] markerIds);
 
             if (charucoCorners.Length < 4)
             {
-                Log.Warning("ChArUco: Zu wenige Corners interpoliert ({Anzahl}) — übersprungen", charucoCorners.Length);
+                Log.Warning("ChArUco: Zu wenige Corners ({Anzahl}) in Bild {Index} — übersprungen",
+                    charucoCorners.Length, erfolgreich + 1);
                 continue;
             }
 
-            // Subpixel-Verfeinerung
+            // Subpixel-Verfeinerung (wie nullboundary und Rosatus)
             Cv2.CornerSubPix(grau, charucoCorners,
                 new Size(11, 11), new Size(-1, -1),
                 new TermCriteria(CriteriaTypes.Eps | CriteriaTypes.MaxIter, 30, 0.01));
 
-            // Punkte für CalibrateCameraCharuco sammeln
-            using Mat cornerMat = Mat.FromArray(charucoCorners);
-            alleCorners.Add(cornerMat.Clone());
-            alleIds.Add(charukoIds);
+            alleCharucoCorners.Add(charucoCorners);
+            alleCharucoIds.Add(charucoIds);
             erfolgreich++;
 
-            Log.Debug("ChArUco: Bild {Index} — {Anzahl} Marker, {Corners} Corners",
-                erfolgreich, ids.Length, charucoCorners.Length);
+            Log.Debug("ChArUco: Bild {Index} — {Marker} Marker, {Corners} Corners",
+                erfolgreich, markerIds.Length, charucoCorners.Length);
         }
 
-        if (erfolgreich < 1)
+        if (erfolgreich < 3)
         {
-            Log.Error("ChArUco-Kalibrierung: keine gültigen Referenzbilder verarbeitet");
+            Log.Error("ChArUco-Kalibrierung: nur {Anzahl} gültige Bilder (Minimum 3 erforderlich)", erfolgreich);
             return false;
         }
 
-        // Kamera-Matrix initialisieren
-        using Mat kameraMat = Mat.Eye(3, 3, MatType.CV_64FC1);
-        kameraMat.Set<double>(0, 2, imageSize.Width / 2.0);
-        kameraMat.Set<double>(1, 2, imageSize.Height / 2.0);
-        kameraMat.Set<double>(0, 0, imageSize.Width);
-        kameraMat.Set<double>(1, 1, imageSize.Width);
-
-        using Mat distMat = new Mat(1, 5, MatType.CV_64FC1, Scalar.All(0));
+        // MatchImagePoints + CalibrateCamera (OpenCV 4.7+ Pattern)
+        // Statt calibrateCameraCharuco (deprecated in 4.7+) nutzen wir:
+        //   board.MatchImagePoints → objPoints + imgPoints
+        //   Cv2.CalibrateCamera → Kamera-Matrix + Distortion
+        var alleObjPoints = new List<Mat>();
+        var alleImgPoints = new List<Mat>();
 
         try
         {
-            // CalibrateCameraCharuco — die spezialisierte ChArUco-Kalibrierung
-            double rms = Cv2.Aruco.CalibrateCameraCharuco(
-                alleCorners.ToArray(),
-                alleIds.ToArray(),
-                board,
+            for (int i = 0; i < alleCharucoCorners.Count; i++)
+            {
+                using Mat idsMat = Mat.FromArray(alleCharucoIds[i]);
+                Mat objPoints = new();
+                Mat imgPoints = new();
+                board.MatchImagePoints(alleCharucoCorners[i], idsMat, objPoints, imgPoints);
+                alleObjPoints.Add(objPoints);
+                alleImgPoints.Add(imgPoints);
+            }
+
+            // Kamera-Matrix initialisieren
+            using Mat kameraMat = Mat.Eye(3, 3, MatType.CV_64FC1);
+            kameraMat.Set<double>(0, 2, imageSize.Width / 2.0);
+            kameraMat.Set<double>(1, 2, imageSize.Height / 2.0);
+            kameraMat.Set<double>(0, 0, imageSize.Width);
+            kameraMat.Set<double>(1, 1, imageSize.Width);
+
+            using Mat distMat = new Mat(1, 5, MatType.CV_64FC1, Scalar.All(0));
+
+            double rms = Cv2.CalibrateCamera(
+                alleObjPoints.ToArray(),
+                alleImgPoints.ToArray(),
                 imageSize,
                 kameraMat,
-                distMat);
+                distMat,
+                out Mat[] rvecs,
+                out Mat[] tvecs,
+                CalibrationFlags.None,
+                new TermCriteria(CriteriaTypes.Eps | CriteriaTypes.MaxIter, 30, 1e-6));
+
+            // rvecs/tvecs freigeben
+            foreach (Mat m in rvecs) m.Dispose();
+            foreach (Mat m in tvecs) m.Dispose();
 
             Log.Information("ChArUco-Kalibrierung abgeschlossen — RMS: {Rms:F4} ({Anzahl} Bilder)", rms, erfolgreich);
 
@@ -245,19 +267,20 @@ public sealed class CharucoCalibrator : IDisposable
             for (int i = 0; i < distAnzahl; i++)
                 _distortionKoeffizienten[i] = distMat.At<double>(0, i);
 
-            // Aufräumen
-            foreach (var m in alleCorners) m.Dispose();
-
             Log.Debug("ChArUco: Kamera-Matrix und {Anzahl} Distortion-Koeffizienten gespeichert", distAnzahl);
             return true;
         }
         catch (Exception ex)
         {
-            Log.Error(ex, "ChArUco CalibrateCameraCharuco fehlgeschlagen");
+            Log.Error(ex, "ChArUco CalibrateCamera fehlgeschlagen");
             _kameraMatrix = null;
             _distortionKoeffizienten = null;
-            foreach (var m in alleCorners) m.Dispose();
             return false;
+        }
+        finally
+        {
+            foreach (var m in alleObjPoints) m.Dispose();
+            foreach (var m in alleImgPoints) m.Dispose();
         }
     }
 
@@ -339,7 +362,7 @@ public sealed class CharucoCalibrator : IDisposable
 
         try
         {
-            var daten = new CharukoKalibrierungsDaten
+            var daten = new CharucoKalibrierungsDaten
             {
                 BildBreite = _bildGroesse.Width,
                 BildHoehe = _bildGroesse.Height,
@@ -348,7 +371,7 @@ public sealed class CharucoCalibrator : IDisposable
                 Methode = "ChArUco",
                 SquaresX = _squaresX,
                 SquaresY = _squaresY,
-                MarkerDictId = _markerDictId
+                DictionaryType = _dictType.ToString()
             };
 
             string json = JsonSerializer.Serialize(daten, KalibrierungsJsonOptionen);
@@ -383,7 +406,7 @@ public sealed class CharucoCalibrator : IDisposable
         try
         {
             string json = File.ReadAllText(validierterPfad);
-            var daten = JsonSerializer.Deserialize<CharukoKalibrierungsDaten>(json, KalibrierungsJsonOptionen);
+            var daten = JsonSerializer.Deserialize<CharucoKalibrierungsDaten>(json, KalibrierungsJsonOptionen);
 
             if (daten is null || daten.KameraMatrix is null || daten.DistortionKoeffizienten is null)
             {
@@ -391,14 +414,12 @@ public sealed class CharucoCalibrator : IDisposable
                 return false;
             }
 
-            // Matrix-Dimensionen validieren
             if (daten.KameraMatrix.GetLength(0) != 3 || daten.KameraMatrix.GetLength(1) != 3)
             {
                 Log.Error("ChArUco: Kamera-Matrix muss 3×3 sein");
                 return false;
             }
 
-            // Bild-Dimensionen validieren
             if (daten.BildBreite <= 0 || daten.BildBreite > 100000 ||
                 daten.BildHoehe <= 0 || daten.BildHoehe > 100000)
             {
@@ -406,7 +427,6 @@ public sealed class CharucoCalibrator : IDisposable
                 return false;
             }
 
-            // Distortion-Koeffizienten-Anzahl begrenzen
             if (daten.DistortionKoeffizienten.Length < 1 || daten.DistortionKoeffizienten.Length > 20)
             {
                 Log.Error("ChArUco: Distortion-Koeffizienten-Anzahl ungültig");
@@ -416,11 +436,6 @@ public sealed class CharucoCalibrator : IDisposable
             _bildGroesse = new Size(daten.BildBreite, daten.BildHoehe);
             _kameraMatrix = daten.KameraMatrix;
             _distortionKoeffizienten = daten.DistortionKoeffizienten;
-
-            // ChArUco-spezifische Felder (falls vorhanden)
-            if (daten.SquaresX > 0) _squaresX = daten.SquaresX;
-            if (daten.SquaresY > 0) _squaresY = daten.SquaresY;
-            if (daten.MarkerDictId >= 0) _markerDictId = daten.MarkerDictId;
 
             Log.Information("ChArUco-Kalibrierung geladen ({Breite}×{Hoehe}, Methode={Methode})",
                 _bildGroesse.Width, _bildGroesse.Height, daten.Methode ?? "unbekannt");
@@ -434,37 +449,22 @@ public sealed class CharucoCalibrator : IDisposable
         }
     }
 
-    /// <summary>
-    /// JSON-Serialisierungsoptionen.
-    /// </summary>
     private static readonly JsonSerializerOptions KalibrierungsJsonOptionen = new()
     {
         WriteIndented = true,
         DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull
     };
 
-    /// <summary>
-    /// DTO für JSON-Serialisierung der ChArUco-Kalibrierungsdaten.
-    /// Erweitert das DistortionGridCorrector-Format um ChArUco-spezifische Metadaten.
-    /// </summary>
-    private sealed class CharukoKalibrierungsDaten
+    private sealed class CharucoKalibrierungsDaten
     {
         public int BildBreite { get; set; }
         public int BildHoehe { get; set; }
         public double[,] KameraMatrix { get; set; } = new double[3, 3];
         public double[] DistortionKoeffizienten { get; set; } = [];
-
-        /// <summary>Kalibrierungs-Methode ("ChArUco" oder "Schachbrett" für DistortionGridCorrector-Dateien).</summary>
         public string? Methode { get; set; }
-
-        /// <summary>ChArUco-Board Squares in X-Richtung.</summary>
         public int SquaresX { get; set; }
-
-        /// <summary>ChArUco-Board Squares in Y-Richtung.</summary>
         public int SquaresY { get; set; }
-
-        /// <summary>ArUco-Dictionary-ID.</summary>
-        public int MarkerDictId { get; set; }
+        public string? DictionaryType { get; set; }
     }
 
     public void Dispose()
