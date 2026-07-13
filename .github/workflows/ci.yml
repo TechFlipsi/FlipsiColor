@@ -201,22 +201,23 @@ jobs:
         with:
           files: release-artifacts/*
           body: |
-            ## FlipsiColor ${{ steps.version.outputs.version }} — Lensfun Integration & Fehlerbehebungen
+            ## FlipsiColor ${{ steps.version.outputs.version }} — OpenColorIO Integration & Pro-Funktion KI-Toggles
 
             KI-gestützte Bild- & Videofarbkorrektur für alle Kameras.
 
-            ### 🐛 Fehlerbehebungen
-            - **App crasht nicht mehr nach Modell-Download** — ShutdownMode auf OnExplicitShutdown gesetzt
-            - **Alle 7 KI-Modelle werden heruntergeladen** — zuvor nur 4 erforderliche, jetzt auch optionale
-            - **Fire-and-forget Crash im Konstruktor behoben** — _initialisiert Flag verhindert vorzeitige Installationen
-            - **Assets/flipsicolor.ico fehlt nicht mehr** — CopyToOutputDirectory im csproj
-            - **VapourSynth: vspipe.bat akzeptiert** — R76 Portable nutzt .bat statt .exe
-
-            ### 🔧 Neue Funktionen
-            - **Lensfun-Integration (Objektivkorrektur)** — automatischer Download+Entpacken auf Windows
-            - **Kamera/Objektiv manuell auswählbar** — oder automatisch aus EXIF-Daten
-            - **VapourSynth Auto-Installation** — beim Umstellen wird automatisch geprüft+installiert
-            - **Lensfun Auto-Installation** — beim Aktivieren der Objektivkorrektur automatisch installiert
+            ### 🎨 Neue Funktionen
+            - **OpenColorIO (OCIO) Integration** — Industrie-Standard Farbmanagement als optionales Backend
+              - LUT-Baking via `ociobakelut` CLI (keine native Library nötig)
+              - Default ACES-Config wird automatisch generiert
+              - Eigene `.ocio` Configs ladbar
+              - VapourSynth: `vs-ocio` Node Unterstützung
+            - **Pro-Funktion KI-Toggles** — jede KI-Funktion einzeln an/abschaltbar:
+              - KI-Denoising (NAFNet) → klassische Filterung
+              - KI-Schärfung (RestormerLight) → Convolution
+              - KI-Upscaling (RealESRGAN) → Lanczos-Interpolation
+              - KI-Gesichtswiederherstellung (CodeFormer) → deaktiviert
+              - KI-Farbstil (AiLUTTransform) → manuelle Sättigung
+              - KI-Szenenklassifizierung (EfficientNet) → manuell
 
             ### Downloads
             - **Windows:** `FlipsiColor-${{ steps.version.outputs.version }}-setup.exe` (Inno Setup Installer)
@@ -229,5 +230,6 @@ jobs:
             - GPU empfohlen (DirectML auf Windows, CPU auf Linux)
             - FFmpeg installiert (Linux: `apt install ffmpeg`)
             - libraw (Linux: `apt install libraw-dev`)
+            - Optional: OpenColorIO Tools (`apt install opencolorio-tools` für LUT-Baking)
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
