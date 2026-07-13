@@ -151,7 +151,7 @@ public static class Lokalisierung
         ["Status.UpdatePruefungFehlgeschlagen"] = "Update-Prüfung fehlgeschlagen",
         ["Status.UpdateFehlgeschlagen"] = "Update fehlgeschlagen",
         ["Status.ThemeFehler"] = "Design-Fehler",
-        ["Status.ModellNeuHerunterladen"] = "KI-Modelle werden neu herunterladen...",
+        ["Status.ModellNeuHerunterladen"] = "KI-Modelle werden neu heruntergeladen...",
 
         // Dialog-Titel
         ["Dialog.BildOeffnen"] = "Bild öffnen",
