@@ -17,10 +17,10 @@ jobs:
   build-core:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
       - name: Setup .NET 10
-        uses: actions/setup-dotnet@v4
+        uses: actions/setup-dotnet@v5
         with:
           dotnet-version: '10.0.x'
 
@@ -44,10 +44,10 @@ jobs:
     strategy:
       fail-fast: false
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
       - name: Setup .NET 10
-        uses: actions/setup-dotnet@v4
+        uses: actions/setup-dotnet@v5
         with:
           dotnet-version: '10.0.x'
 
@@ -97,7 +97,7 @@ jobs:
         shell: pwsh
 
       - name: Upload WPF Installer Artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v5
         with:
           name: FlipsiColor-${{ steps.version.outputs.version }}-Windows-setup
           path: installer-output/FlipsiColor-*.exe
@@ -112,10 +112,10 @@ jobs:
     strategy:
       fail-fast: false
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
       - name: Setup .NET 10
-        uses: actions/setup-dotnet@v4
+        uses: actions/setup-dotnet@v5
         with:
           dotnet-version: '10.0.x'
 
@@ -144,14 +144,14 @@ jobs:
           ./installer/build-script.sh
 
       - name: Upload .deb Artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v5
         with:
           name: FlipsiColor-linux-deb
           path: installer/build/FlipsiColor-*.deb
           if-no-files-found: warn
 
       - name: Upload .AppImage Artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v5
         with:
           name: FlipsiColor-linux-appimage
           path: installer/build/FlipsiColor-*.AppImage
@@ -165,7 +165,7 @@ jobs:
     if: startsWith(github.ref, 'refs/tags/v')
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
       - name: Extract Version from Tag
         id: version
@@ -173,21 +173,21 @@ jobs:
 
       # Windows Installer herunterladen
       - name: Download Windows Installer
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v5
         with:
           name: FlipsiColor-${{ steps.version.outputs.version }}-Windows-setup
           path: release-artifacts
 
       # Linux .deb herunterladen
       - name: Download Linux .deb
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v5
         with:
           name: FlipsiColor-linux-deb
           path: release-artifacts
 
       # Linux .AppImage herunterladen (optional — appimagetool evtl. nicht installiert)
       - name: Download Linux .AppImage
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v5
         with:
           name: FlipsiColor-linux-appimage
           path: release-artifacts
@@ -201,23 +201,21 @@ jobs:
         with:
           files: release-artifacts/*
           body: |
-            ## FlipsiColor ${{ steps.version.outputs.version }} — OpenColorIO Integration & Pro-Funktion KI-Toggles
+            ## FlipsiColor ${{ steps.version.outputs.version }} — Logs-Button & Bugfixes
 
             KI-gestützte Bild- & Videofarbkorrektur für alle Kameras.
 
-            ### 🎨 Neue Funktionen
+            ### ✨ Neu in v0.5.1
+            - **Logs-Button** — Dezenter Button in der Sidebar öffnet den Logs-Ordner direkt im Dateimanager
+            - **Rechtschreibfix** — "KI-Modelle werden neu heruntergeladen" (Passivform korrigiert)
+            - **CI aktualisiert** — GitHub Actions v5 (Node.js 24)
+
+            ### 🎨 Enthaltene Funktionen aus v0.5.0
             - **OpenColorIO (OCIO) Integration** — Industrie-Standard Farbmanagement als optionales Backend
-              - LUT-Baking via `ociobakelut` CLI (keine native Library nötig)
-              - Default ACES-Config wird automatisch generiert
-              - Eigene `.ocio` Configs ladbar
-              - VapourSynth: `vs-ocio` Node Unterstützung
-            - **Pro-Funktion KI-Toggles** — jede KI-Funktion einzeln an/abschaltbar:
-              - KI-Denoising (NAFNet) → klassische Filterung
-              - KI-Schärfung (RestormerLight) → Convolution
-              - KI-Upscaling (RealESRGAN) → Lanczos-Interpolation
-              - KI-Gesichtswiederherstellung (CodeFormer) → deaktiviert
-              - KI-Farbstil (AiLUTTransform) → manuelle Sättigung
-              - KI-Szenenklassifizierung (EfficientNet) → manuell
+            - **Pro-Funktion KI-Toggles** — jede KI-Funktion einzeln an/abschaltbar
+            - **VapourSynth-Backend** — Optionaler Video-Backend mit Auto-Installation
+            - **Lensfun-Integration** — Automatische Objektivkorrektur mit EXIF-Erkennung
+            - **RAW-Unterstützung** — CR2, CR3, NEF, ARW, DNG (via LibRaw)
 
             ### Downloads
             - **Windows:** `FlipsiColor-${{ steps.version.outputs.version }}-setup.exe` (Inno Setup Installer)
