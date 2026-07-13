@@ -11,11 +11,16 @@ KI-gestützte Bild- & Videofarbkorrektur. Cross-Platform (Linux + Windows) mit A
 ## Features
 
 - **Bild-Pipeline:** KI-Farbkorrektur mit NAFNet/Restormer, Farbkalibrierung, Verzerrungs-Raster
+- **RAW-Unterstützung:** CR2, CR3, NEF, ARW, DNG (via LibRaw)
+- **Objektivkorrektur:** Lensfun-Integration mit automatischer EXIF-Erkennung (Kamera + Objektiv), Verzeichnung-, Vignetting- und TCA-Korrektur
 - **Video-Pipeline:** Frame-weise Farbkorrektur mit Szenenwechsel-Erkennung und Audio-Erhaltung
-- **Clips zusammenfügen:** Automatische Video-Clip-Gruppierung und Zusammenführung (alle Kameras)
+- **VapourSynth-Backend:** Optionaler Video-Backend mit Auto-Installation (alternativ zu FFmpeg)
+- **Clips zusammenfügen:** Automatische Video-Clip-Gruppierung und Zusammenführung (alle Kameras, inkl. DJI Auto-Merge)
 - **Hochskalieren:** RealESRGAN (2x/3x/4x)
 - **Gesichtswiederherstellung:** CodeFormer
 - **Farbstil-LUT:** .cube LUT-Dateien laden und anwenden
+- **OpenColorIO (OCIO):** Industrie-Standard Farbmanagement als optionales Backend — LUT-Baking via `ociobakelut`, Default ACES-Config wird automatisch generiert, eigene `.ocio` Configs ladbar
+- **Pro-Funktion KI-Toggles:** Jede KI-Funktion einzeln an/abschaltbar — KI-Denoising, KI-Schärfung, KI-Upscaling, KI-Gesichtswiederherstellung, KI-Farbstil und KI-Szenenklassifizierung können deaktiviert werden (klassische Filter als Fallback)
 - **Dark/Light Design:** Mit Live-Switch, blaue Akzentfarbe (#0EA5E9)
 - **Drag & Drop:** Mehrere Dateien gleichzeitig (Bilder UND Videos)
 - **Lokalisierung:** Deutsch / Englisch umschaltbar
@@ -25,7 +30,7 @@ KI-gestützte Bild- & Videofarbkorrektur. Cross-Platform (Linux + Windows) mit A
 ```
 FlipsiColor.Core/          # Plattneutrale Business Logic (net10.0)
   AI/                       # ModelManager, ModelDownloader, InferenceEngine
-  Color/                    # ColorManager, ColorCalibration, LensCorrector, StyleLUT
+  Color/                    # ColorManager, ColorCalibration, LensCorrector, StyleLUT, OCIO
   Image/                    # ImagePipeline, RawDecoder, ExifReader
   Video/                    # VideoPipeline, FrameProcessor, SceneDetector, ClipMerger
   Core/                     # Settings, Pipeline, PipelineParams, AutoUpdater
@@ -44,28 +49,43 @@ Die App lädt 7 ONNX-Modelle automatisch von GitHub Releases herunter:
 
 | Modell | Verwendung |
 |--------|-----------|
-| NAFNet | Bild-Restauration |
-| RestormerLight | Bild-Enhancement |
+| NAFNet | Bild-Restauration / Rauschunterdrückung |
+| RestormerLight | Bild-Enhancement / Schärfung |
 | RealESRGAN | Hochskalierung (2x/3x/4x) |
 | CodeFormer | Gesichtswiederherstellung |
 | AiLUTTransform | KI-Farbtransformation |
-| EfficientNet | Bildklassifikation |
+| EfficientNet | Bildklassifikation / Szenenerkennung |
 | RealHATGAN | HDR-Enhancement |
 
 ## Download
 
-### Linux
-```bash
-# Installer von GitHub Releases herunterladen
-# FlipsiColor-vX.Y.Z-Linux-x64-Installer.run
-chmod +x FlipsiColor-*.run
-./FlipsiColor-*.run
-```
-
 ### Windows
 ```
-FlipsiColor-vX.Y.Z-Windows-x64-Installer.exe ausführen.
+FlipsiColor-X.Y.Z-setup.exe herunterladen und ausführen.
+(Inno Setup Installer — installiert automatisch)
 ```
+
+### Linux (Ubuntu/Debian)
+```bash
+# .deb-Paket installieren
+sudo dpkg -i FlipsiColor-X.Y.Z-linux.deb
+```
+
+### Linux (universell)
+```bash
+# AppImage — keine Installation nötig
+chmod +x FlipsiColor-X.Y.Z.AppImage
+./FlipsiColor-X.Y.Z.AppImage
+```
+
+### Systemanforderungen
+- **Windows:** 10 (19041+) oder neuer
+- **Linux:** Ubuntu 20.04+ / Debian 11+
+- **RAM:** 8 GB minimum
+- **GPU:** Empfohlen (DirectML auf Windows, CPU auf Linux)
+- **FFmpeg:** Linux: `apt install ffmpeg`
+- **libraw:** Linux: `apt install libraw-dev`
+- **Optional:** OpenColorIO Tools (`apt install opencolorio-tools` für LUT-Baking)
 
 ## Entwicklung
 
@@ -95,7 +115,7 @@ Wir suchen Contributors! Siehe [CONTRIBUTING.md](CONTRIBUTING.md) für Build-Anl
 - **Idee:** Fabian Kirchweger
 - **Entwicklung:** J.A.R.V.I.S. (Hermes Agent)
 
-### Verwendete KI-Modelle
+### Verwendete KI-Modelle (Entwicklung)
 
 | Modell | Rolle |
 |--------|-------|
