@@ -439,13 +439,40 @@ public sealed class ImagePipeline : IDisposable
                 else
                 {
                     // Lanczos Fallback — bessere Qualität als Bicubic (v0.5.0: MarcoRavich's Vorschlag)
+                    // Quelle: https://blog.trixpark.com/scaling-video-with-ffmpeg-tips-and-tricks-for-optimal-results/
+                    // Der Artikel empfiehlt für Upscaling:
+                    //   1. Lanczos-Interpolation (schärfer als Bicubic)
+                    //   2. Leichte Nachschärfung nach dem Upscaling
+                    //   3. Noise Reduction — Rauschen wird beim Upscaling sichtbarer
                     var zielBreite = bild.Width * param.HochskalierenFaktor;
                     var zielHoehe = bild.Height * param.HochskalierenFaktor;
                     var lanczos = new Mat();
                     Cv2.Resize(bild, lanczos, new OpenCvSharp.Size(zielBreite, zielHoehe), 0, 0, InterpolationFlags.Lanczos4);
                     bild.Dispose();
                     bild = lanczos;
-                    Log.Information("Lanczos Upscaling (KI deaktiviert): {Faktor}x → {Breite}x{Hoehe}",
+
+                    // Leichte Nachschärfung — gleicht den Detailverlust gegenüber KI-Upscaling aus
+                    var sharpenKernel = new Mat(3, 3, MatType.CV_32FC1);
+                    sharpenKernel.Set(0, 0, 0f);    sharpenKernel.Set(0, 1, -0.3f); sharpenKernel.Set(0, 2, 0f);
+                    sharpenKernel.Set(1, 0, -0.3f); sharpenKernel.Set(1, 1, 2.2f);  sharpenKernel.Set(1, 2, -0.3f);
+                    sharpenKernel.Set(2, 0, 0f);    sharpenKernel.Set(2, 1, -0.3f); sharpenKernel.Set(2, 2, 0f);
+                    var geschärft = new Mat();
+                    Cv2.Filter2D(bild, geschärft, -1, sharpenKernel);
+                    sharpenKernel.Dispose();
+                    bild.Dispose();
+                    bild = geschärft;
+
+                    // Noise Reduction — Rauschen wird beim Upscaling verstärkt sichtbar
+                    // Nur anwenden wenn nicht ohnehin schon KI-Denoising läuft
+                    if (!param.KIDenoisingAktiv && param.LuminanzRauschen > 0.01f)
+                    {
+                        var entrauscht = new Mat();
+                        Cv2.FastNlMeansDenoisingColored(bild, entrauscht, 3, 3, 7, 21);
+                        bild.Dispose();
+                        bild = entrauscht;
+                    }
+
+                    Log.Information("Lanczos Upscaling + Nachschärfung (KI deaktiviert): {Faktor}x → {Breite}x{Hoehe}",
                         param.HochskalierenFaktor, bild.Width, bild.Height);
                 }
             }
