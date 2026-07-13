@@ -169,6 +169,7 @@ public static class Lokalisierung
         ["Filter.Bilder"] = "*.jpg;*.jpeg;*.png;*.tif;*.tiff;*.bmp;*.cr2;*.cr3;*.nef;*.arw;*.dng;*.orf;*.rw2",
         ["Filter.Videos"] = "*.mp4;*.mov;*.avi;*.mkv;*.mxf",
         ["Filter.LUT"] = "*.cube",
+        ["Sidebar.Logs"] = "📋 Logs",
     };
 
     private static readonly Dictionary<string, string> En = new()
@@ -321,6 +322,7 @@ public static class Lokalisierung
         ["Filter.Bilder"] = "*.jpg;*.jpeg;*.png;*.tif;*.tiff;*.bmp;*.cr2;*.cr3;*.nef;*.arw;*.dng;*.orf;*.rw2",
         ["Filter.Videos"] = "*.mp4;*.mov;*.avi;*.mkv;*.mxf",
         ["Filter.LUT"] = "*.cube",
+        ["Sidebar.Logs"] = "📋 Logs",
     };
 
     /// <summary>
