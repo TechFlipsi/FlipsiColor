@@ -309,6 +309,16 @@
                                Foreground="{DynamicResource TextSecondaryBrush}"
                                VerticalAlignment="Bottom" Margin="0,24,0,0"
                                TextWrapping="Wrap"/>
+
+                    <!-- Logs öffnen (dezent, unten) -->
+                    <Button Content="📋 Logs"
+                            Command="{Binding LogsOeffnenCommand}"
+                            Classes="secondary"
+                            FontSize="10"
+                            Padding="6,3"
+                            HorizontalAlignment="Left"
+                            Margin="0,12,0,0"
+                            ToolTip.Tip="Logs-Ordner im Dateimanager öffnen"/>
                 </StackPanel>
             </ScrollViewer>
         </Border>

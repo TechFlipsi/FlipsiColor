@@ -945,6 +945,35 @@ public partial class MainViewModel : ObservableObject, IDisposable
         }
     }
 
+    // ===== Logs öffnen =====
+
+    [RelayCommand]
+    private void LogsOeffnen()
+    {
+        try
+        {
+            var logDir = Path.Combine(
+                Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
+                "FlipsiColor", "Logs");
+            if (!Directory.Exists(logDir))
+                Directory.CreateDirectory(logDir);
+
+            // Plattform-spezifisch: Ordner im Dateimanager öffnen
+            var psi = new System.Diagnostics.ProcessStartInfo
+            {
+                FileName = logDir,
+                UseShellExecute = true,
+                Verb = "open"
+            };
+            System.Diagnostics.Process.Start(psi);
+        }
+        catch (Exception ex)
+        {
+            Serilog.Log.Error(ex, "Logs-Ordner konnte nicht geöffnet werden");
+            StatusText = $"Fehler: {ex.Message}";
+        }
+    }
+
     public void Dispose()
     {
         _imagePipeline.Dispose();
