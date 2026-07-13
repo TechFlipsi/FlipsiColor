@@ -49,6 +49,24 @@ public sealed class Settings
     // Video-Backend: FFmpeg (Standard) oder VapourSynth (optional, Frame-Level-Processing)
     public VideoBackend VideoBackend { get; set; } = VideoBackend.FFmpeg;
 
+    // ── Farbmanagement (v0.5.0) ──
+    public ColorManagementMode ColorManagement { get; set; } = ColorManagementMode.Standard;
+    public string? OCIOConfigPfad { get; set; }
+    public string? OCIOSourceColorSpace { get; set; } = "ACEScg";
+    public string? OCIODisplay { get; set; } = "sRGB";
+    public string? OCIOView { get; set; } = "Filmic";
+    public string? OCIOLook { get; set; }
+    public OCIOEngine OCIOEngineMode { get; set; } = OCIOEngine.LUTBaking;
+
+    // ── Pro-Funktions KI-Toggles (v0.5.0) ──
+    // Default: alle true — bestehendes Verhalten für User die nichts ändern wollen.
+    public bool KIDenoisingAktiv { get; set; } = true;
+    public bool KISchaerfungAktiv { get; set; } = true;
+    public bool KIUpscalingAktiv { get; set; } = true;
+    public bool KIGesichtswiederherstellungAktiv { get; set; } = true;
+    public bool KIFarbstilAktiv { get; set; } = true;
+    public bool KISzenenklassifizierungAktiv { get; set; } = true;
+
     // Fenster
     public int FensterBreite { get; set; } = 1200;
     public int FensterHoehe { get; set; } = 800;
