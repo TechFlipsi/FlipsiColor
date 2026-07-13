@@ -37,6 +37,32 @@ public enum VideoBackend
 }
 
 /// <summary>
+/// Farbmanagement-Modus — bestimmt wie Farben verwaltet und transformiert werden.
+/// Standard = ProPhoto RGB Arbeitsfarbraum (bestehend).
+/// OpenColorIO = OCIO-basiertes Farbmanagement mit Config-Datei (.ocio).
+/// </summary>
+public enum ColorManagementMode
+{
+    /// <summary>Standard — ProPhoto RGB + StyleLUT (bestehendes Verhalten).</summary>
+    Standard,
+    /// <summary>OpenColorIO — industrie-standard Farbmanagement via .ocio Config.</summary>
+    OpenColorIO
+}
+
+/// <summary>
+/// OCIO-Engine — wie die OCIO-Transform angewendet wird.
+/// LUTBaking = bakt .cube LUT via ociobakelut CLI → nutzt bestehende StyleLUT (keine native Lib nötig).
+/// Native = direkter OCIO-Processor via OCIOSharp C# Bindings (höchste Präzision, benötigt libOpenColorIO).
+/// </summary>
+public enum OCIOEngine
+{
+    /// <summary>LUT-Baking — bakt .cube LUT via ociobakelut, nutzt bestehende StyleLUT-Pipeline. Keine native Library nötig.</summary>
+    LUTBaking,
+    /// <summary>Native — direkter OCIO-Processor via C# Bindings. Höchste Präzision, benötigt libOpenColorIO.</summary>
+    Native
+}
+
+/// <summary>
 /// Pipeline-Parameter für Bild- und Videokorrektur
 /// </summary>
 public sealed class PipelineParams
@@ -112,4 +138,79 @@ public sealed class PipelineParams
     /// Wenn null/leer → EXIF-Daten werden verwendet (bestehendes Verhalten).
     /// </summary>
     public string? ManuellesObjektiv { get; set; }
+
+    // ── Pro-Funktions KI-Toggles (v0.5.0) ──
+    // Wenn true → KI-Modell wird verwendet. Wenn false → klassische/fallback Methode.
+    // Default: alle true (bestehendes Verhalten für User die keine Änderungen wollen).
+
+    /// <summary>
+    /// KI-Denoising (NAFNet) aktivieren. Wenn false → klassische Gaussian/Median-Filterung.
+    /// </summary>
+    public bool KIDenoisingAktiv { get; set; } = true;
+
+    /// <summary>
+    /// KI-Schärfung (RestormerLight) aktivieren. Wenn false → klassische Convolution-Schärfung.
+    /// </summary>
+    public bool KISchaerfungAktiv { get; set; } = true;
+
+    /// <summary>
+    /// KI-Hochskalieren (RealESRGAN/RealHATGAN) aktivieren. Wenn false → Bicubic-Upscaling.
+    /// </summary>
+    public bool KIUpscalingAktiv { get; set; } = true;
+
+    /// <summary>
+    /// KI-Gesichtswiederherstellung (CodeFormer) aktivieren. Wenn false → keine Gesichtskorrektur.
+    /// </summary>
+    public bool KIGesichtswiederherstellungAktiv { get; set; } = true;
+
+    /// <summary>
+    /// KI-Farbstil (AiLUTTransform) aktivieren. Wenn false → manuelle Sättigung/Vibranz.
+    /// </summary>
+    public bool KIFarbstilAktiv { get; set; } = true;
+
+    /// <summary>
+    /// KI-Szenenklassifizierung (EfficientNet) aktivieren. Wenn false → keine automatische Szenen-Erkennung.
+    /// Nur relevant im Turbo/SmartLearn-Modus.
+    /// </summary>
+    public bool KISzenenklassifizierungAktiv { get; set; } = true;
+
+    // ── OpenColorIO (v0.5.0) ──
+
+    /// <summary>
+    /// Farbmanagement-Modus. Standard = ProPhoto RGB, OpenColorIO = OCIO-basiert.
+    /// </summary>
+    public ColorManagementMode ColorManagement { get; set; } = ColorManagementMode.Standard;
+
+    /// <summary>
+    /// Pfad zur .ocio Config-Datei. Nur relevant wenn ColorManagement == OpenColorIO.
+    /// </summary>
+    public string? OCIOConfigPfad { get; set; }
+
+    /// <summary>
+    /// Source Color Space (z.B. "ACEScg", "sRGB", "linear Rec.709").
+    /// Nur relevant wenn ColorManagement == OpenColorIO.
+    /// </summary>
+    public string? OCIOSourceColorSpace { get; set; }
+
+    /// <summary>
+    /// Display (z.B. "sRGB", "Rec.2020"). Nur relevant wenn ColorManagement == OpenColorIO.
+    /// </summary>
+    public string? OCIODisplay { get; set; }
+
+    /// <summary>
+    /// View Transform (z.B. "Filmic", "ACES"). Nur relevant wenn ColorManagement == OpenColorIO.
+    /// </summary>
+    public string? OCIOView { get; set; }
+
+    /// <summary>
+    /// Optionaler OCIO Look (Creative Grade). Leer = kein Look.
+    /// Nur relevant wenn ColorManagement == OpenColorIO.
+    /// </summary>
+    public string? OCIOLook { get; set; }
+
+    /// <summary>
+    /// OCIO-Engine: LUTBaking (Standard, keine native Lib) oder Native (höchste Präzision).
+    /// Nur relevant wenn ColorManagement == OpenColorIO.
+    /// </summary>
+    public OCIOEngine OCIOEngineMode { get; set; } = OCIOEngine.LUTBaking;
 }

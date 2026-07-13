@@ -32,7 +32,7 @@ public partial class MainViewModel : ObservableObject, IDisposable
     private readonly AutoUpdater _autoUpdater;
     private readonly ClipMerger _clipMerger;
 
-    [ObservableProperty] private string _title = "FlipsiColor v0.4.2";
+    [ObservableProperty] private string _title = "FlipsiColor v0.5.0";
     [ObservableProperty] private bool _gpuVerfuegbar;
     [ObservableProperty] private string _gpuName = "";
     [ObservableProperty] private bool _updateVerfuegbar;
@@ -100,6 +100,92 @@ public partial class MainViewModel : ObservableObject, IDisposable
     [ObservableProperty] private bool _installationLaeuft;
     [ObservableProperty] private bool _vapourSynthInstallUiSichtbar;
     [ObservableProperty] private bool _vapourSynthAktivSichtbar;
+
+    // ── Pro-Funktions KI-Toggles (v0.5.0) ──
+    [ObservableProperty] private bool _kIDenoisingAktiv = true;
+    [ObservableProperty] private bool _kISchaerfungAktiv = true;
+    [ObservableProperty] private bool _kIUpscalingAktiv = true;
+    [ObservableProperty] private bool _kIGesichtswiederherstellungAktiv = true;
+    [ObservableProperty] private bool _kIFarbstilAktiv = true;
+    [ObservableProperty] private bool _kISzenenklassifizierungAktiv = true;
+
+    // ── OpenColorIO (v0.5.0) ──
+    [ObservableProperty] private int _colorManagementIndex; // 0=Standard, 1=OpenColorIO
+    [ObservableProperty] private string? _oCIOConfigPfad;
+    [ObservableProperty] private string _oCIOConfigName = "";
+    [ObservableProperty] private string? _oCIOSourceColorSpace = "ACEScg";
+    [ObservableProperty] private string? _oCIODisplay = "sRGB";
+    [ObservableProperty] private string? _oCIOView = "Filmic";
+    [ObservableProperty] private string? _oCIOLook;
+    [ObservableProperty] private int _oCIOEngineIndex; // 0=LUTBaking, 1=Native
+    [ObservableProperty] private bool _oCIOPanelSichtbar; // true wenn ColorManagementIndex == 1
+    [ObservableProperty] private ObservableCollection<string> _oCIOColorSpaces = [];
+    [ObservableProperty] private ObservableCollection<string> _oCIODisplays = [];
+    [ObservableProperty] private ObservableCollection<string> _oCIOViews = [];
+    [ObservableProperty] private ObservableCollection<string> _oCIOLooks = [];
+
+    /// <summary>
+    /// Wird aufgerufen wenn ColorManagementIndex sich ändert (v0.5.0).
+    /// Steuert die Sichtbarkeit des OCIO-Panels.
+    /// </summary>
+    partial void OnColorManagementIndexChanged(int value)
+    {
+        OCIOPanelSichtbar = value == 1;
+    }
+
+    /// <summary>
+    /// Lädt eine OCIO Config-Datei und befüllt die Dropdown-Listen (v0.5.0).
+    /// </summary>
+    [RelayCommand]
+    private void OCIOConfigLaden()
+    {
+        try
+        {
+            // Default-Config erstellen falls keine gewählt
+            if (string.IsNullOrEmpty(OCIOConfigPfad))
+            {
+                var defaultPfad = Color.OCIOManager.DefaultConfigErstellen();
+                if (defaultPfad == null)
+                {
+                    StatusText = "OCIO: Default-Config konnte nicht erstellt werden";
+                    return;
+                }
+                OCIOConfigPfad = defaultPfad;
+            }
+
+            var parser = new Color.OCIOConfigParser();
+            var daten = parser.Laden(OCIOConfigPfad!);
+            if (daten == null)
+            {
+                StatusText = "OCIO: Config konnte nicht geladen werden";
+                return;
+            }
+
+            OCIOConfigName = Path.GetFileName(OCIOConfigPfad);
+            OCIOColorSpaces.Clear();
+            foreach (var (name, _, _) in daten.ColorSpaces)
+                OCIOColorSpaces.Add(name);
+
+            OCIODisplays.Clear();
+            foreach (var d in daten.Displays)
+                OCIODisplays.Add(d);
+
+            OCIOViews.Clear();
+            if (!string.IsNullOrEmpty(OCIODisplay) && daten.Views.TryGetValue(OCIODisplay!, out var views))
+                foreach (var v in views) OCIOViews.Add(v);
+
+            OCIOLooks.Clear();
+            OCIOLooks.Add(""); // Kein Look
+            foreach (var (name, _) in daten.Looks)
+                OCIOLooks.Add(name);
+
+            StatusText = $"OCIO Config geladen: {daten.ColorSpaces.Count} Color Spaces, {daten.Displays.Count} Displays";
+        }
+        catch (Exception ex)
+        {
+            StatusText = $"OCIO Fehler: {ex.Message}";
+        }
+    }
     private readonly VapourSynthInstaller _vapourSynthInstaller = new();
 
     /// <summary>Wird aufgerufen wenn VideoBackend sich ändert — aktualisiert Sichtbarkeit.</summary>
@@ -309,7 +395,22 @@ public partial class MainViewModel : ObservableObject, IDisposable
             Modus = ModusFromIndex(),
             HochskalierenFaktor = HochskalierenFaktor,
             GesichtswiederherstellungAktiv = GesichtswiederherstellungAktiv,
-            StyleLutPfad = StyleLutPfad
+            StyleLutPfad = StyleLutPfad,
+            // v0.5.0: Pro-Funktions KI-Toggles
+            KIDenoisingAktiv = KIDenoisingAktiv,
+            KISchaerfungAktiv = KISchaerfungAktiv,
+            KIUpscalingAktiv = KIUpscalingAktiv,
+            KIGesichtswiederherstellungAktiv = KIGesichtswiederherstellungAktiv,
+            KIFarbstilAktiv = KIFarbstilAktiv,
+            KISzenenklassifizierungAktiv = KISzenenklassifizierungAktiv,
+            // v0.5.0: OpenColorIO
+            ColorManagement = ColorManagementIndex == 1 ? ColorManagementMode.OpenColorIO : ColorManagementMode.Standard,
+            OCIOConfigPfad = OCIOConfigPfad,
+            OCIOSourceColorSpace = OCIOSourceColorSpace,
+            OCIODisplay = OCIODisplay,
+            OCIOView = OCIOView,
+            OCIOLook = OCIOLook,
+            OCIOEngineMode = OCIOEngineIndex == 1 ? OCIOEngine.Native : OCIOEngine.LUTBaking
         };
 
         try
@@ -467,7 +568,22 @@ public partial class MainViewModel : ObservableObject, IDisposable
             Modus = ModusFromIndex(),
             HochskalierenFaktor = 1,
             GesichtswiederherstellungAktiv = GesichtswiederherstellungAktiv,
-            StyleLutPfad = StyleLutPfad
+            StyleLutPfad = StyleLutPfad,
+            // v0.5.0: Pro-Funktions KI-Toggles
+            KIDenoisingAktiv = KIDenoisingAktiv,
+            KISchaerfungAktiv = KISchaerfungAktiv,
+            KIUpscalingAktiv = KIUpscalingAktiv,
+            KIGesichtswiederherstellungAktiv = KIGesichtswiederherstellungAktiv,
+            KIFarbstilAktiv = KIFarbstilAktiv,
+            KISzenenklassifizierungAktiv = KISzenenklassifizierungAktiv,
+            // v0.5.0: OpenColorIO
+            ColorManagement = ColorManagementIndex == 1 ? ColorManagementMode.OpenColorIO : ColorManagementMode.Standard,
+            OCIOConfigPfad = OCIOConfigPfad,
+            OCIOSourceColorSpace = OCIOSourceColorSpace,
+            OCIODisplay = OCIODisplay,
+            OCIOView = OCIOView,
+            OCIOLook = OCIOLook,
+            OCIOEngineMode = OCIOEngineIndex == 1 ? OCIOEngine.Native : OCIOEngine.LUTBaking
         };
 
         try

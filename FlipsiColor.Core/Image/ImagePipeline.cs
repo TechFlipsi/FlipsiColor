@@ -37,6 +37,9 @@ public sealed class ImagePipeline : IDisposable
     private readonly ColorCalibration _colorCalibration;
     private readonly InferenceEngine _inferenceEngine;
     private readonly Pipeline _pipelineLogik;
+#pragma warning disable CS0649 // _ocioManager wird on-demand in OCIOTransformAnwenden erstellt
+    private readonly OCIOManager? _ocioManager;
+#pragma warning restore CS0649
 
     // EXIF-Daten — werden in BildLaden gelesen, für LensCorrector verwendet
     private string? _exifKamera;
@@ -207,7 +210,8 @@ public sealed class ImagePipeline : IDisposable
         try
         {
             // ── Turbo / SmartLearn: Szene klassifizieren, Parameter anpassen ──
-            if (param.Modus is BetriebsModus.Turbo or BetriebsModus.SmartLearn)
+            // v0.5.0: KI-Szenenklassifizierung kann deaktiviert werden → dann klassisch
+            if (param.Modus is BetriebsModus.Turbo or BetriebsModus.SmartLearn && param.KISzenenklassifizierungAktiv)
             {
                 bild = SzenenKlassifizierenUndParameterAnpassen(bild, param);
             }
@@ -268,7 +272,8 @@ public sealed class ImagePipeline : IDisposable
             }
 
             // 5. Sättigung & Vibranz — oder KI-LUT (AiLUTTransform)
-            if (!string.IsNullOrEmpty(param.AiStilName))
+            // v0.5.0: KI-Farbstil kann deaktiviert werden → dann nur manuelle Sättigung
+            if (!string.IsNullOrEmpty(param.AiStilName) && param.KIFarbstilAktiv)
             {
                 // KI-basierte Stil-Transformation statt manuelle Sättigung
                 var kiResult = AiLutTransformAnwenden(bild, param.AiStilName, param.Intensitaet);
@@ -305,6 +310,21 @@ public sealed class ImagePipeline : IDisposable
                 }
             }
 
+            // 5c. OpenColorIO — OCIO-Transform anwenden (v0.5.0)
+            // Wird nach StyleLUT angewendet, da OCIO die vollständige Color Pipeline übernimmt.
+            // Im LUTBaking-Modus: bakt .cube LUT via ociobakelut → wendet sie via StyleLUT an.
+            // Im Native-Modus: direkter Processor (zukünftig via OCIOSharp).
+            if (param.ColorManagement == ColorManagementMode.OpenColorIO && !string.IsNullOrEmpty(param.OCIOConfigPfad))
+            {
+                var ocioResult = OCIOTransformAnwenden(bild, param);
+                if (ocioResult != null)
+                {
+                    bild.Dispose();
+                    bild = ocioResult;
+                    Log.Information("OpenColorIO Transform angewendet (Engine={Engine})", param.OCIOEngineMode);
+                }
+            }
+
             // 6. Schärfe
             if (Math.Abs(param.SchaerfeBetrag) > 0.01f)
             {
@@ -315,7 +335,8 @@ public sealed class ImagePipeline : IDisposable
 
             // 7. Rauschunterdrückung — KI-Denoising wenn LuminanzRauschen > 0.3,
             //    sonst klassische GaussianBlur-basierte Methode
-            if (param.LuminanzRauschen > 0.3f || param.ChrominanzRauschen > 0.3f)
+            // v0.5.0: KI-Denoising kann deaktiviert werden → klassische Methode
+            if ((param.LuminanzRauschen > 0.3f || param.ChrominanzRauschen > 0.3f) && param.KIDenoisingAktiv)
             {
                 var kiResult = KiDenoisingAnwenden(bild, param.LuminanzRauschen, param.Intensitaet);
                 if (kiResult != null)
@@ -387,7 +408,8 @@ public sealed class ImagePipeline : IDisposable
             }
 
             // 11. Gesichtswiederherstellung (CodeFormer) — wenn aktiviert
-            if (param.GesichtswiederherstellungAktiv)
+            // v0.5.0: KI-Gesichtswiederherstellung kann deaktiviert werden
+            if (param.GesichtswiederherstellungAktiv && param.KIGesichtswiederherstellungAktiv)
             {
                 var fidelity = _pipelineLogik.CodeFormerFidelityWeight();
                 var faceResult = CodeFormerAnwenden(bild, fidelity);
@@ -399,15 +421,31 @@ public sealed class ImagePipeline : IDisposable
                 }
             }
 
-            // 12. Hochskalieren (RealESRGAN) — wenn Faktor > 1
+            // 12. Hochskalieren — KI (RealESRGAN) oder Bicubic Fallback
+            // v0.5.0: KI-Upscaling kann deaktiviert werden → Bicubic
             if (param.HochskalierenFaktor > 1)
             {
-                var upscaled = RealEsrganUpscaling(bild, param.HochskalierenFaktor);
-                if (upscaled != null)
+                if (param.KIUpscalingAktiv)
                 {
+                    var upscaled = RealEsrganUpscaling(bild, param.HochskalierenFaktor);
+                    if (upscaled != null)
+                    {
+                        bild.Dispose();
+                        bild = upscaled;
+                        Log.Information("RealESRGAN Upscaling: {Faktor}x → {Breite}x{Hoehe}",
+                            param.HochskalierenFaktor, bild.Width, bild.Height);
+                    }
+                }
+                else
+                {
+                    // Bicubic Fallback
+                    var zielBreite = bild.Width * param.HochskalierenFaktor;
+                    var zielHoehe = bild.Height * param.HochskalierenFaktor;
+                    var bicubic = new Mat();
+                    Cv2.Resize(bild, bicubic, new OpenCvSharp.Size(zielBreite, zielHoehe), 0, 0, InterpolationFlags.Cubic);
                     bild.Dispose();
-                    bild = upscaled;
-                    Log.Information("RealESRGAN Upscaling: {Faktor}x → {Breite}x{Hoehe}",
+                    bild = bicubic;
+                    Log.Information("Bicubic Upscaling (KI deaktiviert): {Faktor}x → {Breite}x{Hoehe}",
                         param.HochskalierenFaktor, bild.Width, bild.Height);
                 }
             }
@@ -860,6 +898,79 @@ public sealed class ImagePipeline : IDisposable
         catch (Exception ex)
         {
             Log.Warning("StyleLUT-Anwendung fehlgeschlagen: {Fehler}", SecurityValidator.BereinigeExceptionFuerLog(ex.Message));
+            return null;
+        }
+    }
+
+    /// <summary>
+    /// Wendet eine OpenColorIO Transform auf das Bild an (v0.5.0).
+    /// Im LUTBaking-Modus: bakt .cube LUT via ociobakelut → wendet sie via StyleLUT an.
+    /// Im Native-Modus: OCIO-Processor direkt (zukünftig via OCIOSharp).
+    /// </summary>
+    private Mat? OCIOTransformAnwenden(Mat bild, PipelineParams param)
+    {
+        try
+        {
+            // OCIOManager bei Bedarf erstellen
+            var ocio = _ocioManager;
+            if (ocio == null || !ocio.IstBereit)
+            {
+                // Einmalig initialisieren
+                ocio = new OCIOManager();
+                if (!ocio.ConfigLaden(param.OCIOConfigPfad!))
+                {
+                    Log.Warning("OCIO: Config konnte nicht geladen werden — überspringe Transform");
+                    ocio.Dispose();
+                    return null;
+                }
+            }
+
+            if (param.OCIOEngineMode == OCIOEngine.LUTBaking)
+            {
+                // LUT backen und via StyleLUT anwenden
+                var lutPfad = ocio.LutBacken(param);
+                if (lutPfad == null)
+                {
+                    Log.Warning("OCIO: LUT-Baking fehlgeschlagen — überspringe Transform");
+                    return null;
+                }
+
+                // OCIO-LUT als temporäre StyleLUT verwenden
+                var ocioLut = new StyleLUT();
+                if (!ocioLut.Laden(lutPfad))
+                {
+                    Log.Warning("OCIO: Gebackene LUT konnte nicht geladen werden");
+                    ocioLut.Dispose();
+                    return null;
+                }
+
+                var result = ocioLut.Anwenden(bild);
+                ocioLut.Dispose();
+                return result;
+            }
+            else
+            {
+                // Native Modus — zukünftig via OCIOSharp
+                // Aktuell: Fallback auf LUT-Baking mit Warnung
+                Log.Warning("OCIO: Native-Modus noch nicht implementiert — verwende LUT-Baking Fallback");
+                var lutPfad = ocio.LutBacken(param);
+                if (lutPfad == null) return null;
+
+                var ocioLut = new StyleLUT();
+                if (!ocioLut.Laden(lutPfad))
+                {
+                    ocioLut.Dispose();
+                    return null;
+                }
+
+                var result = ocioLut.Anwenden(bild);
+                ocioLut.Dispose();
+                return result;
+            }
+        }
+        catch (Exception ex)
+        {
+            Log.Warning("OCIO Transform fehlgeschlagen: {Fehler}", SecurityValidator.BereinigeExceptionFuerLog(ex.Message));
             return null;
         }
     }

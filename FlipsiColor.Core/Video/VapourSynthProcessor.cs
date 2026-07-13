@@ -271,11 +271,12 @@ public sealed class VapourSynthProcessor : IDisposable
         bool aiLutVerfuegbar = File.Exists(Path.Combine(ModellVerzeichnis, "AiLUTTransform.onnx"));
 
         // Aktivierungs-Bedingungen für KI-Modelle
-        bool nafnetAktiv = param.LuminanzRauschen > 0.01f && nafnetVerfuegbar;
-        bool restormerAktiv = param.SchaerfeBetrag > 0.01f && restormerVerfuegbar;
-        bool upscalingAktiv = param.HochskalierenFaktor > 1 && (realEsrganVerfuegbar || realHatGanVerfuegbar);
-        bool codeFormerAktiv = param.GesichtswiederherstellungAktiv && codeFormerVerfuegbar;
-        bool aiLutAktiv = !string.IsNullOrWhiteSpace(param.AiStilName) && aiLutVerfuegbar;
+        // v0.5.0: Pro-Funktions KI-Toggles — wenn deaktiviert, wird das jeweilige Modell übersprungen
+        bool nafnetAktiv = param.LuminanzRauschen > 0.01f && nafnetVerfuegbar && param.KIDenoisingAktiv;
+        bool restormerAktiv = param.SchaerfeBetrag > 0.01f && restormerVerfuegbar && param.KISchaerfungAktiv;
+        bool upscalingAktiv = param.HochskalierenFaktor > 1 && (realEsrganVerfuegbar || realHatGanVerfuegbar) && param.KIUpscalingAktiv;
+        bool codeFormerAktiv = param.GesichtswiederherstellungAktiv && codeFormerVerfuegbar && param.KIGesichtswiederherstellungAktiv;
+        bool aiLutAktiv = !string.IsNullOrWhiteSpace(param.AiStilName) && aiLutVerfuegbar && param.KIFarbstilAktiv;
 
         // Mindestens ein KI-Modell aktiv → ort-Plugin needed
         bool kiModelleAktiv = nafnetAktiv || restormerAktiv || upscalingAktiv || codeFormerAktiv || aiLutAktiv;
@@ -541,6 +542,38 @@ public sealed class VapourSynthProcessor : IDisposable
             sb.AppendLine("# KI-Modelle geben 32-bit float RGB (RGBS) zurück → konvertieren für Output");
             sb.AppendLine("if clip.format.id == vs.RGBS:");
             sb.AppendLine("    clip = core.resize.Bicubic(clip, format=vs.YUV420P8, matrix_in='709', matrix='709')");
+            sb.AppendLine();
+        }
+
+        // ── OpenColorIO (v0.5.0) ──
+        // Wenn OCIO aktiviert ist, wird ein OCIO-Node in die Pipeline eingefügt.
+        // Im VapourSynth-Script wird vs-ocio oder ein LUT-basierter Ansatz verwendet.
+        if (param.ColorManagement == ColorManagementMode.OpenColorIO && !string.IsNullOrEmpty(param.OCIOConfigPfad))
+        {
+            var ocioConfigPython = param.OCIOConfigPfad!.Replace('\\', '/').Replace("'", "\\'");
+            var sourceCS = param.OCIOSourceColorSpace ?? "ACEScg";
+            var display = param.OCIODisplay ?? "sRGB";
+            var view = param.OCIOView ?? "Filmic";
+            var look = param.OCIOLook ?? "";
+
+            sb.AppendLine("# ── OpenColorIO Transform (v0.5.0) ──");
+            sb.AppendLine("try:");
+            sb.AppendLine($"    import os");
+            sb.AppendLine($"    os.environ['OCIO'] = r'{ocioConfigPython}'");
+            sb.AppendLine($"    # OCIO Display Transform: {sourceCS} → {display}/{view}");
+            if (!string.IsNullOrEmpty(look))
+                sb.AppendLine($"    # Look: {look}");
+            // Versuche vs-ocio Plugin, falle zurück auf LUT
+            sb.AppendLine("    try:");
+            sb.AppendLine("        import vsocio");
+            sb.AppendLine($"        clip = vsocio.process(clip, src='{sourceCS}', display='{display}', view='{view}'" +
+                (string.IsNullOrEmpty(look) ? "" : $", look='{look}'") + ")");
+            sb.AppendLine("        print('OCIO: vs-ocio Transform angewendet', file=sys.stderr)");
+            sb.AppendLine("    except ImportError:");
+            sb.AppendLine("        # vs-ocio nicht verfügbar — versuche LUT-basierten Ansatz");
+            sb.AppendLine("        print('OCIO: vs-ocio nicht verfügbar — überspringe (verwende LUT-Baking im C#-Code)', file=sys.stderr)");
+            sb.AppendLine("except Exception as e:");
+            sb.AppendLine("    print(f'OCIO Transform fehlgeschlagen: {e}', file=sys.stderr)");
             sb.AppendLine();
         }
 
