@@ -438,14 +438,14 @@ public sealed class ImagePipeline : IDisposable
                 }
                 else
                 {
-                    // Bicubic Fallback
+                    // Lanczos Fallback — bessere Qualität als Bicubic (v0.5.0: MarcoRavich's Vorschlag)
                     var zielBreite = bild.Width * param.HochskalierenFaktor;
                     var zielHoehe = bild.Height * param.HochskalierenFaktor;
-                    var bicubic = new Mat();
-                    Cv2.Resize(bild, bicubic, new OpenCvSharp.Size(zielBreite, zielHoehe), 0, 0, InterpolationFlags.Cubic);
+                    var lanczos = new Mat();
+                    Cv2.Resize(bild, lanczos, new OpenCvSharp.Size(zielBreite, zielHoehe), 0, 0, InterpolationFlags.Lanczos4);
                     bild.Dispose();
-                    bild = bicubic;
-                    Log.Information("Bicubic Upscaling (KI deaktiviert): {Faktor}x → {Breite}x{Hoehe}",
+                    bild = lanczos;
+                    Log.Information("Lanczos Upscaling (KI deaktiviert): {Faktor}x → {Breite}x{Hoehe}",
                         param.HochskalierenFaktor, bild.Width, bild.Height);
                 }
             }
