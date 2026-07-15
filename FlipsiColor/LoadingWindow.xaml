@@ -6,8 +6,7 @@
         WindowStartupLocation="CenterScreen"
         ResizeMode="NoResize"
         WindowStyle="None"
-        Background="#0F1117"
-        Icon="Assets/flipsicolor.ico">
+        Background="#0F1117">
     <Border Background="#0F1117" CornerRadius="12" Padding="32">
         <StackPanel VerticalAlignment="Center" HorizontalAlignment="Center">
             <!-- Logo -->

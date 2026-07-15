@@ -7,7 +7,6 @@
         Width="1280" Height="800"
         WindowStartupLocation="CenterScreen"
         MinWidth="900" MinHeight="600"
-        Icon="Assets/flipsicolor.ico"
         AllowDrop="True"
         PreviewDragEnter="OnWindowPreviewDragEnter"
         PreviewDragOver="OnWindowPreviewDragOver"

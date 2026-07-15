@@ -24,7 +24,7 @@ internal static class Program
         var isCI = !string.IsNullOrEmpty(Environment.GetEnvironmentVariable("CI"));
 
         Console.WriteLine("════════════════════════════════════════");
-        Console.WriteLine("  FlipsiColor v0.4.2 TestRunner");
+        Console.WriteLine("  FlipsiColor v0.5.2 TestRunner");
         Console.WriteLine("════════════════════════════════════════");
 
         // Logger initialisieren
