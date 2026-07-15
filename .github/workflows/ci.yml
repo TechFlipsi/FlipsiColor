@@ -201,11 +201,15 @@ jobs:
         with:
           files: release-artifacts/*
           body: |
-            ## FlipsiColor ${{ steps.version.outputs.version }} — Logs-Button & Bugfixes
+            ## FlipsiColor ${{ steps.version.outputs.version }} — Bugfix Release
 
-            KI-gestützte Bild- & Videofarbkorrektur für alle Kameras.
+            **v0.5.2: Bugfix — Startup crash on Windows (Issue #8).**
 
-            ### ✨ Neu in v0.5.1
+            Fixed `XamlParseException` caused by missing Icon resource in SingleFile publish mode.
+            The window icon is now embedded in the executable via the csproj `ApplicationIcon` setting,
+            eliminating the runtime XAML `Icon=` attribute that broke under `PublishSingleFile=true`.
+
+            ### ✨ Enthaltene Funktionen aus v0.5.1
             - **Logs-Button** — Dezenter Button in der Sidebar öffnet den Logs-Ordner direkt im Dateimanager
             - **Rechtschreibfix** — "KI-Modelle werden neu heruntergeladen" (Passivform korrigiert)
             - **CI aktualisiert** — GitHub Actions v5 (Node.js 24)

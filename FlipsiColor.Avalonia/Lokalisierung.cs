@@ -22,7 +22,7 @@ public static class Lokalisierung
     private static readonly Dictionary<string, string> De = new()
     {
         // App
-        ["App.Titel"] = "FlipsiColor v0.4.2",
+        ["App.Titel"] = "FlipsiColor v0.5.2",
         ["App.Bereit"] = "Bereit",
 
         // Sidebar
@@ -175,7 +175,7 @@ public static class Lokalisierung
     private static readonly Dictionary<string, string> En = new()
     {
         // App
-        ["App.Titel"] = "FlipsiColor v0.4.2",
+        ["App.Titel"] = "FlipsiColor v0.5.2",
         ["App.Bereit"] = "Ready",
 
         // Sidebar
