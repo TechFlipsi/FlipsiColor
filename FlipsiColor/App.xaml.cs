@@ -24,7 +24,7 @@ public partial class App : System.Windows.Application
 
             var log = Serilog.Log.ForContext<App>();
             log.Information("╔══════════════════════════════════╗");
-            log.Information("║  FlipsiColor v0.5.3 gestartet    ║");
+            log.Information("║  FlipsiColor v0.5.4 gestartet    ║");
             log.Information("║  KI-Farb- & Videokorrektur        ║");
             log.Information("╚══════════════════════════════════╝");
 
@@ -32,8 +32,8 @@ public partial class App : System.Windows.Application
             var settings = Settings.Laden();
             ThemeManager.ApplyTheme(settings.Theme);
 
-            // Sprache anwenden
-            Lokalisierung.SpracheSetzen(settings.Sprache);
+            // Sprache initialisieren (JSON-basiert, Issue #9)
+            Lokalisierung.Initialisieren(settings.Sprache);
 
             // GPU-Erkennung
             GPUInfo.Erkennen();

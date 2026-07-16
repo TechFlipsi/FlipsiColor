@@ -203,7 +203,7 @@ jobs:
           body: |
             ## FlipsiColor ${{ steps.version.outputs.version }} — Language Switcher Release
 
-            **v0.5.3: Language switcher for WPF version (Issue #9).** Added in-app language ComboBox — switch between German and English without restarting. The WPF version now has full DE/EN localization matching the Avalonia version.
+            **v0.5.4: JSON-based localization system (Issue #9 — MarcoRavich's suggestion).** All UI strings are now stored in external JSON files (Assets/i18n/de.json, en.json). Contributors can add new languages by simply copying a JSON file and translating it — no code changes needed.
 
             ### 🌐 v0.5.3 — Sprachumschalter
             - **Language ComboBox** in der Top-Toolbar — wechselt zwischen Deutsch und English
