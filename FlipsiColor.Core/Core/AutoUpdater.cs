@@ -49,7 +49,15 @@ public sealed class AutoUpdater : IDisposable
 
     public AutoUpdater()
     {
-        var versionStr = Assembly.GetEntryAssembly()?.GetName().Version?.ToString(3) ?? "0.2.0";
+        // FIX v0.7.0: Assembly.GetEntryAssembly() gibt bei SingleFile-Publish null/0.0.0.0 zurück
+        var versionStr = "0.7.0";
+        try
+        {
+            var asmVersion = Assembly.GetEntryAssembly()?.GetName().Version;
+            if (asmVersion != null && asmVersion.Major > 0)
+                versionStr = asmVersion.ToString(3);
+        }
+        catch { }
         _aktuelleVersion = new Version(versionStr);
 
         // Ignorierte Version aus Settings laden
@@ -274,12 +282,13 @@ public sealed class AutoUpdater : IDisposable
             // FIX #10: SHA256-Verifikation würde hier erfolgen — derzeit nur Logging
             // In einer Produktionsumgebung sollte der erwartete Hash aus der Release-API kommen
 
-            // FIX: Installer mit UseShellExecute=false starten — keine Shell-Injection möglich
+            // FIX v0.7.0: UseShellExecute=true + Verb=runas für UAC-Prompt (PrivilegesRequired=admin seit v0.5.5)
             Process.Start(new ProcessStartInfo
             {
                 FileName = tempPfad,
-                Arguments = "/S",
-                UseShellExecute = false
+                Arguments = "/SILENT /NOCANCEL /NORESTART",
+                UseShellExecute = true,
+                Verb = "runas"
             });
 
             // Anwendung beenden — plattformneutral via Environment.Exit

@@ -65,6 +65,30 @@
                             Padding="12,6" Margin="0,0,8,0" Cursor="Hand"
                             Visibility="{Binding BildGeladen, Converter={StaticResource BoolToVis}}"/>
 
+                    <!-- ═══ Issue #12: Before/After Slider Toggle ═══ -->
+                    <Button Content="{Binding ., Converter={StaticResource Loc}, ConverterParameter='Toolbar.BeforeAfter'}"
+                            Command="{Binding BeforeAfterToggleCommand}"
+                            Padding="12,6" Margin="0,0,8,0" Cursor="Hand"
+                            Visibility="{Binding BildGeladen, Converter={StaticResource BoolToVis}}"/>
+
+                    <!-- ═══ Issue #16: Undo/Redo Buttons ═══ -->
+                    <Button Content="↶ Undo"
+                            Command="{Binding UndoCommand}"
+                            Padding="8,6" Margin="0,0,4,0" Cursor="Hand"
+                            IsEnabled="{Binding KannUndo}"
+                            Visibility="{Binding BildGeladen, Converter={StaticResource BoolToVis}}"/>
+                    <Button Content="↷ Redo"
+                            Command="{Binding RedoCommand}"
+                            Padding="8,6" Margin="0,0,8,0" Cursor="Hand"
+                            IsEnabled="{Binding KannRedo}"
+                            Visibility="{Binding BildGeladen, Converter={StaticResource BoolToVis}}"/>
+
+                    <!-- ═══ Issue #17: Crop & Straighten Toggle ═══ -->
+                    <Button Content="{Binding ., Converter={StaticResource Loc}, ConverterParameter='Toolbar.Crop'}"
+                            Command="{Binding CropModusToggleCommand}"
+                            Padding="12,6" Margin="0,0,8,0" Cursor="Hand"
+                            Visibility="{Binding BildGeladen, Converter={StaticResource BoolToVis}}"/>
+
                     <!-- Sprache-Umschalter -->
                     <ComboBox x:Name="SpracheComboBox" Width="90" Margin="0,0,8,0"
                               SelectedIndex="{Binding SpracheIndex}"
@@ -425,6 +449,123 @@
                                 <TextBlock Text="{Binding StyleLutName}" FontSize="10"
                                            Foreground="{DynamicResource TextSecondaryBrush}"
                                            Margin="0,0,0,8"/>
+                            </StackPanel>
+                        </Border>
+
+                        <!-- ═══ Issue #13: Presets / Profile ═══ -->
+                        <Border Background="{DynamicResource BgTertiaryBrush}" CornerRadius="8" Padding="12" Margin="0,0,0,8">
+                            <StackPanel>
+                                <TextBlock Text="{Binding ., Converter={StaticResource Loc}, ConverterParameter='Preset.Titel'}" FontWeight="SemiBold" Margin="0,0,0,4"/>
+                                <ComboBox ItemsSource="{Binding PresetNamen}"
+                                          SelectedItem="{Binding AusgewaehltesPreset}"
+                                          Margin="0,0,0,4" Cursor="Hand"/>
+                                <StackPanel Orientation="Horizontal" Margin="0,4,0,0">
+                                    <Button Content="{Binding ., Converter={StaticResource Loc}, ConverterParameter='Preset.Anwenden'}"
+                                            Command="{Binding PresetAnwendenCommand}"
+                                            Padding="6,3" FontSize="11" Margin="0,0,4,0" Cursor="Hand"/>
+                                    <Button Content="{Binding ., Converter={StaticResource Loc}, ConverterParameter='Preset.Speichern'}"
+                                            Command="{Binding PresetSpeichernCommand}"
+                                            Padding="6,3" FontSize="11" Cursor="Hand"/>
+                                </StackPanel>
+                            </StackPanel>
+                        </Border>
+
+                        <!-- ═══ Issue #14: Histogramm ═══ -->
+                        <Border Background="{DynamicResource BgTertiaryBrush}" CornerRadius="8" Padding="12" Margin="0,0,0,8"
+                                Visibility="{Binding BildGeladen, Converter={StaticResource BoolToVis}}">
+                            <StackPanel>
+                                <TextBlock Text="{Binding ., Converter={StaticResource Loc}, ConverterParameter='Histogramm.Titel'}" FontWeight="SemiBold" Margin="0,0,0,4"/>
+                                <Canvas Width="240" Height="80" Margin="0,4,0,0" x:Name="HistogrammCanvas">
+                                    <!-- R/G/B/Luminanz Polylines werden im Code-Behind gezeichnet -->
+                                </Canvas>
+                            </StackPanel>
+                        </Border>
+
+                        <!-- ═══ Issue #15: Batch-Verarbeitung ═══ -->
+                        <Border Background="{DynamicResource BgTertiaryBrush}" CornerRadius="8" Padding="12" Margin="0,0,0,8">
+                            <StackPanel>
+                                <TextBlock Text="{Binding ., Converter={StaticResource Loc}, ConverterParameter='Batch.Titel'}" FontWeight="SemiBold" Margin="0,0,0,4"/>
+                                <TextBlock Text="{Binding ., Converter={StaticResource Loc}, ConverterParameter='Batch.Beschreibung'}"
+                                           FontSize="9" Foreground="{DynamicResource TextSecondaryBrush}" Margin="0,0,0,8"/>
+                                <StackPanel Orientation="Horizontal" Margin="0,0,0,4">
+                                    <Button Content="{Binding ., Converter={StaticResource Loc}, ConverterParameter='Batch.Hinzufuegen'}"
+                                            Command="{Binding BatchDateienHinzufuegenCommand}"
+                                            Padding="6,3" FontSize="11" Margin="0,0,4,0" Cursor="Hand"/>
+                                    <Button Content="{Binding ., Converter={StaticResource Loc}, ConverterParameter='Batch.Starten'}"
+                                            Command="{Binding BatchStartenCommand}"
+                                            Padding="6,3" FontSize="11" Margin="0,0,4,0" Cursor="Hand"/>
+                                    <Button Content="{Binding ., Converter={StaticResource Loc}, ConverterParameter='Batch.Pausieren'}"
+                                            Command="{Binding BatchPausierenCommand}"
+                                            Padding="6,3" FontSize="11" Cursor="Hand"/>
+                                </StackPanel>
+                                <ProgressBar Value="{Binding BatchFortschritt}" Maximum="1" Height="4" Margin="0,4,0,4"
+                                             Visibility="{Binding BatchLaeuft, Converter={StaticResource BoolToVis}}"/>
+                                <TextBlock Text="{Binding BatchStatus}" FontSize="10"
+                                           Foreground="{DynamicResource TextSecondaryBrush}" TextWrapping="Wrap"/>
+                                <ListBox ItemsSource="{Binding BatchJobs}" Height="80" Margin="0,4,0,0">
+                                    <ListBox.ItemTemplate>
+                                        <DataTemplate>
+                                            <StackPanel Margin="0,2">
+                                                <TextBlock Text="{Binding Dateiname}" FontSize="10" TextTrimming="CharacterEllipsis"/>
+                                                <TextBlock Text="{Binding Status}" FontSize="9" Foreground="{DynamicResource TextSecondaryBrush}"/>
+                                            </StackPanel>
+                                        </DataTemplate>
+                                    </ListBox.ItemTemplate>
+                                </ListBox>
+                            </StackPanel>
+                        </Border>
+
+                        <!-- ═══ Issue #17: Crop & Straighten Controls ═══ -->
+                        <Border Background="{DynamicResource BgTertiaryBrush}" CornerRadius="8" Padding="12" Margin="0,0,0,8"
+                                Visibility="{Binding CropModusAktiv, Converter={StaticResource BoolToVis}}">
+                            <StackPanel>
+                                <TextBlock Text="{Binding ., Converter={StaticResource Loc}, ConverterParameter='Crop.Titel'}" FontWeight="SemiBold" Margin="0,0,0,4"/>
+                                <TextBlock Text="{Binding ., Converter={StaticResource Loc}, ConverterParameter='Crop.Rotation'}" FontSize="11" Margin="0,0,0,4"/>
+                                <Slider Minimum="-180" Maximum="180" Value="{Binding CropRotation}" Margin="0,0,0,8"/>
+                                <StackPanel Orientation="Horizontal" Margin="0,0,0,8">
+                                    <Button Content="↺ 90°"
+                                            Command="{Binding Rotieren90Command}"
+                                            Padding="6,3" FontSize="11" Margin="0,0,4,0" Cursor="Hand"/>
+                                    <Button Content="{Binding ., Converter={StaticResource Loc}, ConverterParameter='Crop.Anwenden'}"
+                                            Command="{Binding CropAnwendenCommand}"
+                                            Padding="6,3" FontSize="11" Cursor="Hand"/>
+                                </StackPanel>
+                                <TextBlock Text="{Binding ., Converter={StaticResource Loc}, ConverterParameter='Crop.Aspect'}" FontSize="11" Margin="0,0,0,4"/>
+                                <ComboBox SelectedIndex="{Binding CropAspectRatioIndex}" Margin="0,0,0,8">
+                                    <ComboBoxItem Content="{Binding ., Converter={StaticResource Loc}, ConverterParameter='Crop.Ratio.Frei'}"/>
+                                    <ComboBoxItem Content="1:1"/>
+                                    <ComboBoxItem Content="4:3"/>
+                                    <ComboBoxItem Content="16:9"/>
+                                    <ComboBoxItem Content="3:2"/>
+                                    <ComboBoxItem Content="2:1"/>
+                                </ComboBox>
+                            </StackPanel>
+                        </Border>
+
+                        <!-- ═══ Issue #18: Plugin-System ═══ -->
+                        <Border Background="{DynamicResource BgTertiaryBrush}" CornerRadius="8" Padding="12" Margin="0,0,0,8">
+                            <StackPanel>
+                                <TextBlock Text="{Binding ., Converter={StaticResource Loc}, ConverterParameter='Plugin.Titel'}" FontWeight="SemiBold" Margin="0,0,0,4"/>
+                                <TextBlock Text="{Binding PluginStatus}" FontSize="10"
+                                           Foreground="{DynamicResource TextSecondaryBrush}" Margin="0,0,0,4"/>
+                                <ItemsControl ItemsSource="{Binding PluginListe}">
+                                    <ItemsControl.ItemTemplate>
+                                        <DataTemplate>
+                                            <StackPanel Margin="0,2">
+                                                <TextBlock FontSize="11">
+                                                    <Run Text="{Binding Name, Mode=OneWay}"/>
+                                                    <Run Text=" v"/>
+                                                    <Run Text="{Binding Version, Mode=OneWay}"/>
+                                                </TextBlock>
+                                                <TextBlock Text="{Binding Beschreibung}" FontSize="9"
+                                                           Foreground="{DynamicResource TextSecondaryBrush}"/>
+                                                <CheckBox Content="{Binding ., Converter={StaticResource Loc}, ConverterParameter='Plugin.Aktiviert'}"
+                                                          IsChecked="{Binding Aktiviert}"
+                                                          FontSize="10" Margin="0,2,0,0"/>
+                                            </StackPanel>
+                                        </DataTemplate>
+                                    </ItemsControl.ItemTemplate>
+                                </ItemsControl>
                             </StackPanel>
                         </Border>
 

@@ -7,12 +7,14 @@ using System.Windows;
 using System.Windows.Media.Imaging;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
+using OpenCvSharp;
 
 using FlipsiColor.AI;
 using FlipsiColor.Color;
 using FlipsiColor.Core;
 using FlipsiColor.Image;
 using FlipsiColor.Video;
+using BatchJob = FlipsiColor.Image.BatchJob;
 
 namespace FlipsiColor.UI;
 
@@ -27,7 +29,7 @@ public partial class MainViewModel : ObservableObject, IDisposable
     private readonly VideoPipeline _videoPipeline;
     private readonly AutoUpdater _autoUpdater;
 
-    [ObservableProperty] private string _title = "FlipsiColor v0.6.1";
+    [ObservableProperty] private string _title = "FlipsiColor v0.7.0";
     [ObservableProperty] private bool _gpuVerfuegbar;
     [ObservableProperty] private string _gpuName = "";
     [ObservableProperty] private bool _updateVerfuegbar;
@@ -238,6 +240,51 @@ public partial class MainViewModel : ObservableObject, IDisposable
     [ObservableProperty] private bool _vapourSynthAktivSichtbar;
     private readonly VapourSynthInstaller _vapourSynthInstaller = new();
 
+    // ===== Issue #12: Before/After Slider =====
+    [ObservableProperty] private bool _beforeAfterAktiv;
+    [ObservableProperty] private BitmapSource? _originalBildAnzeige;
+    [ObservableProperty] private double _beforeAfterPosition = 0.5; // 0=links, 1=rechts
+
+    // ===== Issue #13: Presets / Profile =====
+    [ObservableProperty] private ObservableCollection<string> _presetNamen = [];
+    [ObservableProperty] private string? _ausgewaehltesPreset;
+    private readonly PresetManager _presetManager = new();
+
+    // ===== Issue #14: Histogramm =====
+    [ObservableProperty] private float[] _histogrammRot = new float[256];
+    [ObservableProperty] private float[] _histogrammGruen = new float[256];
+    [ObservableProperty] private float[] _histogrammBlau = new float[256];
+    [ObservableProperty] private float[] _histogrammLuminanz = new float[256];
+    [ObservableProperty] private float _histogrammMaxWert = 1;
+
+    // ===== Issue #15: Batch-Verarbeitung =====
+    [ObservableProperty] private ObservableCollection<BatchJob> _batchJobs = [];
+    [ObservableProperty] private bool _batchLaeuft;
+    [ObservableProperty] private double _batchFortschritt;
+    [ObservableProperty] private string _batchStatus = "";
+    [ObservableProperty] private string _batchZielOrdner = "";
+    private readonly BatchProcessor _batchProcessor = new();
+
+    // ===== Issue #16: Undo/Redo =====
+    [ObservableProperty] private bool _kannUndo;
+    [ObservableProperty] private bool _kannRedo;
+    [ObservableProperty] private ObservableCollection<string> _undoHistory = [];
+    private readonly UndoManager _undoManager = new();
+
+    // ===== Issue #17: Crop & Straighten =====
+    [ObservableProperty] private bool _cropModusAktiv;
+    [ObservableProperty] private int _cropX;
+    [ObservableProperty] private int _cropY;
+    [ObservableProperty] private int _cropBreite;
+    [ObservableProperty] private int _cropHoehe;
+    [ObservableProperty] private double _cropRotation;
+    [ObservableProperty] private int _cropAspectRatioIndex; // 0=Frei, 1=1:1, 2=4:3, 3=16:9, 4=3:2, 5=2:1
+
+    // ===== Issue #18: Plugin-System =====
+    [ObservableProperty] private ObservableCollection<PluginInfo> _pluginListe = [];
+    [ObservableProperty] private string _pluginStatus = "";
+    private readonly PluginManager _pluginManager = new();
+
     /// <summary>
     /// Wird aufgerufen wenn VideoBackend sich ändert.
     /// Bei VapourSynth: automatische Verifikation + Installation falls nötig.
@@ -357,12 +404,36 @@ public partial class MainViewModel : ObservableObject, IDisposable
 
         // Auto-Updater Events
         _autoUpdater.UpdateVerfuegbarChanged += (_, verfuegbar) =>
-            System.Windows.Application.Current.Dispatcher.Invoke(() => UpdateVerfuegbar = verfuegbar);
+            System.Windows.Application.Current.Dispatcher.Invoke(() =>
+            {
+                UpdateVerfuegbar = verfuegbar;
+                if (verfuegbar && !string.IsNullOrEmpty(NeueVersion))
+                {
+                    var result = System.Windows.MessageBox.Show(
+                        $"{Lokalisierung.T("Update.Verfuegbar.Text")} v{NeueVersion}\n\n{Lokalisierung.T("Update.Verfuegbar.Frage")}",
+                        Lokalisierung.T("Update.Verfuegbar.Titel"),
+                        System.Windows.MessageBoxButton.YesNo,
+                        System.Windows.MessageBoxImage.Information);
+                    if (result == System.Windows.MessageBoxResult.Yes)
+                        UpdateStarten();
+                }
+            });
         _autoUpdater.NeueVersionChanged += (_, version) =>
             System.Windows.Application.Current.Dispatcher.Invoke(() => NeueVersion = version);
 
         // Initialisierung abgeschlossen — ab jetzt dürfen Change-Handler feuern
         _initialisiert = true;
+
+        // ===== Issue #13: Presets initialisieren =====
+        _presetManager.Initialisieren();
+        PresetNamenLaden();
+
+        // ===== Issue #14: Histogramm-Event abonnieren =====
+        _imagePipeline.HistogrammAktualisiert += OnHistogrammAktualisiert;
+
+        // ===== Issue #18: Plugins initialisieren =====
+        _pluginManager.Initialisieren();
+        PluginListeLaden();
     }
 
     /// <summary>
@@ -1107,6 +1178,311 @@ public partial class MainViewModel : ObservableObject, IDisposable
         }
     }
 
+    // ===== Issue #12-18: Neue Feature Commands =====
+
+    /// <summary>Issue #12: Before/After Slider umschalten.</summary>
+    [RelayCommand]
+    private void BeforeAfterToggle()
+    {
+        BeforeAfterAktiv = !BeforeAfterAktiv;
+        if (BeforeAfterAktiv && BildGeladen)
+        {
+            // Originalbild laden für die Anzeige
+            var original = _imagePipeline.OriginalBild;
+            if (original != null && !original.Empty())
+                OriginalBildAnzeige = MatToBitmapSourceConverter.ConvertMat(original);
+        }
+    }
+
+    /// <summary>Issue #13: Lädt die Preset-Namen in die ObservableCollection.</summary>
+    private void PresetNamenLaden()
+    {
+        var presets = _presetManager.ListePresets();
+        PresetNamen.Clear();
+        foreach (var p in presets)
+            PresetNamen.Add(p.Name);
+    }
+
+    /// <summary>Issue #13: Wendet ein ausgewähltes Preset an.</summary>
+    [RelayCommand]
+    private void PresetAnwenden()
+    {
+        if (string.IsNullOrEmpty(AusgewaehltesPreset)) return;
+        var preset = _presetManager.LadePreset(AusgewaehltesPreset);
+        if (preset == null) return;
+
+        // Preset-Parameter auf ViewModel übertragen
+        Belichtung = preset.Parameter.Belichtung;
+        Kontrast = preset.Parameter.Kontrast;
+        Saettigung = preset.Parameter.Saettigung;
+        Vibranz = preset.Parameter.Vibranz;
+        Lichter = preset.Parameter.Lichter;
+        Schatten = preset.Parameter.Schatten;
+        GesichtswiederherstellungAktiv = preset.GesichtswiederherstellungAktiv;
+        Objektivkorrektur = preset.ObjektivkorrekturAktiv;
+        HochskalierenFaktor = preset.HochskalierenFaktor;
+        StatusText = $"{Lokalisierung.T("Preset.Geladen")}: {preset.Name}";
+    }
+
+    /// <summary>Issue #13: Speichert aktuelle Parameter als neues Preset.</summary>
+    [RelayCommand]
+    private void PresetSpeichern()
+    {
+        try
+        {
+            var name = System.Windows.MessageBox.Show(
+                Lokalisierung.T("Preset.NameEingeben"),
+                Lokalisierung.T("Preset.Speichern"),
+                System.Windows.MessageBoxButton.OK) == System.Windows.MessageBoxResult.OK
+                ? "Preset " + DateTime.Now.ToString("yyyyMMdd_HHmmss") : null;
+            if (string.IsNullOrEmpty(name)) return;
+
+            var preset = new KorrekturPreset
+            {
+                Name = name,
+                Parameter = new PipelineParams
+                {
+                    Belichtung = Belichtung,
+                    Kontrast = Kontrast,
+                    Saettigung = Saettigung,
+                    Vibranz = Vibranz,
+                    Lichter = Lichter,
+                    Schatten = Schatten
+                },
+                GesichtswiederherstellungAktiv = GesichtswiederherstellungAktiv,
+                ObjektivkorrekturAktiv = Objektivkorrektur,
+                HochskalierenFaktor = HochskalierenFaktor
+            };
+            _presetManager.SpeicherePreset(preset);
+            PresetNamenLaden();
+            StatusText = $"{Lokalisierung.T("Preset.Gespeichert")}: {name}";
+        }
+        catch (Exception ex)
+        {
+            StatusText = $"{Lokalisierung.T("Status.Fehler")}: {ex.Message}";
+        }
+    }
+
+    /// <summary>Issue #14: Histogramm-Update vom ImagePipeline-Event.</summary>
+    private void OnHistogrammAktualisiert(object? sender, EventArgs e)
+    {
+        System.Windows.Application.Current.Dispatcher.Invoke(() =>
+        {
+            var bild = _imagePipeline.Ergebnis ?? _imagePipeline.OriginalBild;
+            var histData = HistogramCalculator.Berechnen(bild);
+            if (histData == null) return;
+            HistogrammRot = histData.Rot;
+            HistogrammGruen = histData.Gruen;
+            HistogrammBlau = histData.Blau;
+            HistogrammLuminanz = histData.Luminanz;
+            HistogrammMaxWert = histData.MaxWert;
+        });
+    }
+
+    /// <summary>Issue #15: Dateien zur Batch-Queue hinzufügen.</summary>
+    [RelayCommand]
+    private void BatchDateienHinzufuegen()
+    {
+        try
+        {
+            var dialog = new Microsoft.Win32.OpenFileDialog
+            {
+                Filter = $"{Lokalisierung.T("Dialog.Bilddateien")}|{Lokalisierung.T("Filter.Bilder")}|{Lokalisierung.T("Dialog.Videodateien")}|{Lokalisierung.T("Filter.Videos")}",
+                Title = Lokalisierung.T("Batch.DateienHinzufuegen"),
+                Multiselect = true
+            };
+
+            if (dialog.ShowDialog() == true)
+            {
+                if (string.IsNullOrEmpty(BatchZielOrdner))
+                    BatchZielOrdner = System.IO.Path.GetDirectoryName(dialog.FileNames[0]) ?? "";
+                _batchProcessor.DateienHinzufuegen(dialog.FileNames, BatchZielOrdner);
+                BatchJobsAktualisieren();
+            }
+        }
+        catch (Exception ex)
+        {
+            StatusText = $"{Lokalisierung.T("Status.Fehler")}: {ex.Message}";
+        }
+    }
+
+    /// <summary>Issue #15: Batch-Verarbeitung starten.</summary>
+    [RelayCommand]
+    private async Task BatchStartenAsync()
+    {
+        if (BatchLaeuft) return;
+        BatchLaeuft = true;
+        BatchStatus = Lokalisierung.T("Batch.Laeuft");
+        try
+        {
+            await _batchProcessor.StartenAsync(async (job, progress) =>
+            {
+                if (job.IstBild)
+                {
+                    using var pipeline = new ImagePipeline(_modelManager, _colorManager);
+                    if (pipeline.BildLaden(job.Quelle))
+                    {
+                        pipeline.PipelineAusfuehren(new PipelineParams());
+                        var ergebnis = pipeline.Ergebnis;
+                        if (ergebnis != null && !ergebnis.Empty())
+                        {
+                            Cv2.ImWrite(job.Ziel, ergebnis);
+                        }
+                    }
+                }
+                progress(1.0);
+                await Task.CompletedTask;
+            }, gesamt => System.Windows.Application.Current.Dispatcher.Invoke(() =>
+            {
+                BatchFortschritt = gesamt;
+                BatchStatus = string.Format(Lokalisierung.T("Batch.Fortschritt"),
+                    _batchProcessor.Abgeschlossen, _batchProcessor.Gesamt);
+            }));
+
+            BatchStatus = $"{Lokalisierung.T("Batch.Abgeschlossen")} ({_batchProcessor.Abgeschlossen}/{_batchProcessor.Gesamt})";
+        }
+        catch (Exception ex)
+        {
+            BatchStatus = $"{Lokalisierung.T("Status.Fehler")}: {ex.Message}";
+        }
+        finally
+        {
+            BatchLaeuft = false;
+            BatchJobsAktualisieren();
+        }
+    }
+
+    /// <summary>Issue #15: Batch pausieren.</summary>
+    [RelayCommand]
+    private void BatchPausieren()
+    {
+        _batchProcessor.Pausieren();
+        BatchStatus = Lokalisierung.T("Batch.Pausiert");
+    }
+
+    /// <summary>Issue #15: Batch-Queue aktualisieren.</summary>
+    private void BatchJobsAktualisieren()
+    {
+        BatchJobs.Clear();
+        foreach (var job in _batchProcessor.Jobs)
+            BatchJobs.Add(job);
+    }
+
+    /// <summary>Issue #16: Undo — letzte Aktion rückgängig machen.</summary>
+    [RelayCommand]
+    private void Undo()
+    {
+        _undoManager.Undo();
+        UndoStatusAktualisieren();
+    }
+
+    /// <summary>Issue #16: Redo — rückgängig gemachte Aktion wiederherstellen.</summary>
+    [RelayCommand]
+    private void Redo()
+    {
+        _undoManager.Redo();
+        UndoStatusAktualisieren();
+    }
+
+    /// <summary>Issue #16: Undo/Redo-Status aktualisieren.</summary>
+    private void UndoStatusAktualisieren()
+    {
+        KannUndo = _undoManager.KannUndo;
+        KannRedo = _undoManager.KannRedo;
+        UndoHistory.Clear();
+        foreach (var cmd in _undoManager.History)
+            UndoHistory.Add($"[{cmd.Zeitstempel:HH:mm:ss}] {cmd.Beschreibung}");
+    }
+
+    /// <summary>Issue #17: Crop anwenden.</summary>
+    [RelayCommand]
+    private void CropAnwenden()
+    {
+        if (!BildGeladen) return;
+        var ergebnis = _imagePipeline.Ergebnis;
+        if (ergebnis == null || ergebnis.Empty()) return;
+
+        try
+        {
+            Mat bearbeitet = ergebnis!;
+
+            // Rotation zuerst
+            if (Math.Abs(CropRotation) > 0.1)
+            {
+                var rotiert = CropProcessor.Rotieren(bearbeitet, CropRotation);
+                if (rotiert != null)
+                {
+                    if (!ReferenceEquals(bearbeitet, ergebnis)) bearbeitet.Dispose();
+                    bearbeitet = rotiert;
+                }
+            }
+
+            // Dann Crop
+            if (CropBreite > 0 && CropHoehe > 0)
+            {
+                var gecroppt = CropProcessor.Crop(bearbeitet, CropX, CropY, CropBreite, CropHoehe);
+                if (gecroppt != null)
+                {
+                    if (!ReferenceEquals(bearbeitet, ergebnis!)) bearbeitet.Dispose();
+                    bearbeitet = gecroppt;
+                }
+            }
+
+            if (!ReferenceEquals(bearbeitet, ergebnis!))
+            {
+                PipelineBild = MatToBitmapSourceConverter.ConvertMat(bearbeitet);
+                StatusText = Lokalisierung.T("Crop.Angewendet");
+            }
+        }
+        catch (Exception ex)
+        {
+            StatusText = $"{Lokalisierung.T("Status.Fehler")}: {ex.Message}";
+        }
+    }
+
+    /// <summary>Issue #17: Crop-Modus umschalten.</summary>
+    [RelayCommand]
+    private void CropModusToggle()
+    {
+        CropModusAktiv = !CropModusAktiv;
+    }
+
+    /// <summary>Issue #17: Um 90 Grad rotieren.</summary>
+    [RelayCommand]
+    private void Rotieren90()
+    {
+        if (!BildGeladen) return;
+        var ergebnis = _imagePipeline.Ergebnis;
+        if (ergebnis == null || ergebnis.Empty()) return;
+
+        var rotiert = CropProcessor.Rotieren90(ergebnis, true);
+        if (rotiert != null)
+        {
+            PipelineBild = MatToBitmapSourceConverter.ConvertMat(rotiert);
+            StatusText = Lokalisierung.T("Crop.Rotiert");
+        }
+    }
+
+    /// <summary>Issue #18: Plugin-Liste aktualisieren.</summary>
+    private void PluginListeLaden()
+    {
+        PluginListe.Clear();
+        foreach (var info in _pluginManager.PluginInfos)
+            PluginListe.Add(info);
+        PluginStatus = PluginListe.Count > 0
+            ? $"{PluginListe.Count} {Lokalisierung.T("Plugin.Geladen")}"
+            : Lokalisierung.T("Plugin.Keine");
+    }
+
+    /// <summary>Issue #18: Plugin aktivieren/deaktivieren.</summary>
+    [RelayCommand]
+    private void PluginAktivieren(PluginInfo info)
+    {
+        if (info == null) return;
+        _pluginManager.PluginAktivieren(info.Name, !info.Aktiviert);
+        PluginListeLaden();
+    }
+
     public void Dispose()
     {
         _imagePipeline.Dispose();
@@ -1114,6 +1490,9 @@ public partial class MainViewModel : ObservableObject, IDisposable
         _modelManager.Dispose();
         _autoUpdater.Dispose();
         _clipMerger.Dispose();
+        _presetManager.Dispose();
+        _undoManager.Dispose();
+        _pluginManager.Dispose();
     }
 }
 

@@ -1,7 +1,7 @@
 ; FlipsiColor — NSIS Installer (Windows)
 ; PUBLISH_DIR wird via makensis /DPUBLISH_DIR="..." übergeben
 !define APPNAME "FlipsiColor"
-!define APPVERSION "0.6.1"
+!define APPVERSION "0.7.0"
 !define APP_REGKEY "Software\${APPNAME}"
 !define APP_UNINST_KEY "Software\Microsoft\Windows\CurrentVersion\Uninstall\${APPNAME}"
 

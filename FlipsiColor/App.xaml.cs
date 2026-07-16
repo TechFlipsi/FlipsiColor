@@ -24,7 +24,7 @@ public partial class App : System.Windows.Application
 
             var log = Serilog.Log.ForContext<App>();
             log.Information("╔══════════════════════════════════╗");
-            log.Information("║  FlipsiColor v0.6.1 gestartet    ║");
+            log.Information("║  FlipsiColor v0.7.0 gestartet    ║");
             log.Information("║  KI-Farb- & Videokorrektur        ║");
             log.Information("╚══════════════════════════════════╝");
 

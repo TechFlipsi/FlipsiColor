@@ -53,6 +53,9 @@ public sealed class ImagePipeline : IDisposable
     public event EventHandler? BildGeladen;
     public event EventHandler? PipelineAbgeschlossen;
 
+    /// <summary>Wird nach BildLaden und PipelineAusfuehren ausgelöst — für Echtzeit-Histogramm-Update (Issue #14).</summary>
+    public event EventHandler? HistogrammAktualisiert;
+
     public ImagePipeline(ModelManager modelManager, ColorManager colorManager)
     {
         _modelManager = modelManager;
@@ -113,6 +116,7 @@ public sealed class ImagePipeline : IDisposable
             Log.Information("Bild geladen: {Breite}x{Hoehe}, {Kanaele} Kanäle",
                 _aktuellesBild.Width, _aktuellesBild.Height, _aktuellesBild.Channels());
             BildGeladen?.Invoke(this, EventArgs.Empty);
+            HistogrammAktualisiert?.Invoke(this, EventArgs.Empty);
             return true;
         }
         catch (Exception ex)
@@ -482,6 +486,7 @@ public sealed class ImagePipeline : IDisposable
 
             Log.Information("Pipeline abgeschlossen");
             PipelineAbgeschlossen?.Invoke(this, EventArgs.Empty);
+            HistogrammAktualisiert?.Invoke(this, EventArgs.Empty);
         }
         catch (Exception ex)
         {
@@ -1004,6 +1009,9 @@ public sealed class ImagePipeline : IDisposable
 
     /// <summary>Gibt das aktuelle Ergebnis-Bild zurück</summary>
     public Mat? Ergebnis => _aktuellesBild;
+
+    /// <summary>Gibt das Original-Bild (vor Pipeline-Ausführung) zurück — für Before/After Slider (Issue #12).</summary>
+    public Mat? OriginalBild => _originalBild;
 
     // ── Pipeline-Schritte ──
 
