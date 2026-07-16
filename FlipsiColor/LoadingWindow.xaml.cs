@@ -17,7 +17,7 @@ namespace FlipsiColor;
 public partial class LoadingWindow : Window, INotifyPropertyChanged
 {
     private readonly ModelManager _modelManager;
-    private string _statusText = "Initialisierung...";
+    private string _statusText = Lokalisierung.T("Loading.Initialisierung");
     private double _fortschritt;
 
     public ObservableCollection<ModellLadeStatus> Modelle { get; } = new();
@@ -36,7 +36,7 @@ public partial class LoadingWindow : Window, INotifyPropertyChanged
             Modelle.Add(new ModellLadeStatus
             {
                 Name = info.Name,
-                Status = info.Erforderlich ? "Erforderlich" : "Optional",
+                Status = info.Erforderlich ? Lokalisierung.T("Loading.Erforderlich") : Lokalisierung.T("Loading.Optional"),
                 Erforderlich = info.Erforderlich
             });
         }
@@ -47,18 +47,18 @@ public partial class LoadingWindow : Window, INotifyPropertyChanged
         // 1. Prüfen ob Modelle bereits lokal vorhanden sind
         if (_modelManager.AlleErforderlichenModelleVorhanden())
         {
-            StatusText = "Alle Modelle bereits vorhanden — kein Download nötig";
+            StatusText = Lokalisierung.T("Loading.AlleModelleVorhanden");
             Fortschritt = 100;
             await Task.Delay(500); // Kurz anzeigen
             return;
         }
 
         // 2. Modell-Version prüfen
-        StatusText = "Prüfe Modell-Version...";
+        StatusText = Lokalisierung.T("Loading.PruefeVersion");
         await _modelManager.ModellVersionPruefenAsync();
 
         // 3. Alle Modelle herunterladen (erforderlich + optional)
-        StatusText = "Lade alle Modelle herunter...";
+        StatusText = Lokalisierung.T("Loading.LadeAlleModelle");
         _modelManager.DownloadFortschritt += OnDownloadFortschritt;
         _modelManager.DownloadFehler += OnDownloadFehler;
 
@@ -67,7 +67,7 @@ public partial class LoadingWindow : Window, INotifyPropertyChanged
         _modelManager.DownloadFortschritt -= OnDownloadFortschritt;
         _modelManager.DownloadFehler -= OnDownloadFehler;
 
-        StatusText = "Modelle bereit — App wird gestartet";
+        StatusText = Lokalisierung.T("Loading.ModelleBereit");
         Fortschritt = 100;
         await Task.Delay(500);
     }
@@ -86,7 +86,7 @@ public partial class LoadingWindow : Window, INotifyPropertyChanged
                 }
             }
             Fortschritt = e.Prozent;
-            StatusText = $"Lade {e.Id}... {e.Prozent:F0}%";
+            StatusText = string.Format(Lokalisierung.T("Loading.LadeModell"), e.Id, $"{e.Prozent:F0}");
         });
     }
 
@@ -98,11 +98,11 @@ public partial class LoadingWindow : Window, INotifyPropertyChanged
             {
                 if (m.Name == e.Id.ToString())
                 {
-                    m.Status = "Fehler!";
+                    m.Status = Lokalisierung.T("Loading.FehlerStatus");
                     break;
                 }
             }
-            StatusText = $"Fehler beim Laden von {e.Id}: {e.Fehler}";
+            StatusText = string.Format(Lokalisierung.T("Loading.FehlerBeimLaden"), e.Id, e.Fehler);
         });
     }
 

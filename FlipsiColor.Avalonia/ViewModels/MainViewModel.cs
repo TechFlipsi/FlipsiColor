@@ -41,7 +41,7 @@ public partial class MainViewModel : ObservableObject, IDisposable
     [ObservableProperty] private int _modusIndex;
     [ObservableProperty] private bool _bildGeladen;
     [ObservableProperty] private string _bildPfad = "";
-    [ObservableProperty] private string _statusText = "Bereit";
+    [ObservableProperty] private string _statusText = Lokalisierung.T("App.Bereit");
     [ObservableProperty] private bool _pipelineLaeuft;
     [ObservableProperty] private Bitmap? _pipelineBild;
 
@@ -307,7 +307,7 @@ public partial class MainViewModel : ObservableObject, IDisposable
             LoadBild(ersteBild.Pfad);
         }
 
-        StatusText = $"{DateiListe.Count} Datei(en) geladen";
+        StatusText = string.Format(Lokalisierung.T("Galerie.DateiZaehler"), DateiListe.Count);
     }
 
     private static bool IstBildDatei(string ext) => ext is ".jpg" or ".jpeg" or ".png" or ".tif" or ".tiff"
@@ -320,7 +320,7 @@ public partial class MainViewModel : ObservableObject, IDisposable
     private void DateiEntfernen(DateiEintrag eintrag)
     {
         DateiListe.Remove(eintrag);
-        StatusText = $"{DateiListe.Count} Datei(en) verbleibend";
+        StatusText = string.Format(Lokalisierung.T("Status.DateiEntfernt"), DateiListe.Count);
     }
 
     [RelayCommand]
@@ -329,7 +329,7 @@ public partial class MainViewModel : ObservableObject, IDisposable
         DateiListe.Clear();
         BildGeladen = false;
         PipelineBild = null;
-        StatusText = "Datei-Liste geleert";
+        StatusText = Lokalisierung.T("Status.DateiListeGeleert");
     }
 
     /// <summary>Lädt ein Bild in die Pipeline (öffentlich für Drag &amp; Drop).</summary>
@@ -798,7 +798,7 @@ public partial class MainViewModel : ObservableObject, IDisposable
             await _modelManager.ModellSicherstellenAsync(ModellId.AiLUTTransform);
             await _modelManager.ModellSicherstellenAsync(ModellId.EfficientNet);
 
-            StatusText = "Modelle heruntergeladen";
+            StatusText = Lokalisierung.T("Status.ModelleHeruntergeladen");
         }
         catch (Exception ex)
         {
@@ -891,7 +891,7 @@ public partial class MainViewModel : ObservableObject, IDisposable
         ClipMergeLaeuft = true;
         var erledigt = 0;
         var gesamt = ClipGruppen.Count;
-        StatusText = $"Verarbeite {gesamt} Clip-Gruppen...";
+        StatusText = string.Format(Lokalisierung.T("Status.VerarbeiteGruppen"), gesamt);
 
         try
         {

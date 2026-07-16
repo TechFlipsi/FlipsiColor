@@ -73,11 +73,22 @@ public static class Lokalisierung
 
     /// <summary>
     /// Gibt den übersetzten Text für den gegebenen Schlüssel zurück.
-    /// Fällt auf den Schlüssel selbst zurück, wenn keine Übersetzung gefunden wird.
+    /// Fallback-Reihenfolge: aktuelle Sprache → English → Schlüssel selbst.
     /// </summary>
     public static string T(string schluessel)
     {
-        return _uebersetzungen.TryGetValue(schluessel, out var wert) ? wert : schluessel;
+        if (_uebersetzungen.TryGetValue(schluessel, out var wert))
+            return wert;
+
+        // Fallback auf English
+        if (Sprache != "en")
+        {
+            var enDict = SpracheLaden("en");
+            if (enDict != null && enDict.TryGetValue(schluessel, out var enWert))
+                return enWert;
+        }
+
+        return schluessel;
     }
 
     /// <summary>

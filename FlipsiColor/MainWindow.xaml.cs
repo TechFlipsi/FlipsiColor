@@ -171,7 +171,7 @@ public partial class MainWindow : Window
         if (DataContext is not MainViewModel vm) return;
         if (GalerieListe.SelectedItem is not DateiEintrag eintrag) return;
 
-        if (eintrag.Typ == "Bild")
+        if (eintrag.IstBild)
             vm.LoadBild(eintrag.Pfad);
     }
 

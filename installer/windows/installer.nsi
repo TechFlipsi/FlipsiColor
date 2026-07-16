@@ -24,6 +24,7 @@ RequestExecutionLevel user
 !insertmacro MUI_PAGE_FINISH
 !insertmacro MUI_UNPAGE_CONFIRM
 !insertmacro MUI_UNPAGE_INSTFILES
+!insertmacro MUI_LANGUAGE "English"
 !insertmacro MUI_LANGUAGE "German"
 
 Section "${APPNAME} ${APPVERSION}" SecMain
@@ -35,7 +36,7 @@ Section "${APPNAME} ${APPVERSION}" SecMain
     WriteUninstaller "$INSTDIR\Uninstall.exe"
     CreateDirectory "$SMPROGRAMS\${APPNAME}"
     CreateShortCut "$SMPROGRAMS\${APPNAME}\${APPNAME}.lnk" "$INSTDIR\FlipsiColor.exe" "" "$INSTDIR\FlipsiColor.exe" 0
-    CreateShortCut "$SMPROGRAMS\${APPNAME}\Deinstallieren.lnk" "$INSTDIR\Uninstall.exe"
+    CreateShortCut "$SMPROGRAMS\${APPNAME}\Uninstall.lnk" "$INSTDIR\Uninstall.exe"
     CreateShortCut "$DESKTOP\${APPNAME}.lnk" "$INSTDIR\FlipsiColor.exe" "" "$INSTDIR\FlipsiColor.exe" 0
 SectionEnd
 

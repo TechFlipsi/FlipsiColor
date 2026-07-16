@@ -162,7 +162,7 @@ public partial class MainWindow : Window
 
         return new System.Collections.Generic.List<FilePickerFileType>
         {
-            new("Dateien")
+            new(Lokalisierung.T("DateiListe.Titel"))
             {
                 Patterns = patterns.Length > 0 ? patterns : new[] { "*.*" }
             }

@@ -1,7 +1,7 @@
 <Window x:Class="FlipsiColor.LoadingWindow"
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-        Title="FlipsiColor — Modelle laden"
+        Title="{Binding ., Converter={StaticResource Loc}, ConverterParameter='Loading.Titel'}"
         Width="500" Height="320"
         WindowStartupLocation="CenterScreen"
         ResizeMode="NoResize"
@@ -12,7 +12,7 @@
             <!-- Logo -->
             <TextBlock Text="FlipsiColor" FontSize="28" FontWeight="Bold" Foreground="#E8E8E8"
                        HorizontalAlignment="Center" Margin="0,0,0,8"/>
-            <TextBlock Text="KI-Modelle werden heruntergeladen..." FontSize="14" Foreground="#8B8FA3"
+            <TextBlock Text="{Binding ., Converter={StaticResource Loc}, ConverterParameter='Loading.KIModelleHerunterladen'}" FontSize="14" Foreground="#8B8FA3"
                        HorizontalAlignment="Center" Margin="0,0,0,24"/>
 
             <!-- Fortschrittsbalken -->

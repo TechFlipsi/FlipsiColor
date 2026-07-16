@@ -72,8 +72,8 @@ public partial class App : System.Windows.Application
                         log.Error(ex, "Fehler beim Modell-Download");
                         loadingWindow.Close();
                         System.Windows.MessageBox.Show(
-                            $"Modelle konnten nicht heruntergeladen werden:\n\n{ex.Message}",
-                            "FlipsiColor — Fehler",
+                            string.Format(Lokalisierung.T("App.FehlerModellDownload"), ex.Message),
+                            Lokalisierung.T("App.FehlerTitel"),
                             MessageBoxButton.OK,
                             MessageBoxImage.Warning);
                     }
@@ -102,8 +102,8 @@ public partial class App : System.Windows.Application
         {
             // Silent Crash verhindern — Fehler zeigen und loggen
             System.Windows.MessageBox.Show(
-                $"FlipsiColor konnte nicht gestartet werden:\n\n{ex}",
-                "FlipsiColor — Fehler",
+                string.Format(Lokalisierung.T("App.FehlerStart"), ex),
+                Lokalisierung.T("App.FehlerTitel"),
                 MessageBoxButton.OK,
                 MessageBoxImage.Error);
         }
