@@ -27,7 +27,7 @@ public partial class MainViewModel : ObservableObject, IDisposable
     private readonly VideoPipeline _videoPipeline;
     private readonly AutoUpdater _autoUpdater;
 
-    [ObservableProperty] private string _title = "FlipsiColor v0.5.4";
+    [ObservableProperty] private string _title = "FlipsiColor v0.5.5";
     [ObservableProperty] private bool _gpuVerfuegbar;
     [ObservableProperty] private string _gpuName = "";
     [ObservableProperty] private bool _updateVerfuegbar;
@@ -343,8 +343,9 @@ public partial class MainViewModel : ObservableObject, IDisposable
             VideoBackend = settings.VideoBackend;
             VapourSynthInstalliert = _vapourSynthInstaller.IstInstalliert;
 
-            // Sprache aus Settings laden und anwenden
-            SpracheIndex = settings.Sprache == "en" ? 1 : 0;
+            // Sprache aus Settings laden und anwenden (Issue #9: leer = Systemsprache erkennen)
+            var effektiveSprache = string.IsNullOrEmpty(settings.Sprache) ? Lokalisierung.Sprache : settings.Sprache;
+            SpracheIndex = effektiveSprache == "en" ? 1 : 0;
             Lokalisierung.SpracheSetzen(settings.Sprache);
         }
         catch

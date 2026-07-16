@@ -31,8 +31,8 @@ public sealed class Settings
     // Theme
     public string Theme { get; set; } = "System"; // "Dark", "Light", "System"
 
-    // Sprache
-    public string Sprache { get; set; } = "de";
+    // Sprache — leer = Systemsprache automatisch erkennen
+    public string Sprache { get; set; } = "";
 
     // Auto-Update
     public bool AutoUpdatePruefen { get; set; } = true;
