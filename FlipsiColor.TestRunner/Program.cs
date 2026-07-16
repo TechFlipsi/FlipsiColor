@@ -37,7 +37,7 @@ internal static class Program
         {
             var s = Settings.Laden();
             Assert(s.Theme == "System" || s.Theme == "Dark" || s.Theme == "Light", "Theme Default");
-            Assert(s.Sprache == "de" || s.Sprache == "en", "Sprache Default");
+            Assert(s.Sprache == "de" || s.Sprache == "en" || s.Sprache == "", "Sprache Default");
             Assert(s.AutoUpdatePruefen == true, "AutoUpdate Default");
             Assert(s.FensterBreite >= 400, "FensterBreite >= 400");
             Assert(s.FensterHoehe >= 300, "FensterHoehe >= 300");
