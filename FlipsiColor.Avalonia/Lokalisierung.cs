@@ -33,10 +33,33 @@ public static class Lokalisierung
     /// <summary>
     /// Initialisiert die Lokalisierung — lädt die Standard-Sprache.
     /// </summary>
-    public static void Initialisieren(string startSprache = "de")
+    public static void Initialisieren(string startSprache = "")
     {
         VerfuegbareSprachenErmitteln();
         SpracheSetzen(startSprache);
+    }
+
+    /// <summary>
+    /// Erkennt die Systemsprache und mappt sie auf eine verfügbare Sprache.
+    /// Fallback: English, dann Deutsch.
+    /// </summary>
+    private static string SystemspracheErkennen()
+    {
+        try
+        {
+            var culture = System.Globalization.CultureInfo.CurrentUICulture.Name.ToLowerInvariant();
+            var sprachCode = culture.Length >= 2 ? culture.Substring(0, 2) : "en";
+
+            if (VerfuegbareSprachen.Contains(sprachCode))
+                return sprachCode;
+            if (VerfuegbareSprachen.Contains("en"))
+                return "en";
+            return "de";
+        }
+        catch
+        {
+            return "en";
+        }
     }
 
     /// <summary>
@@ -44,7 +67,8 @@ public static class Lokalisierung
     /// </summary>
     public static void SpracheSetzen(string sprache)
     {
-        if (string.IsNullOrEmpty(sprache)) sprache = "de";
+        if (string.IsNullOrEmpty(sprache))
+            sprache = SystemspracheErkennen();
 
         var dict = SpracheLaden(sprache);
         if (dict == null && sprache != "de")

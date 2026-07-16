@@ -34,10 +34,42 @@ public static class Lokalisierung
     /// Initialisiert die Lokalisierung — lädt die Standard-Sprache.
     /// Wird beim App-Start aufgerufen.
     /// </summary>
-    public static void Initialisieren(string startSprache = "de")
+    public static void Initialisieren(string startSprache = "")
     {
         VerfuegbareSprachenErmitteln();
         SpracheSetzen(startSprache);
+    }
+
+    /// <summary>
+    /// Erkennt die Systemsprache und mappt sie auf eine verfügbare Sprache.
+    /// Fallback: English, dann Deutsch.
+    /// </summary>
+    private static string SystemspracheErkennen()
+    {
+        try
+        {
+            // Windows: CultureInfo.CurrentCulture.Name (z.B. "it-IT", "de-DE", "en-US")
+            // Linux: Environment Variables LANG/LC_ALL
+            var culture = System.Globalization.CultureInfo.CurrentUICulture.Name.ToLowerInvariant();
+
+            // Erste 2 Zeichen = Sprachcode (z.B. "it", "de", "en", "fr", "es")
+            var sprachCode = culture.Length >= 2 ? culture.Substring(0, 2) : "en";
+
+            // Prüfen ob wir diese Sprache haben
+            if (VerfuegbareSprachen.Contains(sprachCode))
+                return sprachCode;
+
+            // Fallback: English
+            if (VerfuegbareSprachen.Contains("en"))
+                return "en";
+
+            // Letzter Fallback: Deutsch
+            return "de";
+        }
+        catch
+        {
+            return "en";
+        }
     }
 
     /// <summary>
@@ -45,7 +77,9 @@ public static class Lokalisierung
     /// </summary>
     public static void SpracheSetzen(string sprache)
     {
-        if (string.IsNullOrEmpty(sprache)) sprache = "de";
+        // Leere Sprache = Systemsprache erkennen (Issue #9 — MarcoRavich)
+        if (string.IsNullOrEmpty(sprache))
+            sprache = SystemspracheErkennen();
 
         // Sprache laden
         var dict = SpracheLaden(sprache);
