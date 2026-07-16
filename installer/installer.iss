@@ -57,47 +57,6 @@ Filename: "{app}\VC_redist.x64.exe"; Parameters: "/install /quiet /norestart"; S
 Filename: "{app}\{#AppExeName}"; Description: "{cm:LaunchProgram,{#StringChange(AppName, '&', '&&')}}"; Flags: nowait postinstall skipifsilent
 
 [Code]
-// BONUS Issue #9: Write the installer language to settings.json so the app
-// starts in the language the user chose during installation.
-// ActiveLanguage returns 'german' or 'english' -> map to 'de' or 'en'.
-procedure CurStepChanged(CurStep: TSetupStep);
-var
-  SettingsPath: String;
-  SettingsContent: String;
-  AppLang: String;
-  Dummy: Boolean;
-begin
-  if CurStep = ssPostInstall then
-  begin
-    SettingsPath := ExpandConstant('{localappdata}\FlipsiColor\settings.json');
-
-    // Map installer language to app language code
-    if ActiveLanguage = 'english' then
-      AppLang := 'en'
-    else
-      AppLang := 'de';
-
-    // If settings.json already exists, update the Sprache field;
-    // otherwise create a minimal settings file with the chosen language.
-    if FileExists(SettingsPath) then
-    begin
-      if LoadStringFromFile(SettingsPath, SettingsContent) then
-      begin
-        if Pos('"Sprache": "' + AppLang + '"', SettingsContent) = 0 then
-        begin
-          // Replace existing Sprache value
-          StringChangeEx(SettingsContent, '"Sprache": "de"', '"Sprache": "' + AppLang + '"', True);
-          StringChangeEx(SettingsContent, '"Sprache": "en"', '"Sprache": "' + AppLang + '"', True);
-          Dummy := SaveStringToFile(SettingsPath, SettingsContent, False);
-        end;
-      end;
-    end
-    else
-    begin
-      // Create minimal settings.json with the installer language
-      SettingsContent := '{' + #13#10 + '  "Sprache": "' + AppLang + '",' + #13#10 + '  "Theme": "System",' + #13#10 + '  "AutoUpdatePruefen": true' + #13#10 + '}';
-      Dummy := ForceDirectories(ExtractFilePath(SettingsPath));
-      Dummy := SaveStringToFile(SettingsPath, SettingsContent, False);
-    end;
-  end;
-end;
+// Issue #9: Installer language is not automatically passed to the app.
+// The app has its own in-app language switcher (ComboBox in the top bar)
+// so the user can change the language at any time from within FlipsiColor.
