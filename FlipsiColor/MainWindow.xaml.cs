@@ -3,6 +3,7 @@ using System.Linq;
 using System.Runtime.InteropServices;
 using System.Windows;
 using System.Windows.Controls;
+using System.Windows.Input;
 using System.Windows.Interop;
 using System.Windows.Media;
 using FlipsiColor.UI;
@@ -40,6 +41,19 @@ public partial class MainWindow : Window
         InitializeComponent();
         Loaded += OnLoaded;
         SourceInitialized += OnSourceInitialized;
+
+        // ===== Issue #16: Undo/Redo Keyboard Shortcuts =====
+        CommandBindings.Add(new CommandBinding(
+            System.Windows.Input.ApplicationCommands.Undo,
+            (_, _) => (DataContext as MainViewModel)?.UndoCommand.Execute(null)));
+        CommandBindings.Add(new System.Windows.Input.CommandBinding(
+            System.Windows.Input.ApplicationCommands.Redo,
+            (_, _) => (DataContext as MainViewModel)?.RedoCommand.Execute(null)));
+
+        InputBindings.Add(new System.Windows.Input.KeyBinding(
+            System.Windows.Input.ApplicationCommands.Undo, System.Windows.Input.Key.Z, System.Windows.Input.ModifierKeys.Control));
+        InputBindings.Add(new System.Windows.Input.KeyBinding(
+            System.Windows.Input.ApplicationCommands.Redo, System.Windows.Input.Key.Y, System.Windows.Input.ModifierKeys.Control));
     }
 
     /// <summary>

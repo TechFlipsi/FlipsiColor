@@ -16,6 +16,7 @@ using FlipsiColor.Image;
 using FlipsiColor.Video;
 
 using VideoBackend = FlipsiColor.Core.VideoBackend;
+using BatchJob = FlipsiColor.Image.BatchJob;
 
 namespace FlipsiColor.ViewModels;
 
@@ -32,7 +33,7 @@ public partial class MainViewModel : ObservableObject, IDisposable
     private readonly AutoUpdater _autoUpdater;
     private readonly ClipMerger _clipMerger;
 
-    [ObservableProperty] private string _title = "FlipsiColor v0.6.1";
+    [ObservableProperty] private string _title = "FlipsiColor v0.7.0";
     [ObservableProperty] private bool _gpuVerfuegbar;
     [ObservableProperty] private string _gpuName = "";
     [ObservableProperty] private bool _updateVerfuegbar;
@@ -100,6 +101,50 @@ public partial class MainViewModel : ObservableObject, IDisposable
     [ObservableProperty] private bool _installationLaeuft;
     [ObservableProperty] private bool _vapourSynthInstallUiSichtbar;
     [ObservableProperty] private bool _vapourSynthAktivSichtbar;
+
+    // ===== Issue #12: Before/After Slider =====
+    [ObservableProperty] private bool _beforeAfterAktiv;
+    [ObservableProperty] private double _beforeAfterPosition = 0.5;
+
+    // ===== Issue #13: Presets / Profile =====
+    [ObservableProperty] private ObservableCollection<string> _presetNamen = [];
+    [ObservableProperty] private string? _ausgewaehltesPreset;
+    private readonly PresetManager _presetManager = new();
+
+    // ===== Issue #14: Histogramm =====
+    [ObservableProperty] private float[] _histogrammRot = new float[256];
+    [ObservableProperty] private float[] _histogrammGruen = new float[256];
+    [ObservableProperty] private float[] _histogrammBlau = new float[256];
+    [ObservableProperty] private float[] _histogrammLuminanz = new float[256];
+    [ObservableProperty] private float _histogrammMaxWert = 1;
+
+    // ===== Issue #15: Batch-Verarbeitung =====
+    [ObservableProperty] private ObservableCollection<BatchJob> _batchJobs = [];
+    [ObservableProperty] private bool _batchLaeuft;
+    [ObservableProperty] private double _batchFortschritt;
+    [ObservableProperty] private string _batchStatus = "";
+    [ObservableProperty] private string _batchZielOrdner = "";
+    private readonly BatchProcessor _batchProcessor = new();
+
+    // ===== Issue #16: Undo/Redo =====
+    [ObservableProperty] private bool _kannUndo;
+    [ObservableProperty] private bool _kannRedo;
+    [ObservableProperty] private ObservableCollection<string> _undoHistory = [];
+    private readonly UndoManager _undoManager = new();
+
+    // ===== Issue #17: Crop & Straighten =====
+    [ObservableProperty] private bool _cropModusAktiv;
+    [ObservableProperty] private int _cropX;
+    [ObservableProperty] private int _cropY;
+    [ObservableProperty] private int _cropBreite;
+    [ObservableProperty] private int _cropHoehe;
+    [ObservableProperty] private double _cropRotation;
+    [ObservableProperty] private int _cropAspectRatioIndex;
+
+    // ===== Issue #18: Plugin-System =====
+    [ObservableProperty] private ObservableCollection<PluginInfo> _pluginListe = [];
+    [ObservableProperty] private string _pluginStatus = "";
+    private readonly PluginManager _pluginManager = new();
 
     // ── Pro-Funktions KI-Toggles (v0.5.0) ──
     [ObservableProperty] private bool _kIDenoisingAktiv = true;
@@ -262,6 +307,17 @@ public partial class MainViewModel : ObservableObject, IDisposable
             Dispatcher.UIThread.Post(() => UpdateVerfuegbar = verfuegbar);
         _autoUpdater.NeueVersionChanged += (_, version) =>
             Dispatcher.UIThread.Post(() => NeueVersion = version);
+
+        // ===== Issue #13: Presets initialisieren =====
+        _presetManager.Initialisieren();
+        PresetNamenLaden();
+
+        // ===== Issue #14: Histogramm-Event abonnieren =====
+        _imagePipeline.HistogrammAktualisiert += OnHistogrammAktualisiert;
+
+        // ===== Issue #18: Plugins initialisieren =====
+        _pluginManager.Initialisieren();
+        PluginListeLaden();
     }
 
     /// <summary>IntensitaetIndex (0/1/2) in den Intensitaet-Enum.</summary>
@@ -979,6 +1035,275 @@ public partial class MainViewModel : ObservableObject, IDisposable
         }
     }
 
+    // ===== Issue #12-18: Neue Feature Commands =====
+
+    /// <summary>Issue #12: Before/After Slider umschalten.</summary>
+    [RelayCommand]
+    private void BeforeAfterToggle()
+    {
+        BeforeAfterAktiv = !BeforeAfterAktiv;
+    }
+
+    /// <summary>Issue #13: Preset-Namen laden.</summary>
+    private void PresetNamenLaden()
+    {
+        var presets = _presetManager.ListePresets();
+        PresetNamen.Clear();
+        foreach (var p in presets)
+            PresetNamen.Add(p.Name);
+    }
+
+    /// <summary>Issue #13: Preset anwenden.</summary>
+    [RelayCommand]
+    private void PresetAnwenden()
+    {
+        if (string.IsNullOrEmpty(AusgewaehltesPreset)) return;
+        var preset = _presetManager.LadePreset(AusgewaehltesPreset);
+        if (preset == null) return;
+
+        Belichtung = preset.Parameter.Belichtung;
+        Kontrast = preset.Parameter.Kontrast;
+        Saettigung = preset.Parameter.Saettigung;
+        Vibranz = preset.Parameter.Vibranz;
+        Lichter = preset.Parameter.Lichter;
+        Schatten = preset.Parameter.Schatten;
+        GesichtswiederherstellungAktiv = preset.GesichtswiederherstellungAktiv;
+        Objektivkorrektur = preset.ObjektivkorrekturAktiv;
+        HochskalierenFaktor = preset.HochskalierenFaktor;
+        StatusText = $"{Lokalisierung.T("Preset.Geladen")}: {preset.Name}";
+    }
+
+    /// <summary>Issue #13: Preset speichern.</summary>
+    [RelayCommand]
+    private void PresetSpeichern()
+    {
+        var name = "Preset " + DateTime.Now.ToString("yyyyMMdd_HHmmss");
+        var preset = new KorrekturPreset
+        {
+            Name = name,
+            Parameter = new PipelineParams
+            {
+                Belichtung = Belichtung,
+                Kontrast = Kontrast,
+                Saettigung = Saettigung,
+                Vibranz = Vibranz,
+                Lichter = Lichter,
+                Schatten = Schatten
+            },
+            GesichtswiederherstellungAktiv = GesichtswiederherstellungAktiv,
+            ObjektivkorrekturAktiv = Objektivkorrektur,
+            HochskalierenFaktor = HochskalierenFaktor
+        };
+        _presetManager.SpeicherePreset(preset);
+        PresetNamenLaden();
+        StatusText = $"{Lokalisierung.T("Preset.Gespeichert")}: {name}";
+    }
+
+    /// <summary>Issue #14: Histogramm-Update vom ImagePipeline-Event.</summary>
+    private void OnHistogrammAktualisiert(object? sender, EventArgs e)
+    {
+        Dispatcher.UIThread.Post(() =>
+        {
+            var bild = _imagePipeline.Ergebnis ?? _imagePipeline.OriginalBild;
+            var histData = HistogramCalculator.Berechnen(bild);
+            if (histData == null) return;
+            HistogrammRot = histData.Rot;
+            HistogrammGruen = histData.Gruen;
+            HistogrammBlau = histData.Blau;
+            HistogrammLuminanz = histData.Luminanz;
+            HistogrammMaxWert = histData.MaxWert;
+        });
+    }
+
+    /// <summary>Issue #15: Dateien zur Batch-Queue hinzufügen.</summary>
+    [RelayCommand]
+    private async Task BatchDateienHinzufuegenAsync()
+    {
+        if (DateiOeffnenCallback == null) return;
+        var filter = Lokalisierung.T("Filter.Bilder");
+        var titel = Lokalisierung.T("Batch.Titel");
+        var pfad = await DateiOeffnenCallback(titel, filter, null);
+        if (string.IsNullOrEmpty(pfad)) return;
+
+        if (string.IsNullOrEmpty(BatchZielOrdner))
+            BatchZielOrdner = Path.GetDirectoryName(pfad) ?? "";
+        _batchProcessor.DateienHinzufuegen(new[] { pfad }, BatchZielOrdner);
+        BatchJobsAktualisieren();
+    }
+
+    /// <summary>Issue #15: Batch starten.</summary>
+    [RelayCommand]
+    private async Task BatchStartenAsync()
+    {
+        if (BatchLaeuft) return;
+        BatchLaeuft = true;
+        BatchStatus = Lokalisierung.T("Batch.Laeuft");
+        try
+        {
+            await _batchProcessor.StartenAsync(async (job, progress) =>
+            {
+                if (job.IstBild)
+                {
+                    using var pipeline = new ImagePipeline(_modelManager, _colorManager);
+                    if (pipeline.BildLaden(job.Quelle))
+                    {
+                        pipeline.PipelineAusfuehren(new PipelineParams());
+                        var ergebnis = pipeline.Ergebnis;
+                        if (ergebnis != null && !ergebnis.Empty())
+                            Cv2.ImWrite(job.Ziel, ergebnis);
+                    }
+                }
+                progress(1.0);
+                await Task.CompletedTask;
+            }, gesamt => Dispatcher.UIThread.Post(() =>
+            {
+                BatchFortschritt = gesamt;
+                BatchStatus = string.Format(Lokalisierung.T("Batch.Fortschritt"),
+                    _batchProcessor.Abgeschlossen, _batchProcessor.Gesamt);
+            }));
+
+            BatchStatus = $"{Lokalisierung.T("Batch.Abgeschlossen")} ({_batchProcessor.Abgeschlossen}/{_batchProcessor.Gesamt})";
+        }
+        catch (Exception ex)
+        {
+            BatchStatus = $"{Lokalisierung.T("Status.Fehler")}: {ex.Message}";
+        }
+        finally
+        {
+            BatchLaeuft = false;
+            BatchJobsAktualisieren();
+        }
+    }
+
+    /// <summary>Issue #15: Batch pausieren.</summary>
+    [RelayCommand]
+    private void BatchPausieren()
+    {
+        _batchProcessor.Pausieren();
+        BatchStatus = Lokalisierung.T("Batch.Pausiert");
+    }
+
+    /// <summary>Issue #15: Batch-Queue aktualisieren.</summary>
+    private void BatchJobsAktualisieren()
+    {
+        BatchJobs.Clear();
+        foreach (var job in _batchProcessor.Jobs)
+            BatchJobs.Add(job);
+    }
+
+    /// <summary>Issue #16: Undo.</summary>
+    [RelayCommand]
+    private void Undo()
+    {
+        _undoManager.Undo();
+        UndoStatusAktualisieren();
+    }
+
+    /// <summary>Issue #16: Redo.</summary>
+    [RelayCommand]
+    private void Redo()
+    {
+        _undoManager.Redo();
+        UndoStatusAktualisieren();
+    }
+
+    /// <summary>Issue #16: Undo/Redo-Status aktualisieren.</summary>
+    private void UndoStatusAktualisieren()
+    {
+        KannUndo = _undoManager.KannUndo;
+        KannRedo = _undoManager.KannRedo;
+        UndoHistory.Clear();
+        foreach (var cmd in _undoManager.History)
+            UndoHistory.Add($"[{cmd.Zeitstempel:HH:mm:ss}] {cmd.Beschreibung}");
+    }
+
+    /// <summary>Issue #17: Crop anwenden.</summary>
+    [RelayCommand]
+    private void CropAnwenden()
+    {
+        if (!BildGeladen) return;
+        var ergebnis = _imagePipeline.Ergebnis;
+        if (ergebnis == null || ergebnis.Empty()) return;
+
+        try
+        {
+            Mat bearbeitet = ergebnis;
+
+            if (Math.Abs(CropRotation) > 0.1)
+            {
+                var rotiert = CropProcessor.Rotieren(bearbeitet, CropRotation);
+                if (rotiert != null)
+                {
+                    if (!ReferenceEquals(bearbeitet, ergebnis)) bearbeitet.Dispose();
+                    bearbeitet = rotiert;
+                }
+            }
+
+            if (CropBreite > 0 && CropHoehe > 0)
+            {
+                var gecroppt = CropProcessor.Crop(bearbeitet, CropX, CropY, CropBreite, CropHoehe);
+                if (gecroppt != null)
+                {
+                    if (!ReferenceEquals(bearbeitet, ergebnis)) bearbeitet.Dispose();
+                    bearbeitet = gecroppt;
+                }
+            }
+
+            if (!ReferenceEquals(bearbeitet, ergebnis))
+            {
+                PipelineBild = MatToBitmapConverter.ConvertMat(bearbeitet);
+                StatusText = Lokalisierung.T("Crop.Angewendet");
+            }
+        }
+        catch (Exception ex)
+        {
+            StatusText = $"{Lokalisierung.T("Status.Fehler")}: {ex.Message}";
+        }
+    }
+
+    /// <summary>Issue #17: Crop-Modus umschalten.</summary>
+    [RelayCommand]
+    private void CropModusToggle()
+    {
+        CropModusAktiv = !CropModusAktiv;
+    }
+
+    /// <summary>Issue #17: Um 90 Grad rotieren.</summary>
+    [RelayCommand]
+    private void Rotieren90()
+    {
+        if (!BildGeladen) return;
+        var ergebnis = _imagePipeline.Ergebnis;
+        if (ergebnis == null || ergebnis.Empty()) return;
+
+        var rotiert = CropProcessor.Rotieren90(ergebnis, true);
+        if (rotiert != null)
+        {
+            PipelineBild = MatToBitmapConverter.ConvertMat(rotiert);
+            StatusText = Lokalisierung.T("Crop.Rotiert");
+        }
+    }
+
+    /// <summary>Issue #18: Plugin-Liste laden.</summary>
+    private void PluginListeLaden()
+    {
+        PluginListe.Clear();
+        foreach (var info in _pluginManager.PluginInfos)
+            PluginListe.Add(info);
+        PluginStatus = PluginListe.Count > 0
+            ? $"{PluginListe.Count} {Lokalisierung.T("Plugin.Geladen")}"
+            : Lokalisierung.T("Plugin.Keine");
+    }
+
+    /// <summary>Issue #18: Plugin aktivieren/deaktivieren.</summary>
+    [RelayCommand]
+    private void PluginAktivieren(PluginInfo info)
+    {
+        if (info == null) return;
+        _pluginManager.PluginAktivieren(info.Name, !info.Aktiviert);
+        PluginListeLaden();
+    }
+
     public void Dispose()
     {
         _imagePipeline.Dispose();
@@ -986,6 +1311,9 @@ public partial class MainViewModel : ObservableObject, IDisposable
         _modelManager.Dispose();
         _autoUpdater.Dispose();
         _clipMerger.Dispose();
+        _presetManager.Dispose();
+        _undoManager.Dispose();
+        _pluginManager.Dispose();
     }
 }
 
