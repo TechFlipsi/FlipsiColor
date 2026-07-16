@@ -23,7 +23,7 @@ FlipsiColor ist ein Open-Source-Projekt für **KI-gestützte Bild- & Videofarbko
 | 🎬 **Video-Processing** | VapourSynth-Integration, FFmpeg-Pipeline, Encoding |
 | 📸 **RAW-Verarbeitung** | LibRaw Integration, neue Kamera-Formate |
 | 🐧 **Linux** | Avalonia-UI, Cross-Platform-Kompatibilität |
-| 🌍 **Übersetzung** | UI-Lokalisierung (Deutsch/Englisch, weitere Sprachen willkommen) |
+| 🌍 **Übersetzung** | UI-Lokalisierung — kopiere eine JSON-Datei in `Assets/i18n/`, übersetze sie, fertig! Siehe [Sprachen hinzufügen](#-sprache-hinzufügen) unten |
 | 📦 **Packaging** | Installer (Windows MSI/Inno Setup, Linux .deb/.AppImage) |
 | 📝 **Dokumentation** | README, Code-Kommentare, Anleitungen |
 
@@ -57,8 +57,21 @@ dotnet publish FlipsiColor.Avalonia/FlipsiColor.Avalonia.csproj -c Release -r li
 
 ### Sprache
 - **Code-Kommentare & Dokumentation:** Deutsch (mit korrekten Umlauten)
-- **UI-Texte:** Über Resource-Dateien (`Resources.de.resx`, `Resources.en.resx`) — NICHT hartcodiert
+- **UI-Texte:** Über JSON-Lokalisierungsdateien (`Assets/i18n/de.json`, `en.json`, etc.) — NICHT hartcodiert
 - **Commit-Messages:** Englisch (`feat: add VapourSynth backend`, `fix: dark mode combo box`)
+
+### 🌍 Sprache hinzufügen
+
+FlipsiColor nutzt JSON-basierte Lokalisierung. Eine neue Sprache hinzufügen ist ganz einfach:
+
+1. Kopiere `Assets/i18n/en.json` zu z.B. `Assets/i18n/fr.json` (WPF und/oder Avalonia)
+2. Übersetze die **Werte** (rechte Seite) — nicht die Keys!
+3. Füge ein `<ComboBoxItem Content="FR"/>` in `MainWindow.xaml` hinzu (WPF) bzw. `MainWindow.axaml` (Avalonia)
+4. Füge den Sprachcode zum `sprachen` Array in `SpracheAendern()` hinzu (WPF + Avalonia `MainViewModel.cs`)
+5. Erweitere das `sprachenListe` Array im Konstruktor (WPF + Avalonia)
+6. PR stellen — fertig!
+
+Die App erkennt alle JSON-Dateien im `Assets/i18n/` Ordner automatisch. Wenn ein Key fehlt, fällt die App auf English zurück.
 
 ### Naming
 - **Public:** PascalCase (`public void ProcessImage()`)
@@ -103,6 +116,15 @@ Dein PR wird akzeptiert wenn:
 - ✅ UI-Texte sind lokalisiert (nicht hartcodiert)
 - ✅ Keine Platzhalter oder TODOs
 - ✅ Commit-Messages sind aussagekräftig
+
+## 📌 Versionierung
+
+Wir folgen Semantic Versioning (`vMAJOR.MINOR.PATCH`). Die vollständigen Regeln findest du in [VERSIONING.md](VERSIONING.md).
+
+Kurz:
+- **Bug-Fix** → PATCH +1 (`v0.6.0` → `v0.6.1`)
+- **Großes Feature-Update** → MINOR +1 (`v0.6.0` → `v0.7.0`)
+- **Breaking Change** → MAJOR +1 (`v0.9.x` → `v1.0.0`)
 
 ## 💬 Kontakt
 

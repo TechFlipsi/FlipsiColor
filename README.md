@@ -23,7 +23,7 @@ KI-gestützte Bild- & Videofarbkorrektur. Cross-Platform (Linux + Windows) mit A
 - **Pro-Funktion KI-Toggles:** Jede KI-Funktion einzeln an/abschaltbar — KI-Denoising, KI-Schärfung, KI-Upscaling, KI-Gesichtswiederherstellung, KI-Farbstil und KI-Szenenklassifizierung können deaktiviert werden (klassische Filter als Fallback)
 - **Dark/Light Design:** Mit Live-Switch, blaue Akzentfarbe (#0EA5E9)
 - **Drag & Drop:** Mehrere Dateien gleichzeitig (Bilder UND Videos)
-- **Lokalisierung:** Deutsch / Englisch umschaltbar
+- **Lokalisierung:** 13 Sprachen (DE, EN, ES, FR, IT, NL, PL, PT, TR, RU, ZH, JA, KO) — JSON-basiert, Systemsprache wird automatisch erkannt, English-Fallback, Contributors können ohne Code-Änderung neue Sprachen hinzufügen
 
 ## Architektur
 
@@ -109,6 +109,10 @@ dotnet publish FlipsiColor.Avalonia/FlipsiColor.Avalonia.csproj \
 💬 [Discord](https://discord.gg/zHPhQ7EaqH) – Fragen, Feedback, Hilfe, Bug-Reports
 
 Wir suchen Contributors! Siehe [CONTRIBUTING.md](CONTRIBUTING.md) für Build-Anleitung und Code-Standards.
+
+## Versionierung
+
+Wir folgen Semantic Versioning (`vMAJOR.MINOR.PATCH`). Details siehe [VERSIONING.md](VERSIONING.md).
 
 ## Credits
 
