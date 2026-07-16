@@ -42,9 +42,9 @@
                                 <TextBlock Text="{Binding ., Converter={StaticResource Loc}, ConverterParameter='Bild.Modus'}" FontWeight="SemiBold" Margin="0,0,0,8"/>
                                 <ComboBox SelectedIndex="{Binding ModusIndex}"
                                           Margin="0,0,0,16">
-                                    <ComboBoxItem Content="Fragen"/>
-                                    <ComboBoxItem Content="Lernen"/>
-                                    <ComboBoxItem Content="Auto"/>
+                                    <ComboBoxItem Content="{Binding ., Converter={StaticResource Loc}, ConverterParameter='Bild.Modus.Fragen'}"/>
+                                    <ComboBoxItem Content="{Binding ., Converter={StaticResource Loc}, ConverterParameter='Bild.Modus.Lernen'}"/>
+                                    <ComboBoxItem Content="{Binding ., Converter={StaticResource Loc}, ConverterParameter='Bild.Modus.Auto'}"/>
                                 </ComboBox>
 
                                 <!-- Intensität -->
@@ -311,14 +311,14 @@
                                TextWrapping="Wrap"/>
 
                     <!-- Logs öffnen (dezent, unten) -->
-                    <Button Content="📋 Logs"
+                    <Button Content="{Binding ., Converter={StaticResource Loc}, ConverterParameter='Sidebar.Logs'}"
                             Command="{Binding LogsOeffnenCommand}"
                             Classes="secondary"
                             FontSize="10"
                             Padding="6,3"
                             HorizontalAlignment="Left"
                             Margin="0,12,0,0"
-                            ToolTip.Tip="Logs-Ordner im Dateimanager öffnen"/>
+                            ToolTip.Tip="{Binding ., Converter={StaticResource Loc}, ConverterParameter='Sidebar.LogsTooltip'}"/>
                 </StackPanel>
             </ScrollViewer>
         </Border>

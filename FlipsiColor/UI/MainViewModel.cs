@@ -27,7 +27,7 @@ public partial class MainViewModel : ObservableObject, IDisposable
     private readonly VideoPipeline _videoPipeline;
     private readonly AutoUpdater _autoUpdater;
 
-    [ObservableProperty] private string _title = "FlipsiColor v0.5.3";
+    [ObservableProperty] private string _title = "FlipsiColor v0.5.4";
     [ObservableProperty] private bool _gpuVerfuegbar;
     [ObservableProperty] private string _gpuName = "";
     [ObservableProperty] private bool _updateVerfuegbar;
@@ -35,7 +35,7 @@ public partial class MainViewModel : ObservableObject, IDisposable
     [ObservableProperty] private string _aktuellerModus = "Ask";
     [ObservableProperty] private bool _bildGeladen;
     [ObservableProperty] private string _bildPfad = "";
-    [ObservableProperty] private string _statusText = "Bereit";
+    [ObservableProperty] private string _statusText = Lokalisierung.T("App.Bereit");
     [ObservableProperty] private bool _pipelineLaeuft;
     [ObservableProperty] private BitmapSource? _pipelineBild;
 
@@ -171,8 +171,8 @@ public partial class MainViewModel : ObservableObject, IDisposable
         if (InstallationLaeuft) return;
 
         InstallationLaeuft = true;
-        InstallationsText = "Installiere Lensfun...";
-        StatusText = "Installiere Lensfun...";
+        InstallationsText = Lokalisierung.T("Lensfun.Installiere");
+        StatusText = Lokalisierung.T("Lensfun.Installiere");
 
         _lensfunInstaller.InstallationsFortschritt += OnLensfunInstallationsFortschritt;
 
@@ -183,20 +183,20 @@ public partial class MainViewModel : ObservableObject, IDisposable
 
             if (erfolg && LensfunInstalliert)
             {
-                InstallationsText = "Lensfun aktiv";
-                StatusText = "Lensfun installiert — Kameras werden geladen";
+                InstallationsText = Lokalisierung.T("Lensfun.Aktiv");
+                StatusText = Lokalisierung.T("Lensfun.InstalliertKameras");
                 LadeVerfuegbareKameras();
             }
             else
             {
-                InstallationsText = "Lensfun-Installation fehlgeschlagen";
-                StatusText = "Lensfun-Installation fehlgeschlagen";
+                InstallationsText = Lokalisierung.T("Lensfun.InstallationFehlgeschlagen");
+                StatusText = Lokalisierung.T("Lensfun.InstallationFehlgeschlagen");
             }
         }
         catch (Exception ex)
         {
-            InstallationsText = $"Lensfun-Installation fehlgeschlagen: {ex.Message}";
-            StatusText = $"Lensfun-Installation fehlgeschlagen: {ex.Message}";
+            InstallationsText = string.Format(Lokalisierung.T("Lensfun.InstallationFehlgeschlagenMitFehler"), ex.Message);
+            StatusText = string.Format(Lokalisierung.T("Lensfun.InstallationFehlgeschlagenMitFehler"), ex.Message);
         }
         finally
         {
@@ -277,8 +277,8 @@ public partial class MainViewModel : ObservableObject, IDisposable
         else
         {
             // Installiert — Status setzen
-            InstallationsText = "VapourSynth aktiv";
-            StatusText = "VapourSynth aktiv";
+            InstallationsText = Lokalisierung.T("Status.VapourSynthAktiv");
+            StatusText = Lokalisierung.T("Status.VapourSynthAktiv");
         }
     }
 
@@ -407,8 +407,8 @@ public partial class MainViewModel : ObservableObject, IDisposable
         }
 
         StatusText = DateiListe.Count > 0
-            ? $"{DateiListe.Count} Datei(en) geladen"
-            : "Keine unterstützten Dateien gefunden";
+            ? string.Format(Lokalisierung.T("Galerie.DateiZaehler"), DateiListe.Count)
+            : Lokalisierung.T("Status.KeineUnterstuetzteDateien");
     }
 
     /// <summary>
@@ -429,7 +429,7 @@ public partial class MainViewModel : ObservableObject, IDisposable
         if (eintrag != null)
         {
             DateiListe.Remove(eintrag);
-            StatusText = $"Entfernt: {eintrag.Dateiname}";
+            StatusText = string.Format(Lokalisierung.T("Status.DateiEntfernt"), eintrag.Dateiname);
         }
     }
 
@@ -440,7 +440,7 @@ public partial class MainViewModel : ObservableObject, IDisposable
     private void DateiListeLeeren()
     {
         DateiListe.Clear();
-        StatusText = "Dateiliste geleert";
+        StatusText = Lokalisierung.T("Status.DateilisteGeleert");
     }
 
     /// <summary>Öffentliche Methode für Drag&amp;Drop (von Code-Behind)</summary>
@@ -453,18 +453,18 @@ public partial class MainViewModel : ObservableObject, IDisposable
                 BildPfad = pfad;
                 BildGeladen = true;
                 PipelineBild = null; // Original wird erst nach Pipeline angezeigt
-                StatusText = $"Geladen: {Path.GetFileName(pfad)}";
+                StatusText = $"{Lokalisierung.T("Status.Geladen")}: {Path.GetFileName(pfad)}";
                 return true;
             }
             else
             {
-                System.Windows.MessageBox.Show("Bild konnte nicht geladen werden.", "Fehler", MessageBoxButton.OK, MessageBoxImage.Error);
+                System.Windows.MessageBox.Show(Lokalisierung.T("Status.BildKonnteNichtGeladenWerden"), Lokalisierung.T("Status.Fehler"), MessageBoxButton.OK, MessageBoxImage.Error);
                 return false;
             }
         }
         catch (Exception ex)
         {
-            System.Windows.MessageBox.Show($"Fehler beim Laden: {ex.Message}", "Fehler", MessageBoxButton.OK, MessageBoxImage.Error);
+            System.Windows.MessageBox.Show(string.Format(Lokalisierung.T("Status.FehlerBeimLaden"), ex.Message), Lokalisierung.T("Status.Fehler"), MessageBoxButton.OK, MessageBoxImage.Error);
             return false;
         }
     }
@@ -476,8 +476,8 @@ public partial class MainViewModel : ObservableObject, IDisposable
         {
             var dialog = new Microsoft.Win32.OpenFileDialog
             {
-                Filter = "Bilddateien|*.jpg;*.jpeg;*.png;*.tif;*.tiff;*.bmp;*.cr2;*.cr3;*.nef;*.arw;*.dng;*.orf;*.rw2|Alle Dateien|*.*",
-                Title = "Bild öffnen",
+                Filter = $"{Lokalisierung.T("Dialog.Bilddateien")}|{Lokalisierung.T("Filter.Bilder")}|{Lokalisierung.T("Dialog.AlleDateien")}|*.*",
+                Title = Lokalisierung.T("Dialog.BildOeffnen"),
                 Multiselect = true
             };
 
@@ -491,7 +491,7 @@ public partial class MainViewModel : ObservableObject, IDisposable
         }
         catch (Exception ex)
         {
-            System.Windows.MessageBox.Show($"Fehler: {ex.Message}", "Fehler", MessageBoxButton.OK, MessageBoxImage.Error);
+            System.Windows.MessageBox.Show($"{Lokalisierung.T("Status.Fehler")}: {ex.Message}", Lokalisierung.T("Status.Fehler"), MessageBoxButton.OK, MessageBoxImage.Error);
         }
     }
 
@@ -506,8 +506,8 @@ public partial class MainViewModel : ObservableObject, IDisposable
         {
             var dialog = new Microsoft.Win32.OpenFileDialog
             {
-                Filter = "Bilddateien|*.jpg;*.jpeg;*.png;*.tif;*.tiff;*.bmp;*.cr2;*.cr3;*.nef;*.arw;*.dng;*.orf;*.rw2|Videodateien|*.mp4;*.mov;*.avi;*.mkv|Alle Dateien|*.*",
-                Title = "Datei(en) öffnen — Mehrfachauswahl mit Strg/Cmd+Klick",
+                Filter = $"{Lokalisierung.T("Dialog.Bilddateien")}|{Lokalisierung.T("Filter.Bilder")}|{Lokalisierung.T("Dialog.Videodateien")}|{Lokalisierung.T("Filter.Videos")}|{Lokalisierung.T("Dialog.AlleDateien")}|*.*",
+                Title = Lokalisierung.T("Dialog.DateiOeffnen"),
                 Multiselect = true
             };
 
@@ -525,7 +525,7 @@ public partial class MainViewModel : ObservableObject, IDisposable
         }
         catch (Exception ex)
         {
-            System.Windows.MessageBox.Show($"Fehler: {ex.Message}", "Fehler", MessageBoxButton.OK, MessageBoxImage.Error);
+            System.Windows.MessageBox.Show($"{Lokalisierung.T("Status.Fehler")}: {ex.Message}", Lokalisierung.T("Status.Fehler"), MessageBoxButton.OK, MessageBoxImage.Error);
         }
     }
 
@@ -539,15 +539,15 @@ public partial class MainViewModel : ObservableObject, IDisposable
         {
             if (!BildGeladen || PipelineBild == null)
             {
-                System.Windows.MessageBox.Show("Bitte zuerst ein Bild laden und die Pipeline ausführen.",
-                    "Export", MessageBoxButton.OK, MessageBoxImage.Information);
+                System.Windows.MessageBox.Show(Lokalisierung.T("Export.Hinweis"),
+                    Lokalisierung.T("Export.Titel"), MessageBoxButton.OK, MessageBoxImage.Information);
                 return;
             }
 
             var dialog = new Microsoft.Win32.SaveFileDialog
             {
-                Filter = "JPEG|*.jpg|PNG|*.png|TIFF|*.tiff|BMP|*.bmp",
-                Title = "Bild exportieren",
+                Filter = Lokalisierung.T("Filter.Export"),
+                Title = Lokalisierung.T("Dialog.BildExportieren"),
                 FileName = System.IO.Path.GetFileNameWithoutExtension(BildPfad) + "_flipsicolor"
             };
 
@@ -564,12 +564,12 @@ public partial class MainViewModel : ObservableObject, IDisposable
                 encoder.Frames.Add(System.Windows.Media.Imaging.BitmapFrame.Create(PipelineBild));
                 using var fs = System.IO.File.Create(dialog.FileName);
                 encoder.Save(fs);
-                StatusText = $"Exportiert: {dialog.FileName}";
+                StatusText = $"{Lokalisierung.T("Status.Exportiert")}: {dialog.FileName}";
             }
         }
         catch (Exception ex)
         {
-            System.Windows.MessageBox.Show($"Export-Fehler: {ex.Message}", "Fehler", MessageBoxButton.OK, MessageBoxImage.Error);
+            System.Windows.MessageBox.Show(string.Format(Lokalisierung.T("Status.ExportFehler"), ex.Message), Lokalisierung.T("Status.Fehler"), MessageBoxButton.OK, MessageBoxImage.Error);
         }
     }
 
@@ -579,7 +579,7 @@ public partial class MainViewModel : ObservableObject, IDisposable
         if (!BildGeladen || PipelineLaeuft) return;
 
         PipelineLaeuft = true;
-        StatusText = "Pipeline läuft...";
+        StatusText = Lokalisierung.T("Status.PipelineLaeuft");
 
         var param = new PipelineParams
         {
@@ -616,12 +616,12 @@ public partial class MainViewModel : ObservableObject, IDisposable
             {
                 PipelineBild = MatToBitmapSourceConverter.ConvertMat(mat);
             }
-            StatusText = "Pipeline abgeschlossen";
+            StatusText = Lokalisierung.T("Status.PipelineAbgeschlossen");
         }
         catch (Exception ex)
         {
-            StatusText = $"Pipeline-Fehler: {ex.Message}";
-            System.Windows.MessageBox.Show($"Pipeline fehlgeschlagen: {ex.Message}", "Fehler", MessageBoxButton.OK, MessageBoxImage.Error);
+            StatusText = $"{Lokalisierung.T("Status.PipelineFehler")}: {ex.Message}";
+            System.Windows.MessageBox.Show($"{Lokalisierung.T("Status.PipelineFehlgeschlagen")}: {ex.Message}", Lokalisierung.T("Status.Fehler"), MessageBoxButton.OK, MessageBoxImage.Error);
         }
         finally
         {
@@ -645,11 +645,11 @@ public partial class MainViewModel : ObservableObject, IDisposable
             StyleLutName = "";
             AusgewaehlteKamera = null;
             AusgewaehltesObjektiv = null;
-            StatusText = "Parameter zurückgesetzt";
+            StatusText = Lokalisierung.T("Status.ParameterZurueckgesetzt");
         }
         catch (Exception ex)
         {
-            StatusText = $"Fehler: {ex.Message}";
+            StatusText = $"{Lokalisierung.T("Status.Fehler")}: {ex.Message}";
         }
     }
 
@@ -660,21 +660,21 @@ public partial class MainViewModel : ObservableObject, IDisposable
         {
             var dialog = new Microsoft.Win32.OpenFileDialog
             {
-                Filter = "Bilddateien|*.jpg;*.jpeg;*.png;*.tif;*.tiff;*.bmp|Alle Dateien|*.*",
-                Title = "Schachbrett-Referenzbild für Distortion-Grid-Kalibrierung öffnen"
+                Filter = $"{Lokalisierung.T("Dialog.Bilddateien")}|{Lokalisierung.T("Filter.BilderStandard")}|{Lokalisierung.T("Dialog.AlleDateien")}|*.*",
+                Title = Lokalisierung.T("Dialog.SchachbrettOeffnen")
             };
 
             if (dialog.ShowDialog() == true)
             {
                 var erfolg = _imagePipeline.KalibriereDistortionGrid(dialog.FileName);
                 StatusText = erfolg
-                    ? "Distortion-Grid-Kalibrierung erfolgreich"
-                    : "Distortion-Grid-Kalibrierung fehlgeschlagen";
+                    ? Lokalisierung.T("Status.DistortionGridErfolgreich")
+                    : Lokalisierung.T("Status.DistortionGridFehlgeschlagen");
             }
         }
         catch (Exception ex)
         {
-            StatusText = $"Fehler: {ex.Message}";
+            StatusText = $"{Lokalisierung.T("Status.Fehler")}: {ex.Message}";
         }
     }
 
@@ -685,21 +685,21 @@ public partial class MainViewModel : ObservableObject, IDisposable
         {
             var dialog = new Microsoft.Win32.OpenFileDialog
             {
-                Filter = "Bilddateien|*.jpg;*.jpeg;*.png;*.tif;*.tiff;*.bmp|Alle Dateien|*.*",
-                Title = "ColorChecker- oder Graukarten-Referenzbild für Farbkalibrierung öffnen"
+                Filter = $"{Lokalisierung.T("Dialog.Bilddateien")}|{Lokalisierung.T("Filter.BilderStandard")}|{Lokalisierung.T("Dialog.AlleDateien")}|*.*",
+                Title = Lokalisierung.T("Dialog.ColorCheckerOeffnen")
             };
 
             if (dialog.ShowDialog() == true)
             {
                 var erfolg = _imagePipeline.KalibriereColor(dialog.FileName);
                 StatusText = erfolg
-                    ? "Farbkalibrierung erfolgreich"
-                    : "Farbkalibrierung fehlgeschlagen";
+                    ? Lokalisierung.T("Status.FarbkalibrierungErfolgreich")
+                    : Lokalisierung.T("Status.FarbkalibrierungFehlgeschlagen");
             }
         }
         catch (Exception ex)
         {
-            StatusText = $"Fehler: {ex.Message}";
+            StatusText = $"{Lokalisierung.T("Status.Fehler")}: {ex.Message}";
         }
     }
 
@@ -710,20 +710,20 @@ public partial class MainViewModel : ObservableObject, IDisposable
         {
             var dialog = new Microsoft.Win32.OpenFileDialog
             {
-                Filter = "LUT-Dateien|*.cube|Alle Dateien|*.*",
-                Title = "Style-LUT (.cube) öffnen"
+                Filter = $"{Lokalisierung.T("Dialog.LUTDateien")}|{Lokalisierung.T("Filter.LUT")}|{Lokalisierung.T("Dialog.AlleDateien")}|*.*",
+                Title = Lokalisierung.T("Dialog.LutOeffnen")
             };
 
             if (dialog.ShowDialog() == true)
             {
                 StyleLutPfad = dialog.FileName;
                 StyleLutName = Path.GetFileNameWithoutExtension(dialog.FileName);
-                StatusText = $"StyleLUT geladen: {StyleLutName}";
+                StatusText = $"{Lokalisierung.T("Status.FarbstilLutGeladen")}: {StyleLutName}";
             }
         }
         catch (Exception ex)
         {
-            StatusText = $"Fehler: {ex.Message}";
+            StatusText = $"{Lokalisierung.T("Status.Fehler")}: {ex.Message}";
         }
     }
 
@@ -732,7 +732,7 @@ public partial class MainViewModel : ObservableObject, IDisposable
     {
         StyleLutPfad = null;
         StyleLutName = "";
-        StatusText = "StyleLUT entfernt";
+        StatusText = Lokalisierung.T("Status.FarbstilLutEntfernt");
     }
 
     // ===== Video Commands =====
@@ -744,8 +744,8 @@ public partial class MainViewModel : ObservableObject, IDisposable
         {
             var dialog = new Microsoft.Win32.OpenFileDialog
             {
-                Filter = "Videodateien|*.mp4;*.mov;*.avi;*.mkv;*.mxf|Alle Dateien|*.*",
-                Title = "Video öffnen"
+                Filter = $"{Lokalisierung.T("Dialog.Videodateien")}|{Lokalisierung.T("Filter.Videos")}|{Lokalisierung.T("Dialog.AlleDateien")}|*.*",
+                Title = Lokalisierung.T("Dialog.VideoOeffnen")
             };
 
             if (dialog.ShowDialog() == true)
@@ -755,17 +755,17 @@ public partial class MainViewModel : ObservableObject, IDisposable
                     VideoPfad = dialog.FileName;
                     VideoGeladen = true;
                     VideoInfo = $"{_videoPipeline.Breite}x{_videoPipeline.Hoehe}, {_videoPipeline.Fps:F1}fps, {_videoPipeline.Dauer:F1}s";
-                    StatusText = $"Video geladen: {Path.GetFileName(dialog.FileName)}";
+                    StatusText = $"{Lokalisierung.T("Status.VideoGeladen")}: {Path.GetFileName(dialog.FileName)}";
                 }
                 else
                 {
-                    System.Windows.MessageBox.Show("Video konnte nicht geladen werden.", "Fehler", MessageBoxButton.OK, MessageBoxImage.Error);
+                    System.Windows.MessageBox.Show(Lokalisierung.T("Status.VideoKonnteNichtGeladenWerden"), Lokalisierung.T("Status.Fehler"), MessageBoxButton.OK, MessageBoxImage.Error);
                 }
             }
         }
         catch (Exception ex)
         {
-            System.Windows.MessageBox.Show($"Fehler: {ex.Message}", "Fehler", MessageBoxButton.OK, MessageBoxImage.Error);
+            System.Windows.MessageBox.Show($"{Lokalisierung.T("Status.Fehler")}: {ex.Message}", Lokalisierung.T("Status.Fehler"), MessageBoxButton.OK, MessageBoxImage.Error);
         }
     }
 
@@ -776,7 +776,7 @@ public partial class MainViewModel : ObservableObject, IDisposable
 
         VideoPipelineLaeuft = true;
         VideoFortschritt = 0;
-        StatusText = "Video-Pipeline läuft...";
+        StatusText = Lokalisierung.T("Status.VideoPipelineLaeuft");
 
         var param = new PipelineParams
         {
@@ -810,17 +810,17 @@ public partial class MainViewModel : ObservableObject, IDisposable
                     System.Windows.Application.Current.Dispatcher.Invoke(() =>
                     {
                         VideoFortschritt = (double)aktueller / gesamt;
-                        StatusText = $"Video-Verarbeitung: {aktueller}/{gesamt} Frames";
+                        StatusText = string.Format(Lokalisierung.T("Status.VideoVerarbeitungFrames"), aktueller, gesamt);
                     });
                 });
             });
 
-            StatusText = "Video-Pipeline abgeschlossen";
+            StatusText = Lokalisierung.T("Status.VideoPipelineAbgeschlossen");
         }
         catch (Exception ex)
         {
-            StatusText = $"Video-Pipeline-Fehler: {ex.Message}";
-            System.Windows.MessageBox.Show($"Video-Pipeline fehlgeschlagen: {ex.Message}", "Fehler", MessageBoxButton.OK, MessageBoxImage.Error);
+            StatusText = $"{Lokalisierung.T("Status.VideoPipelineFehler")}: {ex.Message}";
+            System.Windows.MessageBox.Show($"{Lokalisierung.T("Status.VideoPipelineFehlgeschlagen")}: {ex.Message}", Lokalisierung.T("Status.Fehler"), MessageBoxButton.OK, MessageBoxImage.Error);
         }
         finally
         {
@@ -832,21 +832,21 @@ public partial class MainViewModel : ObservableObject, IDisposable
     private void UpdatePruefen()
     {
         try { _autoUpdater.Pruefen(); }
-        catch (Exception ex) { StatusText = $"Update-Prüfung fehlgeschlagen: {ex.Message}"; }
+        catch (Exception ex) { StatusText = $"{Lokalisierung.T("Status.UpdatePruefungFehlgeschlagen")}: {ex.Message}"; }
     }
 
     [RelayCommand]
     private void UpdateStarten()
     {
         try { _autoUpdater.UpdateStarten(); }
-        catch (Exception ex) { StatusText = $"Update fehlgeschlagen: {ex.Message}"; }
+        catch (Exception ex) { StatusText = $"{Lokalisierung.T("Status.UpdateFehlgeschlagen")}: {ex.Message}"; }
     }
 
     [RelayCommand]
     private void UpdateIgnorieren()
     {
         try { _autoUpdater.Ignorieren(); }
-        catch (Exception ex) { StatusText = $"Fehler: {ex.Message}"; }
+        catch (Exception ex) { StatusText = $"{Lokalisierung.T("Status.Fehler")}: {ex.Message}"; }
     }
 
     [RelayCommand]
@@ -903,8 +903,8 @@ public partial class MainViewModel : ObservableObject, IDisposable
 
         InstallationLaeuft = true;
         InstallationsFortschritt = 0;
-        InstallationsText = "Installiere...";
-        StatusText = "Installiere VapourSynth...";
+        InstallationsText = Lokalisierung.T("Status.Installiere");
+        StatusText = Lokalisierung.T("Status.VapourSynthInstalliere");
 
         // Progress-Event abonnieren
         _vapourSynthInstaller.InstallationsFortschritt += OnVapourSynthInstallationsFortschritt;
@@ -917,22 +917,22 @@ public partial class MainViewModel : ObservableObject, IDisposable
             if (erfolg && VapourSynthInstalliert)
             {
                 InstallationsFortschritt = 100;
-                InstallationsText = "VapourSynth aktiv";
-                StatusText = "VapourSynth aktiv";
+                InstallationsText = Lokalisierung.T("Status.VapourSynthAktiv");
+                StatusText = Lokalisierung.T("Status.VapourSynthAktiv");
             }
             else
             {
-                InstallationsText = "VapourSynth-Installation fehlgeschlagen";
-                StatusText = "VapourSynth-Installation fehlgeschlagen";
-                System.Windows.MessageBox.Show("VapourSynth-Installation fehlgeschlagen.", "Fehler",
+                InstallationsText = Lokalisierung.T("Status.VapourSynthInstallationFehlgeschlagen");
+                StatusText = Lokalisierung.T("Status.VapourSynthInstallationFehlgeschlagen");
+                System.Windows.MessageBox.Show(Lokalisierung.T("Status.VapourSynthInstallationFehlgeschlagen"), Lokalisierung.T("Status.Fehler"),
                     MessageBoxButton.OK, MessageBoxImage.Warning);
             }
         }
         catch (Exception ex)
         {
-            InstallationsText = $"VapourSynth-Installation fehlgeschlagen: {ex.Message}";
-            StatusText = $"VapourSynth-Installation fehlgeschlagen: {ex.Message}";
-            System.Windows.MessageBox.Show($"VapourSynth-Installation fehlgeschlagen: {ex.Message}", "Fehler",
+            InstallationsText = $"{Lokalisierung.T("Status.VapourSynthInstallationFehlgeschlagen")}: {ex.Message}";
+            StatusText = $"{Lokalisierung.T("Status.VapourSynthInstallationFehlgeschlagen")}: {ex.Message}";
+            System.Windows.MessageBox.Show($"{Lokalisierung.T("Status.VapourSynthInstallationFehlgeschlagen")}: {ex.Message}", Lokalisierung.T("Status.Fehler"),
                 MessageBoxButton.OK, MessageBoxImage.Error);
         }
         finally
@@ -961,19 +961,19 @@ public partial class MainViewModel : ObservableObject, IDisposable
     {
         try
         {
-            var ordner = FolderPicker.OpenFolder("Ordner mit Video-Clips auswählen");
+            var ordner = FolderPicker.OpenFolder(Lokalisierung.T("Dialog.ClipOrdner"));
 
             if (!string.IsNullOrEmpty(ordner))
             {
                 ClipOrdner = ordner;
                 ClipGruppen = new ObservableCollection<ClipMerger.ClipGruppe>(
                     _clipMerger.ClipsGruppieren(ClipOrdner));
-                StatusText = $"{ClipGruppen.Count} Clip-Gruppen erkannt in {ClipOrdner}";
+                StatusText = string.Format(Lokalisierung.T("Status.ClipGruppenErkanntIn"), ClipGruppen.Count, ClipOrdner);
             }
         }
         catch (Exception ex)
         {
-            StatusText = $"Fehler beim Scannen: {ex.Message}";
+            StatusText = $"{Lokalisierung.T("Status.FehlerBeimScannen")}: {ex.Message}";
         }
     }
 
@@ -983,7 +983,7 @@ public partial class MainViewModel : ObservableObject, IDisposable
         if (AusgewaehlteGruppe == null || ClipMergeLaeuft) return;
 
         ClipMergeLaeuft = true;
-        StatusText = $"Füge {AusgewaehlteGruppe.ClipAnzahl} Clips zusammen...";
+        StatusText = $"{Lokalisierung.T("Status.ClipsZusammenfuegen")} ({AusgewaehlteGruppe.ClipAnzahl})";
 
         var fortschritt = new Progress<double>(p => ClipMergeFortschritt = p);
 
@@ -1014,9 +1014,9 @@ public partial class MainViewModel : ObservableObject, IDisposable
                     AusgewaehlteGruppe, ausgabeOrdner, _modelManager, _colorManager, param, fortschritt);
 
                 if (ergebnis != null)
-                    StatusText = $"Fertig: {Path.GetFileName(ergebnis)} (Farbkorrektur angewendet)";
+                    StatusText = string.Format(Lokalisierung.T("Status.FertigFarbkorrektur"), Path.GetFileName(ergebnis));
                 else
-                    StatusText = "Zusammenfügen mit Farbkorrektur fehlgeschlagen";
+                    StatusText = Lokalisierung.T("Status.ZusammenfuegenMitFarbkorrekturFehlgeschlagen");
             }
             else
             {
@@ -1025,14 +1025,14 @@ public partial class MainViewModel : ObservableObject, IDisposable
                     AusgewaehlteGruppe, ausgabeOrdner, fortschritt);
 
                 if (ergebnis != null)
-                    StatusText = $"Fertig: {Path.GetFileName(ergebnis)} (ohne Farbkorrektur)";
+                    StatusText = string.Format(Lokalisierung.T("Status.FertigOhneFarbkorrektur"), Path.GetFileName(ergebnis));
                 else
-                    StatusText = "Zusammenfügen fehlgeschlagen";
+                    StatusText = Lokalisierung.T("Status.ZusammenfuegenFehlgeschlagen");
             }
         }
         catch (Exception ex)
         {
-            StatusText = $"Clip-Merge Fehler: {ex.Message}";
+            StatusText = $"{Lokalisierung.T("Status.ClipMergeFehler")}: {ex.Message}";
         }
         finally
         {
@@ -1048,7 +1048,7 @@ public partial class MainViewModel : ObservableObject, IDisposable
         ClipMergeLaeuft = true;
         var erledigt = 0;
         var gesamt = ClipGruppen.Count;
-        StatusText = $"Verarbeite {gesamt} Clip-Gruppen...";
+        StatusText = string.Format(Lokalisierung.T("Status.VerarbeiteGruppen"), gesamt);
 
         try
         {
@@ -1090,11 +1090,11 @@ public partial class MainViewModel : ObservableObject, IDisposable
                 ClipMergeFortschritt = (double)erledigt / gesamt;
             }
 
-            StatusText = $"Alle {gesamt} Gruppen verarbeitet (Ausgabe: {ausgabeOrdner})";
+            StatusText = $"{Lokalisierung.T("Status.AlleGruppenVerarbeitet")} ({ausgabeOrdner})";
         }
         catch (Exception ex)
         {
-            StatusText = $"Fehler bei Bulk-Merge: {ex.Message}";
+            StatusText = $"{Lokalisierung.T("Status.FehlerBeimBulkMerge")}: {ex.Message}";
         }
         finally
         {
@@ -1126,6 +1126,12 @@ public sealed class DateiEintrag : System.ComponentModel.INotifyPropertyChanged
     /// <summary>Dateityp (Bild oder Video).</summary>
     public string Typ { get; }
 
+    /// <summary>True wenn es sich um eine Bilddatei handelt.</summary>
+    public bool IstBild { get; }
+
+    /// <summary>True wenn es sich um eine Videodatei handelt.</summary>
+    public bool IstVideo { get; }
+
     /// <summary>Dateigröße als formatierter String.</summary>
     public string Groesse { get; }
 
@@ -1152,8 +1158,10 @@ public sealed class DateiEintrag : System.ComponentModel.INotifyPropertyChanged
     {
         Pfad = pfad;
         var ext = Path.GetExtension(pfad);
-        Typ = MainViewModel.BildEndungen.Contains(ext) ? "Bild" :
-              MainViewModel.VideoEndungen.Contains(ext) ? "Video" : "Unbekannt";
+        IstBild = MainViewModel.BildEndungen.Contains(ext);
+        IstVideo = MainViewModel.VideoEndungen.Contains(ext);
+        Typ = IstBild ? Lokalisierung.T("Toolbar.Bild") :
+              IstVideo ? Lokalisierung.T("Toolbar.Video") : "?";
 
         try
         {
@@ -1172,7 +1180,7 @@ public sealed class DateiEintrag : System.ComponentModel.INotifyPropertyChanged
         }
 
         // Thumbnail asynchron laden (nur bei Bildern)
-        if (Typ == "Bild")
+        if (IstBild)
         {
             _ = LadeThumbnailAsync();
         }

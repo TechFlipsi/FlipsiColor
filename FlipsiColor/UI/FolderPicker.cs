@@ -8,11 +8,11 @@ namespace FlipsiColor.UI;
 /// </summary>
 public static class FolderPicker
 {
-    public static string? OpenFolder(string title = "Ordner auswählen")
+    public static string? OpenFolder(string title)
     {
         var dialog = new FolderBrowserDialog
         {
-            Title = title
+            Title = title ?? Lokalisierung.T("Dialog.OrdnerAuswaehlen")
         };
 
         if (dialog.Show() == 0) // S_OK
@@ -27,7 +27,7 @@ public static class FolderPicker
     {
         private IFileDialog? _dialog;
 
-        public string Title { get; set; } = "Ordner auswählen";
+        public string Title { get; set; } = "";
 
         public FolderBrowserDialog() { }
 
