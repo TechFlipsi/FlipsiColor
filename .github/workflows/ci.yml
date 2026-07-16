@@ -227,7 +227,7 @@ jobs:
           body: |
             ## FlipsiColor ${{ steps.version.outputs.version }} — Installerverbesserungen + Portable Windows Version
 
-            **v0.5.5: Installer improvements + portable Windows version (Issue #10).** Installer now requires admin rights for proper Program Files installation, detects existing versions, and a portable ZIP version is available for testing without installation.
+            **v0.6.0: 13 Sprachen + Systemsprache-Erkennung + JSON-Lokalisierung + Installer-Upgrade + Portable Version (Issues #9, #10).** Großes Feature-Update: 13 Sprachen (DE, EN, ES, FR, IT, NL, PL, PT, TR, RU, ZH, JA, KO), automatische Systemsprache-Erkennung mit English-Fallback, JSON-basierte Lokalisierung (Contributors können Sprachen ohne Code-Änderung hinzufügen), Installer mit Upgrade-Erkennung und Portable ZIP-Version.
 
             ### 📦 v0.5.5 — Installer-Verbesserungen (Issue #10)
             - **Admin-Rechte** — Installer benötigt nun Administratorrechte für korrekte Program Files Installation
