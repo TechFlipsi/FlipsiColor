@@ -35,7 +35,8 @@ public partial class App : Application
         {
             // Settings laden — Sprache + Theme anwenden
             var settings = Settings.Laden();
-            Lokalisierung.SpracheSetzen(settings.Sprache);
+            // Sprache initialisieren (JSON-basiert, Issue #9)
+            Lokalisierung.Initialisieren(settings.Sprache);
 
             // Theme anwenden
             ThemeManager.ApplyTheme(settings.Theme);
