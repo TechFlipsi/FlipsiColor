@@ -1,13 +1,14 @@
-; FlipsiColor Installer (Inno Setup) — v0.5.4
+; FlipsiColor Installer (Inno Setup) — v0.5.5
 #define AppName "FlipsiColor"
 #define AppExeName "FlipsiColor.exe"
 #define AppPublisher "TechFlipsi"
 #define AppURL "https://github.com/TechFlipsi/FlipsiColor"
 #ifndef AppVersion
-  #define AppVersion "0.5.4"
+  #define AppVersion "0.5.5"
 #endif
 
 [Setup]
+; AppId must stay the same across versions — enables upgrade detection
 AppId={{B8C4D5E6-F7A8-9012-BCDE-2345678901CD}
 AppName={#AppName}
 AppVersion={#AppVersion}
@@ -17,16 +18,25 @@ AppSupportURL={#AppURL}
 AppUpdatesURL={#AppURL}
 DefaultDirName={autopf}\{#AppName}
 DefaultGroupName={#AppName}
+; Issue #10: Allow destination directory customization (default is 'no' = show page)
+DisableDirPage=no
+; Issue #10: Admin rights for proper Program Files installation
+PrivilegesRequired=admin
+; Issue #10: Prevent installation while app is running
+AppMutex=FlipsiColorAppMutex
+; Use previous install directory if found (upgrade detection)
+UsePreviousAppDir=yes
+UsePreviousTasks=yes
+UsePreviousLanguage=yes
 OutputBaseFilename=FlipsiColor-{#AppVersion}-setup
 Compression=lzma2/Ultra
 SolidCompression=yes
 WizardStyle=modern
 ArchitecturesAllowed=x64compatible
 ArchitecturesInstallIn64BitMode=x64compatible
-PrivilegesRequired=lowest
 UninstallDisplayIcon={app}\{#AppExeName}
 SetupIconFile=..\flipsicolor.ico
-; VersionInfo aktualisiert auf 0.5.4
+; VersionInfo aktualisiert auf 0.5.5
 VersionInfoVersion={#AppVersion}.0
 VersionInfoProductVersion={#AppVersion}.0
 
@@ -57,6 +67,26 @@ Filename: "{app}\VC_redist.x64.exe"; Parameters: "/install /quiet /norestart"; S
 Filename: "{app}\{#AppExeName}"; Description: "{cm:LaunchProgram,{#StringChange(AppName, '&', '&&')}}"; Flags: nowait postinstall skipifsilent
 
 [Code]
-// Issue #9: Installer language is not automatically passed to the app.
-// The app has its own in-app language switcher (ComboBox in the top bar)
-// so the user can change the language at any time from within FlipsiColor.
+// Issue #10: Detect existing installation and offer upgrade.
+// Inno Setup also handles upgrades automatically via the same AppId.
+function InitializeSetup(): Boolean;
+var
+  Version: String;
+  FoundExisting: Boolean;
+begin
+  Result := True;
+  FoundExisting := False;
+
+  // Check HKLM (admin installs — current PrivilegesRequired=admin)
+  if RegQueryStringValue(HKLM, 'Software\Microsoft\Windows\CurrentVersion\Uninstall\{B8C4D5E6-F7A8-9012-BCDE-2345678901CD}_is1', 'DisplayVersion', Version) then
+    FoundExisting := True
+  // Check HKCU (old user-level installs from PrivilegesRequired=lowest in v0.5.4 and earlier)
+  else if RegQueryStringValue(HKCU, 'Software\Microsoft\Windows\CurrentVersion\Uninstall\{B8C4D5E6-F7A8-9012-BCDE-2345678901CD}_is1', 'DisplayVersion', Version) then
+    FoundExisting := True;
+
+  if FoundExisting then
+  begin
+    if MsgBox('FlipsiColor ' + Version + ' is already installed. Do you want to upgrade to version {#AppVersion}?', mbConfirmation, MB_YESNO) = IDNO then
+      Result := False;
+  end;
+end;

@@ -96,11 +96,28 @@ jobs:
           iscc installer/installer.iss /DAppVersion=$version /Oinstaller-output
         shell: pwsh
 
+      # ── Portable ZIP (Issue #10) ──
+      - name: Create Portable ZIP
+        shell: pwsh
+        run: |
+          $version = "${{ steps.version.outputs.version }}"
+          # The publish/win-x64/ directory already contains the full self-contained app
+          # Including Assets/i18n/ with JSON language files (copied via csproj Content Include)
+          Compress-Archive -Path "FlipsiColor/publish/win-x64/*" -DestinationPath "installer-output/FlipsiColor-${version}-portable-win-x64.zip" -Force
+          Write-Host "Portable ZIP created: FlipsiColor-${version}-portable-win-x64.zip"
+
       - name: Upload WPF Installer Artifact
         uses: actions/upload-artifact@v5
         with:
           name: FlipsiColor-${{ steps.version.outputs.version }}-Windows-setup
           path: installer-output/FlipsiColor-*.exe
+          if-no-files-found: warn
+
+      - name: Upload Portable ZIP Artifact
+        uses: actions/upload-artifact@v5
+        with:
+          name: FlipsiColor-${{ steps.version.outputs.version }}-portable-win-x64
+          path: installer-output/FlipsiColor-*-portable-win-x64.zip
           if-no-files-found: warn
 
   # =============================================================================
@@ -178,6 +195,13 @@ jobs:
           name: FlipsiColor-${{ steps.version.outputs.version }}-Windows-setup
           path: release-artifacts
 
+      # Portable ZIP herunterladen (Issue #10)
+      - name: Download Portable ZIP
+        uses: actions/download-artifact@v5
+        with:
+          name: FlipsiColor-${{ steps.version.outputs.version }}-portable-win-x64
+          path: release-artifacts
+
       # Linux .deb herunterladen
       - name: Download Linux .deb
         uses: actions/download-artifact@v5
@@ -201,9 +225,20 @@ jobs:
         with:
           files: release-artifacts/*
           body: |
-            ## FlipsiColor ${{ steps.version.outputs.version }} — Language Switcher Release
+            ## FlipsiColor ${{ steps.version.outputs.version }} — Installerverbesserungen + Portable Windows Version
 
-            **v0.5.4: JSON-based localization system (Issue #9 — MarcoRavich's suggestion).** All UI strings are now stored in external JSON files (Assets/i18n/de.json, en.json). Contributors can add new languages by simply copying a JSON file and translating it — no code changes needed.
+            **v0.5.5: Installer improvements + portable Windows version (Issue #10).** Installer now requires admin rights for proper Program Files installation, detects existing versions, and a portable ZIP version is available for testing without installation.
+
+            ### 📦 v0.5.5 — Installer-Verbesserungen (Issue #10)
+            - **Admin-Rechte** — Installer benötigt nun Administratorrechte für korrekte Program Files Installation
+            - **Verzeichnis-Anpassung** — Installationsverzeichnis kann vom Benutzer geändert werden
+            - **Versions-Erkennung** — Installer erkennt bestehende Installationen und bietet Upgrade an
+            - **AppMutex** — Installation wird blockiert während die App läuft
+            - **Portable ZIP** — `FlipsiColor-${{ steps.version.outputs.version }}-portable-win-x64.zip` — einfach entpacken und starten, keine Installation nötig, keine Admin-Rechte
+
+            ### 🌐 v0.5.4 — JSON-basierte Lokalisierung
+            - **JSON-Sprachdateien** — alle UI-Strings in externen JSON-Dateien (Assets/i18n/de.json, en.json)
+            - **Neue Sprachen** — Contributors können neue Sprachen durch einfaches Hinzufügen einer JSON-Datei hinzufügen
 
             ### 🌐 v0.5.3 — Sprachumschalter
             - **Language ComboBox** in der Top-Toolbar — wechselt zwischen Deutsch und English
@@ -227,7 +262,8 @@ jobs:
             - **RAW-Unterstützung** — CR2, CR3, NEF, ARW, DNG (via LibRaw)
 
             ### Downloads
-            - **Windows:** `FlipsiColor-${{ steps.version.outputs.version }}-setup.exe` (Inno Setup Installer)
+            - **Windows (Installer):** `FlipsiColor-${{ steps.version.outputs.version }}-setup.exe` (Inno Setup Installer)
+            - **Windows (Portable):** `FlipsiColor-${{ steps.version.outputs.version }}-portable-win-x64.zip` (keine Installation nötig)
             - **Linux (Ubuntu/Debian):** `FlipsiColor-${{ steps.version.outputs.version }}-linux.deb`
             - **Linux (universell):** `FlipsiColor-${{ steps.version.outputs.version }}.AppImage`
 
