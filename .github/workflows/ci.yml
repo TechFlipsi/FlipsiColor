@@ -201,13 +201,18 @@ jobs:
         with:
           files: release-artifacts/*
           body: |
-            ## FlipsiColor ${{ steps.version.outputs.version }} — Bugfix Release
+            ## FlipsiColor ${{ steps.version.outputs.version }} — Language Switcher Release
 
-            **v0.5.2: Bugfix — Startup crash on Windows (Issue #8).**
+            **v0.5.3: Language switcher for WPF version (Issue #9).** Added in-app language ComboBox — switch between German and English without restarting. The WPF version now has full DE/EN localization matching the Avalonia version.
 
-            Fixed `XamlParseException` caused by missing Icon resource in SingleFile publish mode.
-            The window icon is now embedded in the executable via the csproj `ApplicationIcon` setting,
-            eliminating the runtime XAML `Icon=` attribute that broke under `PublishSingleFile=true`.
+            ### 🌐 v0.5.3 — Sprachumschalter
+            - **Language ComboBox** in der Top-Toolbar — wechselt zwischen Deutsch und English
+            - **Vollständige Lokalisierung** — alle UI-Texte in der WPF-Version sind jetzt lokalisiert
+            - **Live-Sprachwechsel** — Fenster wird bei Sprachwechsel neu aufgebaut, kein Neustart nötig
+            - **Settings-Persistenz** — gewählte Sprache wird in settings.json gespeichert
+
+            ### 🔧 v0.5.2 — Bugfix
+            - Fixed `XamlParseException` startup crash caused by missing Icon resource in SingleFile publish mode (Issue #8)
 
             ### ✨ Enthaltene Funktionen aus v0.5.1
             - **Logs-Button** — Dezenter Button in der Sidebar öffnet den Logs-Ordner direkt im Dateimanager

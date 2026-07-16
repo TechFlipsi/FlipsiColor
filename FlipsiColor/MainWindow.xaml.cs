@@ -17,6 +17,12 @@ public partial class MainWindow : Window
     private Brush? _originalDropBorderBrush;
     private Thickness _originalDropBorderThickness;
 
+    // Flag: true nach OnLoaded — verhindert dass Change-Handler während Initialisierung feuern
+    private bool _initialisiert;
+
+    // Flag: true wenn das Fenster wegen Sprachwechsel geschlossen wird — kein App-Shutdown
+    private bool _skipShutdown;
+
     // ===== UIPI Fix: ChangeWindowMessageFilterEx =====
     // Wenn die App elevated läuft (z.B. via Task Scheduler mit höchsten Privilegien),
     // blockiert Windows UIPI Drag&Drop von Explorer (medium integrity) zur App (high integrity).
@@ -59,7 +65,66 @@ public partial class MainWindow : Window
                 _ => 2
             };
             ThemeComboBox.SelectedIndex = themeIndex;
+
+            // Sprache-ComboBox initial setzen (wird per Binding gesetzt,
+            // aber zur Sicherheit auch hier setzen falls Binding noch nicht ausgewertet)
+            SpracheComboBox.SelectedIndex = vm.SpracheIndex;
+
+            // Sprachwechsel-Event abonnieren — UI neu aufbauen
+            vm.SpracheGeaendert += OnSpracheGeaendert;
         }
+
+        // Initialisierung abgeschlossen — Change-Handler dürfen jetzt feuern
+        _initialisiert = true;
+    }
+
+    // ===== Sprache-ComboBox =====
+
+    private void OnSpracheChanged(object sender, SelectionChangedEventArgs e)
+    {
+        if (DataContext is not MainViewModel vm) return;
+        if (SpracheComboBox.SelectedIndex < 0) return;
+
+        // Verhindere Rekursion während Initialisierung
+        if (!_initialisiert) return;
+
+        vm.SpracheAendernCommand.Execute(SpracheComboBox.SelectedIndex);
+    }
+
+    /// <summary>
+    /// Bei Sprachwechsel: komplette UI neu aufbauen.
+    /// WPF unterstützt kein automatisches Converter-Refresh wie Avalonia,
+    /// daher wird das Fenster neu erstellt mit der neuen Sprache.
+    /// </summary>
+    private void OnSpracheGeaendert(object? sender, EventArgs e)
+    {
+        System.Windows.Application.Current.Dispatcher.Invoke(() =>
+        {
+            // Neues Fenster mit aktualisierter Lokalisierung erstellen
+            var vm = DataContext as MainViewModel;
+            if (vm == null) return;
+
+            // Event-Abonnement entfernen (altes Fenster wird disposed)
+            vm.SpracheGeaendert -= OnSpracheGeaendert;
+
+            var neuesFenster = new MainWindow
+            {
+                DataContext = vm
+            };
+
+            // Aktuelle Fenster-Position und -Größe übernehmen
+            neuesFenster.Left = Left;
+            neuesFenster.Top = Top;
+            neuesFenster.Width = Width;
+            neuesFenster.Height = Height;
+            neuesFenster.WindowState = WindowState;
+
+            neuesFenster.Show();
+
+            // Altes Fenster schließen (ohne App-Shutdown)
+            _skipShutdown = true;
+            Close();
+        });
     }
 
     // ===== Modus-Umschalter =====
@@ -235,8 +300,18 @@ public partial class MainWindow : Window
     protected override void OnClosed(EventArgs e)
     {
         base.OnClosed(e);
+
+        // Sprachwechsel-Event abbestellen falls noch abonniert
         if (DataContext is MainViewModel vm)
-            vm.Dispose();
-        System.Windows.Application.Current.Shutdown();
+        {
+            vm.SpracheGeaendert -= OnSpracheGeaendert;
+
+            // Nur Dispose + Shutdown wenn das Fenster wirklich geschlossen wird (nicht bei Sprachwechsel)
+            if (!_skipShutdown)
+            {
+                vm.Dispose();
+                System.Windows.Application.Current.Shutdown();
+            }
+        }
     }
 }
