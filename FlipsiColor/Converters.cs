@@ -57,6 +57,23 @@ public class MatToBitmapSourceConverter : IValueConverter
 }
 
 /// <summary>
+/// Lokalisierungs-Converter: {Binding ., Converter={StaticResource Loc}, ConverterParameter='App.Titel'}
+/// Übersetzt einen Lokalisierungsschlüssel in den aktuellen UI-Text.
+/// </summary>
+public class LocConverter : IValueConverter
+{
+    public object Convert(object value, Type targetType, object parameter, CultureInfo culture)
+    {
+        if (parameter is string schluessel)
+            return Lokalisierung.T(schluessel);
+        return parameter?.ToString() ?? "";
+    }
+
+    public object ConvertBack(object value, Type targetType, object parameter, CultureInfo culture)
+        => System.Windows.Data.Binding.DoNothing;
+}
+
+/// <summary>
 /// VideoBackend-Enum → Bool Converter für RadioButton IsChecked Bindings.
 /// ConverterParameter = "FFmpeg" oder "VapourSynth".
 /// Convert: true wenn value == ConverterParameter.

@@ -36,35 +36,49 @@
 
                 <!-- Modus-Umschalter -->
                 <StackPanel Orientation="Horizontal" VerticalAlignment="Center" Margin="0,0,24,0">
-                    <RadioButton GroupName="MainMode" Content="Bild" IsChecked="True"
+                    <RadioButton GroupName="MainMode"
+                                 Content="{Binding ., Converter={StaticResource Loc}, ConverterParameter='Toolbar.Bild'}"
+                                 IsChecked="True"
                                  Padding="12,6" Margin="0,0,4,0" Cursor="Hand"
                                  Checked="OnBildModeChecked"/>
-                    <RadioButton GroupName="MainMode" Content="Video"
+                    <RadioButton GroupName="MainMode"
+                                 Content="{Binding ., Converter={StaticResource Loc}, ConverterParameter='Toolbar.Video'}"
                                  Padding="12,6" Margin="0,0,4,0" Cursor="Hand"
                                  Checked="OnVideoModeChecked"/>
-                    <RadioButton GroupName="MainMode" Content="Clips"
+                    <RadioButton GroupName="MainMode"
+                                 Content="{Binding ., Converter={StaticResource Loc}, ConverterParameter='Toolbar.Clips'}"
                                  Padding="12,6" Cursor="Hand"
                                  Checked="OnClipsModeChecked"/>
                 </StackPanel>
 
-                <!-- Rechts: Öffnen + Export + Theme + GPU -->
+                <!-- Rechts: Öffnen + Export + Theme + Sprache + GPU -->
                 <StackPanel Orientation="Horizontal" VerticalAlignment="Center"
                             HorizontalAlignment="Right" DockPanel.Dock="Right">
                     <!-- Öffnen Button -->
-                    <Button Content="Datei öffnen" Command="{Binding OeffnenCommand}"
+                    <Button Content="{Binding ., Converter={StaticResource Loc}, ConverterParameter='Toolbar.DateiOeffnen'}"
+                            Command="{Binding OeffnenCommand}"
                             Padding="12,6" Margin="0,0,8,0" Cursor="Hand"/>
 
                     <!-- Export Button -->
-                    <Button Content="Export" Command="{Binding ExportCommand}"
+                    <Button Content="{Binding ., Converter={StaticResource Loc}, ConverterParameter='Toolbar.Export'}"
+                            Command="{Binding ExportCommand}"
                             Padding="12,6" Margin="0,0,8,0" Cursor="Hand"
                             Visibility="{Binding BildGeladen, Converter={StaticResource BoolToVis}}"/>
+
+                    <!-- Sprache-Umschalter -->
+                    <ComboBox x:Name="SpracheComboBox" Width="90" Margin="0,0,8,0"
+                              SelectedIndex="{Binding SpracheIndex}"
+                              SelectionChanged="OnSpracheChanged" Cursor="Hand">
+                        <ComboBoxItem Content="DE"/>
+                        <ComboBoxItem Content="EN"/>
+                    </ComboBox>
 
                     <!-- Theme-Umschalter -->
                     <ComboBox x:Name="ThemeComboBox" Width="100" Margin="0,0,8,0"
                               SelectionChanged="OnThemeChanged" Cursor="Hand">
-                        <ComboBoxItem Content="Light"/>
-                        <ComboBoxItem Content="Dark"/>
-                        <ComboBoxItem Content="System"/>
+                        <ComboBoxItem Content="{Binding ., Converter={StaticResource Loc}, ConverterParameter='Theme.Light'}"/>
+                        <ComboBoxItem Content="{Binding ., Converter={StaticResource Loc}, ConverterParameter='Theme.Dark'}"/>
+                        <ComboBoxItem Content="{Binding ., Converter={StaticResource Loc}, ConverterParameter='Theme.System'}"/>
                     </ComboBox>
 
                     <!-- GPU-Status -->
@@ -90,10 +104,14 @@
                     AllowDrop="True" Drop="OnGalerieDrop" DragOver="OnDragOverAny" DragEnter="OnDragEnterAny">
                 <DockPanel LastChildFill="True">
                     <StackPanel DockPanel.Dock="Top" Margin="12,12,12,4">
-                        <TextBlock Text="Galerie" FontWeight="SemiBold" FontSize="13" Margin="0,0,0,4"/>
-                        <TextBlock Text="{Binding DateiListe.Count, StringFormat='{}{0} Datei(en) geladen'}"
-                                   FontSize="10" Foreground="{DynamicResource TextSecondaryBrush}" Margin="0,0,0,8"/>
-                        <TextBlock Text="Dateien hierher ziehen oder 'Datei öffnen' klicken"
+                        <TextBlock Text="{Binding ., Converter={StaticResource Loc}, ConverterParameter='Galerie.Titel'}"
+                                   FontWeight="SemiBold" FontSize="13" Margin="0,0,0,4"/>
+                        <TextBlock FontSize="10" Foreground="{DynamicResource TextSecondaryBrush}" Margin="0,0,0,8">
+                            <Run Text="{Binding DateiListe.Count, Mode=OneWay}"/>
+                            <Run Text=" · "/>
+                            <Run Text="{Binding ., Converter={StaticResource Loc}, ConverterParameter='Galerie.Titel'}"/>
+                        </TextBlock>
+                        <TextBlock Text="{Binding ., Converter={StaticResource Loc}, ConverterParameter='Galerie.Hinweis'}"
                                    FontSize="9" Foreground="{DynamicResource TextSecondaryBrush}"
                                    TextWrapping="Wrap" Margin="0,0,0,8" Opacity="0.7"/>
                     </StackPanel>
@@ -149,16 +167,16 @@
                     <!-- Platzhalter -->
                     <StackPanel VerticalAlignment="Center" HorizontalAlignment="Center"
                                 Visibility="{Binding BildGeladen, Converter={StaticResource InverseBoolToVis}}">
-                        <TextBlock Text="Bild öffnen oder Dateien hierher ziehen"
+                        <TextBlock Text="{Binding ., Converter={StaticResource Loc}, ConverterParameter='DropZone.Platzhalter'}"
                                    FontSize="16" Foreground="{DynamicResource TextSecondaryBrush}"
                                    HorizontalAlignment="Center" Margin="0,0,0,8"/>
-                        <TextBlock Text="Einzelne Bilder oder mehrere Dateien gleichzeitig möglich"
+                        <TextBlock Text="{Binding ., Converter={StaticResource Loc}, ConverterParameter='DropZone.Hinweis'}"
                                    FontSize="12" Foreground="{DynamicResource TextSecondaryBrush}"
                                    HorizontalAlignment="Center" Margin="0,0,0,12" Opacity="0.7"/>
-                        <TextBlock Text="Unterstützte Formate:"
+                        <TextBlock Text="{Binding ., Converter={StaticResource Loc}, ConverterParameter='DropZone.FormateTitel'}"
                                    FontSize="11" Foreground="{DynamicResource TextSecondaryBrush}"
                                    HorizontalAlignment="Center" Margin="0,0,0,4"/>
-                        <TextBlock Text="JPG, PNG, TIFF, BMP, RAW (CR2, CR3, NEF, ARW, DNG, ORF, RW2)"
+                        <TextBlock Text="{Binding ., Converter={StaticResource Loc}, ConverterParameter='DropZone.FormateListe'}"
                                    FontSize="11" Foreground="{DynamicResource TextSecondaryBrush}"
                                    HorizontalAlignment="Center" Opacity="0.6"/>
                     </StackPanel>
@@ -170,7 +188,8 @@
                             CornerRadius="8"
                             Visibility="{Binding PipelineLaeuft, Converter={StaticResource BoolToVis}}">
                         <StackPanel>
-                            <TextBlock Text="Pipeline läuft..." FontSize="12" HorizontalAlignment="Center"
+                            <TextBlock Text="{Binding ., Converter={StaticResource Loc}, ConverterParameter='DropZone.PipelineLaueft'}"
+                                       FontSize="12" HorizontalAlignment="Center"
                                        Foreground="{DynamicResource AccentPrimaryBrush}"/>
                             <ProgressBar Height="4" Width="200" IsIndeterminate="True"
                                           Margin="0,8,0,0"/>
@@ -186,12 +205,14 @@
                     <StackPanel Margin="16,12">
 
                         <!-- ═══ Korrektur-Sliders ═══ -->
-                        <TextBlock Text="Korrektur" FontSize="16" FontWeight="Bold" Margin="0,0,0,4"/>
-                        <TextBlock Text="Manuelle Anpassungen — KI wird zusätzlich angewendet"
+                        <TextBlock Text="{Binding ., Converter={StaticResource Loc}, ConverterParameter='Korrektur.Titel'}"
+                                   FontSize="16" FontWeight="Bold" Margin="0,0,0,4"/>
+                        <TextBlock Text="{Binding ., Converter={StaticResource Loc}, ConverterParameter='Korrektur.Beschreibung'}"
                                    FontSize="10" Foreground="{DynamicResource TextSecondaryBrush}"
                                    Margin="0,0,0,12"/>
 
-                        <Expander Header="Ton — Helligkeit &amp; Kontrast" IsExpanded="True" Margin="0,0,0,8">
+                        <Expander IsExpanded="True" Margin="0,0,0,8"
+                                  Header="{Binding ., Converter={StaticResource Loc}, ConverterParameter='Korrektur.TonExpander'}">
                             <StackPanel Margin="0,8,0,0">
                                 <Grid Margin="0,0,0,8">
                                     <Grid.ColumnDefinitions>
@@ -199,7 +220,7 @@
                                         <ColumnDefinition Width="*"/>
                                         <ColumnDefinition Width="35"/>
                                     </Grid.ColumnDefinitions>
-                                    <TextBlock Grid.Column="0" Text="Belichtung" VerticalAlignment="Center" FontSize="11"/>
+                                    <TextBlock Grid.Column="0" Text="{Binding ., Converter={StaticResource Loc}, ConverterParameter='Korrektur.Belichtung'}" VerticalAlignment="Center" FontSize="11"/>
                                     <Slider Grid.Column="1" Minimum="-100" Maximum="100" Value="{Binding Belichtung}" VerticalAlignment="Center" Margin="8,0"/>
                                     <TextBlock Grid.Column="2" Text="{Binding Belichtung, StringFormat='{}{0:F0}'}" VerticalAlignment="Center" HorizontalAlignment="Right" Foreground="{DynamicResource TextSecondaryBrush}" FontSize="11"/>
                                 </Grid>
@@ -209,7 +230,7 @@
                                         <ColumnDefinition Width="*"/>
                                         <ColumnDefinition Width="35"/>
                                     </Grid.ColumnDefinitions>
-                                    <TextBlock Grid.Column="0" Text="Kontrast" VerticalAlignment="Center" FontSize="11"/>
+                                    <TextBlock Grid.Column="0" Text="{Binding ., Converter={StaticResource Loc}, ConverterParameter='Korrektur.Kontrast'}" VerticalAlignment="Center" FontSize="11"/>
                                     <Slider Grid.Column="1" Minimum="-100" Maximum="100" Value="{Binding Kontrast}" VerticalAlignment="Center" Margin="8,0"/>
                                     <TextBlock Grid.Column="2" Text="{Binding Kontrast, StringFormat='{}{0:F0}'}" VerticalAlignment="Center" HorizontalAlignment="Right" Foreground="{DynamicResource TextSecondaryBrush}" FontSize="11"/>
                                 </Grid>
@@ -219,7 +240,7 @@
                                         <ColumnDefinition Width="*"/>
                                         <ColumnDefinition Width="35"/>
                                     </Grid.ColumnDefinitions>
-                                    <TextBlock Grid.Column="0" Text="Lichter" VerticalAlignment="Center" FontSize="11"/>
+                                    <TextBlock Grid.Column="0" Text="{Binding ., Converter={StaticResource Loc}, ConverterParameter='Korrektur.Lichter'}" VerticalAlignment="Center" FontSize="11"/>
                                     <Slider Grid.Column="1" Minimum="-100" Maximum="100" Value="{Binding Lichter}" VerticalAlignment="Center" Margin="8,0"/>
                                     <TextBlock Grid.Column="2" Text="{Binding Lichter, StringFormat='{}{0:F0}'}" VerticalAlignment="Center" HorizontalAlignment="Right" Foreground="{DynamicResource TextSecondaryBrush}" FontSize="11"/>
                                 </Grid>
@@ -229,14 +250,15 @@
                                         <ColumnDefinition Width="*"/>
                                         <ColumnDefinition Width="35"/>
                                     </Grid.ColumnDefinitions>
-                                    <TextBlock Grid.Column="0" Text="Schatten" VerticalAlignment="Center" FontSize="11"/>
+                                    <TextBlock Grid.Column="0" Text="{Binding ., Converter={StaticResource Loc}, ConverterParameter='Korrektur.Schatten'}" VerticalAlignment="Center" FontSize="11"/>
                                     <Slider Grid.Column="1" Minimum="-100" Maximum="100" Value="{Binding Schatten}" VerticalAlignment="Center" Margin="8,0"/>
                                     <TextBlock Grid.Column="2" Text="{Binding Schatten, StringFormat='{}{0:F0}'}" VerticalAlignment="Center" HorizontalAlignment="Right" Foreground="{DynamicResource TextSecondaryBrush}" FontSize="11"/>
                                 </Grid>
                             </StackPanel>
                         </Expander>
 
-                        <Expander Header="Farbe — Sättigung &amp; Vibranz" IsExpanded="True" Margin="0,0,0,8">
+                        <Expander IsExpanded="True" Margin="0,0,0,8"
+                                  Header="{Binding ., Converter={StaticResource Loc}, ConverterParameter='Korrektur.FarbeExpander'}">
                             <StackPanel Margin="0,8,0,0">
                                 <Grid Margin="0,0,0,8">
                                     <Grid.ColumnDefinitions>
@@ -244,7 +266,7 @@
                                         <ColumnDefinition Width="*"/>
                                         <ColumnDefinition Width="35"/>
                                     </Grid.ColumnDefinitions>
-                                    <TextBlock Grid.Column="0" Text="Sättigung" VerticalAlignment="Center" FontSize="11"/>
+                                    <TextBlock Grid.Column="0" Text="{Binding ., Converter={StaticResource Loc}, ConverterParameter='Korrektur.Saettigung'}" VerticalAlignment="Center" FontSize="11"/>
                                     <Slider Grid.Column="1" Minimum="-100" Maximum="100" Value="{Binding Saettigung}" VerticalAlignment="Center" Margin="8,0"/>
                                     <TextBlock Grid.Column="2" Text="{Binding Saettigung, StringFormat='{}{0:F0}'}" VerticalAlignment="Center" HorizontalAlignment="Right" Foreground="{DynamicResource TextSecondaryBrush}" FontSize="11"/>
                                 </Grid>
@@ -254,14 +276,15 @@
                                         <ColumnDefinition Width="*"/>
                                         <ColumnDefinition Width="35"/>
                                     </Grid.ColumnDefinitions>
-                                    <TextBlock Grid.Column="0" Text="Vibranz" VerticalAlignment="Center" FontSize="11"/>
+                                    <TextBlock Grid.Column="0" Text="{Binding ., Converter={StaticResource Loc}, ConverterParameter='Korrektur.Vibranz'}" VerticalAlignment="Center" FontSize="11"/>
                                     <Slider Grid.Column="1" Minimum="-100" Maximum="100" Value="{Binding Vibranz}" VerticalAlignment="Center" Margin="8,0"/>
                                     <TextBlock Grid.Column="2" Text="{Binding Vibranz, StringFormat='{}{0:F0}'}" VerticalAlignment="Center" HorizontalAlignment="Right" Foreground="{DynamicResource TextSecondaryBrush}" FontSize="11"/>
                                 </Grid>
                             </StackPanel>
                         </Expander>
 
-                        <Expander Header="Detail — Schärfe &amp; Rauschen" IsExpanded="False" Margin="0,0,0,8">
+                        <Expander IsExpanded="False" Margin="0,0,0,8"
+                                  Header="{Binding ., Converter={StaticResource Loc}, ConverterParameter='Korrektur.DetailExpander'}">
                             <StackPanel Margin="0,8,0,0">
                                 <Grid Margin="0,0,0,8">
                                     <Grid.ColumnDefinitions>
@@ -269,7 +292,7 @@
                                         <ColumnDefinition Width="*"/>
                                         <ColumnDefinition Width="35"/>
                                     </Grid.ColumnDefinitions>
-                                    <TextBlock Grid.Column="0" Text="Schärfe" VerticalAlignment="Center" FontSize="11"/>
+                                    <TextBlock Grid.Column="0" Text="{Binding ., Converter={StaticResource Loc}, ConverterParameter='Korrektur.Schaerfe'}" VerticalAlignment="Center" FontSize="11"/>
                                     <Slider Grid.Column="1" Minimum="0" Maximum="100" Value="{Binding Schaerfe}" VerticalAlignment="Center" Margin="8,0"/>
                                     <TextBlock Grid.Column="2" Text="{Binding Schaerfe, StringFormat='{}{0:F0}'}" VerticalAlignment="Center" HorizontalAlignment="Right" Foreground="{DynamicResource TextSecondaryBrush}" FontSize="11"/>
                                 </Grid>
@@ -279,7 +302,7 @@
                                         <ColumnDefinition Width="*"/>
                                         <ColumnDefinition Width="35"/>
                                     </Grid.ColumnDefinitions>
-                                    <TextBlock Grid.Column="0" Text="Rauschen L" VerticalAlignment="Center" FontSize="11"/>
+                                    <TextBlock Grid.Column="0" Text="{Binding ., Converter={StaticResource Loc}, ConverterParameter='Korrektur.RauschenLuma'}" VerticalAlignment="Center" FontSize="11"/>
                                     <Slider Grid.Column="1" Minimum="0" Maximum="100" Value="{Binding RauschenLuma}" VerticalAlignment="Center" Margin="8,0"/>
                                     <TextBlock Grid.Column="2" Text="{Binding RauschenLuma, StringFormat='{}{0:F0}'}" VerticalAlignment="Center" HorizontalAlignment="Right" Foreground="{DynamicResource TextSecondaryBrush}" FontSize="11"/>
                                 </Grid>
@@ -289,7 +312,7 @@
                                         <ColumnDefinition Width="*"/>
                                         <ColumnDefinition Width="35"/>
                                     </Grid.ColumnDefinitions>
-                                    <TextBlock Grid.Column="0" Text="Rauschen C" VerticalAlignment="Center" FontSize="11"/>
+                                    <TextBlock Grid.Column="0" Text="{Binding ., Converter={StaticResource Loc}, ConverterParameter='Korrektur.RauschenChroma'}" VerticalAlignment="Center" FontSize="11"/>
                                     <Slider Grid.Column="1" Minimum="0" Maximum="100" Value="{Binding RauschenChroma}" VerticalAlignment="Center" Margin="8,0"/>
                                     <TextBlock Grid.Column="2" Text="{Binding RauschenChroma, StringFormat='{}{0:F0}'}" VerticalAlignment="Center" HorizontalAlignment="Right" Foreground="{DynamicResource TextSecondaryBrush}" FontSize="11"/>
                                 </Grid>
@@ -297,29 +320,30 @@
                         </Expander>
 
                         <!-- Objektivkorrektur -->
-                        <CheckBox Content="Objektivkorrektur" IsChecked="{Binding Objektivkorrektur}"
+                        <CheckBox Content="{Binding ., Converter={StaticResource Loc}, ConverterParameter='Objektiv.Titel'}"
+                                  IsChecked="{Binding Objektivkorrektur}"
                                   Margin="0,4,0,8" Cursor="Hand"/>
-                        <TextBlock Text="Entfernt Verzerrungen basierend auf Objektivprofil"
+                        <TextBlock Text="{Binding ., Converter={StaticResource Loc}, ConverterParameter='Objektiv.Beschreibung'}"
                                    FontSize="9" Foreground="{DynamicResource TextSecondaryBrush}"
                                    Margin="0,0,0,4" Opacity="0.6"/>
 
                         <!-- Kamera & Objektiv manuell wählen (nur sichtbar wenn Objektivkorrektur aktiv) -->
-                        <Expander Header="Kamera &amp; Objektiv manuell wählen"
-                                  IsExpanded="False" Margin="0,0,0,12"
+                        <Expander IsExpanded="False" Margin="0,0,0,12"
+                                  Header="{Binding ., Converter={StaticResource Loc}, ConverterParameter='Objektiv.Expander'}"
                                   Visibility="{Binding Objektivkorrektur, Converter={StaticResource BoolToVis}}"
                                   Cursor="Hand">
                             <StackPanel Margin="0,4,0,0">
-                                <TextBlock Text="Kamera-Hersteller" FontSize="11" Margin="0,0,0,4"/>
+                                <TextBlock Text="{Binding ., Converter={StaticResource Loc}, ConverterParameter='Objektiv.KameraHersteller'}" FontSize="11" Margin="0,0,0,4"/>
                                 <ComboBox ItemsSource="{Binding VerfuegbareKameras}"
                                           SelectedItem="{Binding AusgewaehlteKamera}"
                                           Margin="0,0,0,8" Cursor="Hand"/>
 
-                                <TextBlock Text="Objektiv" FontSize="11" Margin="0,0,0,4"/>
+                                <TextBlock Text="{Binding ., Converter={StaticResource Loc}, ConverterParameter='Objektiv.Objektiv'}" FontSize="11" Margin="0,0,0,4"/>
                                 <ComboBox ItemsSource="{Binding VerfuegbareObjektive}"
                                           SelectedItem="{Binding AusgewaehltesObjektiv}"
                                           Margin="0,0,0,8" Cursor="Hand"/>
 
-                                <TextBlock Text="Leer = automatisch aus EXIF-Daten"
+                                <TextBlock Text="{Binding ., Converter={StaticResource Loc}, ConverterParameter='Objektiv.LeerAuto'}"
                                            FontSize="9" Foreground="{DynamicResource TextSecondaryBrush}"
                                            Margin="0,0,0,4" Opacity="0.6"/>
                             </StackPanel>
@@ -328,13 +352,13 @@
                         <!-- ═══ KI-Einstellungen ═══ -->
                         <Border Background="{DynamicResource BgTertiaryBrush}" CornerRadius="8" Padding="12" Margin="0,8,0,12">
                             <StackPanel>
-                                <TextBlock Text="KI-Einstellungen" FontWeight="SemiBold" Margin="0,0,0,4"/>
-                                <TextBlock Text="Automatische Optimierung durch KI-Modelle"
+                                <TextBlock Text="{Binding ., Converter={StaticResource Loc}, ConverterParameter='KI.Titel'}" FontWeight="SemiBold" Margin="0,0,0,4"/>
+                                <TextBlock Text="{Binding ., Converter={StaticResource Loc}, ConverterParameter='KI.Beschreibung'}"
                                            FontSize="9" Foreground="{DynamicResource TextSecondaryBrush}"
                                            Margin="0,0,0,8"/>
 
                                 <!-- Modus -->
-                                <TextBlock Text="Modus" FontSize="11" Margin="0,0,0,4"/>
+                                <TextBlock Text="{Binding ., Converter={StaticResource Loc}, ConverterParameter='KI.Modus'}" FontSize="11" Margin="0,0,0,4"/>
                                 <ComboBox SelectedValuePath="Content"
                                           SelectedValue="{Binding AktuellerModus}"
                                           Margin="0,0,0,4" Cursor="Hand">
@@ -342,47 +366,49 @@
                                     <ComboBoxItem Content="SmartLearn"/>
                                     <ComboBoxItem Content="Turbo"/>
                                 </ComboBox>
-                                <TextBlock Text="Ask: interaktiv | SmartLearn: lernt | Turbo: schnell"
+                                <TextBlock Text="{Binding ., Converter={StaticResource Loc}, ConverterParameter='KI.ModusBeschreibung'}"
                                            FontSize="9" Foreground="{DynamicResource TextSecondaryBrush}"
                                            Margin="0,0,0,8" Opacity="0.6"/>
 
                                 <!-- Intensität -->
-                                <TextBlock Text="Intensität der KI-Korrektur" FontSize="11" Margin="0,0,0,4"/>
+                                <TextBlock Text="{Binding ., Converter={StaticResource Loc}, ConverterParameter='KI.Intensitaet'}" FontSize="11" Margin="0,0,0,4"/>
                                 <ComboBox SelectedIndex="{Binding IntensitaetIndex}"
                                           Margin="0,0,0,8" Cursor="Hand">
-                                    <ComboBoxItem Content="Leicht"/>
-                                    <ComboBoxItem Content="Mittel"/>
-                                    <ComboBoxItem Content="Stark"/>
+                                    <ComboBoxItem Content="{Binding ., Converter={StaticResource Loc}, ConverterParameter='Intensitaet.Leicht'}"/>
+                                    <ComboBoxItem Content="{Binding ., Converter={StaticResource Loc}, ConverterParameter='Intensitaet.Mittel'}"/>
+                                    <ComboBoxItem Content="{Binding ., Converter={StaticResource Loc}, ConverterParameter='Intensitaet.Stark'}"/>
                                 </ComboBox>
 
                                 <!-- Upscaling -->
-                                <TextBlock Text="Hochskalieren" FontSize="11" Margin="0,0,0,4"/>
+                                <TextBlock Text="{Binding ., Converter={StaticResource Loc}, ConverterParameter='KI.Hochskalieren'}" FontSize="11" Margin="0,0,0,4"/>
                                 <ComboBox SelectedIndex="{Binding HochskalierenFaktor}"
                                           Margin="0,0,0,4" Cursor="Hand">
-                                    <ComboBoxItem Content="Aus (1x)"/>
-                                    <ComboBoxItem Content="2x (RealESRGAN)"/>
-                                    <ComboBoxItem Content="3x"/>
-                                    <ComboBoxItem Content="4x"/>
+                                    <ComboBoxItem Content="{Binding ., Converter={StaticResource Loc}, ConverterParameter='Upscale.Aus'}"/>
+                                    <ComboBoxItem Content="{Binding ., Converter={StaticResource Loc}, ConverterParameter='Upscale.2x'}"/>
+                                    <ComboBoxItem Content="{Binding ., Converter={StaticResource Loc}, ConverterParameter='Upscale.3x'}"/>
+                                    <ComboBoxItem Content="{Binding ., Converter={StaticResource Loc}, ConverterParameter='Upscale.4x'}"/>
                                 </ComboBox>
-                                <TextBlock Text="Vergrößert das Bild mit KI — höhere Auflösung"
+                                <TextBlock Text="{Binding ., Converter={StaticResource Loc}, ConverterParameter='KI.HochskalierenBeschreibung'}"
                                            FontSize="9" Foreground="{DynamicResource TextSecondaryBrush}"
                                            Margin="0,0,0,8" Opacity="0.6"/>
 
                                 <!-- Gesichtswiederherstellung -->
-                                <CheckBox Content="Gesichtswiederherstellung (CodeFormer)"
+                                <CheckBox Content="{Binding ., Converter={StaticResource Loc}, ConverterParameter='KI.Gesichtswiederherstellung'}"
                                           IsChecked="{Binding GesichtswiederherstellungAktiv}"
                                           Cursor="Hand" Margin="0,4,0,4"
                                           TextBlock.FontSize="11"/>
-                                <TextBlock Text="Repariert Gesichter in verpixelten Bildern"
+                                <TextBlock Text="{Binding ., Converter={StaticResource Loc}, ConverterParameter='KI.GesichtBeschreibung'}"
                                            FontSize="9" Foreground="{DynamicResource TextSecondaryBrush}"
                                            Margin="0,0,0,8" Opacity="0.6"/>
 
                                 <!-- Style-LUT -->
-                                <TextBlock Text="Style-LUT (.cube)" FontSize="11" Margin="0,4,0,4"/>
+                                <TextBlock Text="{Binding ., Converter={StaticResource Loc}, ConverterParameter='KI.StyleLUT'}" FontSize="11" Margin="0,4,0,4"/>
                                 <StackPanel Orientation="Horizontal" Margin="0,0,0,4">
-                                    <Button Content="Laden" Command="{Binding StyleLutLadenCommand}"
+                                    <Button Content="{Binding ., Converter={StaticResource Loc}, ConverterParameter='KI.Laden'}"
+                                            Command="{Binding StyleLutLadenCommand}"
                                             Padding="6,3" FontSize="11" Margin="0,0,4,0" Cursor="Hand"/>
-                                    <Button Content="Entfernen" Command="{Binding StyleLutEntfernenCommand}"
+                                    <Button Content="{Binding ., Converter={StaticResource Loc}, ConverterParameter='KI.Entfernen'}"
+                                            Command="{Binding StyleLutEntfernenCommand}"
                                             Padding="6,3" FontSize="11" Cursor="Hand"/>
                                 </StackPanel>
                                 <TextBlock Text="{Binding StyleLutName}" FontSize="10"
@@ -392,27 +418,29 @@
                         </Border>
 
                         <!-- ═══ Buttons ═══ -->
-                        <Button Content="Pipeline starten" Command="{Binding PipelineAusfuehrenCommand}"
+                        <Button Content="{Binding ., Converter={StaticResource Loc}, ConverterParameter='Pipeline.Starten'}"
+                                Command="{Binding PipelineAusfuehrenCommand}"
                                 Padding="12,8" Margin="0,0,0,8" Cursor="Hand"
                                 IsEnabled="{Binding BildGeladen}"/>
-                        <TextBlock Text="Wendet KI + manuelle Korrektur auf das Bild an"
+                        <TextBlock Text="{Binding ., Converter={StaticResource Loc}, ConverterParameter='Pipeline.Beschreibung'}"
                                    FontSize="9" Foreground="{DynamicResource TextSecondaryBrush}"
                                    Margin="0,0,0,8" Opacity="0.6"/>
-                        <Button Content="Zurücksetzen" Command="{Binding ZuruecksetzenCommand}"
+                        <Button Content="{Binding ., Converter={StaticResource Loc}, ConverterParameter='Pipeline.Zuruecksetzen'}"
+                                Command="{Binding ZuruecksetzenCommand}"
                                 Padding="12,8" Margin="0,0,0,8" Cursor="Hand"/>
 
                         <!-- Video-Backend (nur im Video-Modus) -->
                         <StackPanel Margin="0,8,0,0" x:Name="VideoBackendPanel" Visibility="Collapsed">
-                            <TextBlock Text="Video-Backend" FontWeight="SemiBold" Margin="0,0,0,4"/>
-                            <TextBlock Text="Wählt die Verarbeitungsmethode für Videos"
+                            <TextBlock Text="{Binding ., Converter={StaticResource Loc}, ConverterParameter='Video.Backend.Titel'}" FontWeight="SemiBold" Margin="0,0,0,4"/>
+                            <TextBlock Text="{Binding ., Converter={StaticResource Loc}, ConverterParameter='Video.Backend.Beschreibung'}"
                                        FontSize="9" Foreground="{DynamicResource TextSecondaryBrush}"
                                        Margin="0,0,0,8" Opacity="0.6"/>
                             <RadioButton GroupName="VideoBackend"
-                                        Content="FFmpeg (Standard)"
+                                        Content="{Binding ., Converter={StaticResource Loc}, ConverterParameter='Video.Backend.FFmpeg'}"
                                         IsChecked="{Binding VideoBackend, Converter={StaticResource BackendToBool}, ConverterParameter=FFmpeg, Mode=TwoWay}"
                                         Margin="0,0,0,4" Cursor="Hand"/>
                             <RadioButton GroupName="VideoBackend"
-                                        Content="VapourSynth (bessere Qualität)"
+                                        Content="{Binding ., Converter={StaticResource Loc}, ConverterParameter='Video.Backend.VapourSynth'}"
                                         IsChecked="{Binding VideoBackend, Converter={StaticResource BackendToBool}, ConverterParameter=VapourSynth, Mode=TwoWay}"
                                         Margin="0,0,0,8" Cursor="Hand"/>
                             <!-- Installations-UI: sichtbar wenn VapourSynth gewählt aber NICHT installiert -->
@@ -426,7 +454,7 @@
                                     <TextBlock Text="{Binding InstallationsText}" FontSize="10"
                                                Foreground="{DynamicResource TextSecondaryBrush}" TextWrapping="Wrap"
                                                Margin="0,0,0,8"/>
-                                    <Button Content="Erneut installieren"
+                                    <Button Content="{Binding ., Converter={StaticResource Loc}, ConverterParameter='Video.Backend.ErneutInstallieren'}"
                                             Command="{Binding InstalliereVapourSynthCommand}"
                                             Padding="8,4" FontSize="11" Cursor="Hand"/>
                                 </StackPanel>
@@ -447,12 +475,13 @@
                 <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" DockPanel.Dock="Right">
                     <StackPanel Orientation="Horizontal"
                                 Visibility="{Binding UpdateVerfuegbar, Converter={StaticResource BoolToVis}}">
-                        <TextBlock Text="Update verfügbar:" FontSize="11"
+                        <TextBlock Text="{Binding ., Converter={StaticResource Loc}, ConverterParameter='Status.UpdateVerfuegbar'}" FontSize="11"
                                    Foreground="{DynamicResource AccentSecondaryBrush}"
                                    VerticalAlignment="Center" Margin="0,0,8,0"/>
                         <TextBlock Text="{Binding NeueVersion}" FontSize="11"
                                    VerticalAlignment="Center" Margin="0,0,8,0"/>
-                        <Button Content="Installieren" Command="{Binding UpdateStartenCommand}"
+                        <Button Content="{Binding ., Converter={StaticResource Loc}, ConverterParameter='Status.Installieren'}"
+                                Command="{Binding UpdateStartenCommand}"
                                 Padding="8,3" FontSize="10" Margin="0,0,4,0" Cursor="Hand"/>
                     </StackPanel>
                 </StackPanel>

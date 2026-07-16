@@ -27,7 +27,7 @@ public partial class MainViewModel : ObservableObject, IDisposable
     private readonly VideoPipeline _videoPipeline;
     private readonly AutoUpdater _autoUpdater;
 
-    [ObservableProperty] private string _title = "FlipsiColor v0.5.2";
+    [ObservableProperty] private string _title = "FlipsiColor v0.5.3";
     [ObservableProperty] private bool _gpuVerfuegbar;
     [ObservableProperty] private string _gpuName = "";
     [ObservableProperty] private bool _updateVerfuegbar;
@@ -295,6 +295,12 @@ public partial class MainViewModel : ObservableObject, IDisposable
     // Drag & Drop Dateiliste
     [ObservableProperty] private ObservableCollection<DateiEintrag> _dateiListe = [];
 
+    // Sprach-Index für ComboBox (0 = Deutsch, 1 = English)
+    [ObservableProperty] private int _spracheIndex;
+
+    // Event für Sprachwechsel — MainWindow lauscht darauf und baut die UI neu auf
+    public event EventHandler? SpracheGeaendert;
+
     public ObservableCollection<string> VerfuegbareSprachen { get; } = new() { "de", "en", "es", "fr", "it", "pt_BR", "ja" };
 
     /// <summary>
@@ -336,6 +342,10 @@ public partial class MainViewModel : ObservableObject, IDisposable
             // Video-Backend aus Settings laden
             VideoBackend = settings.VideoBackend;
             VapourSynthInstalliert = _vapourSynthInstaller.IstInstalliert;
+
+            // Sprache aus Settings laden und anwenden
+            SpracheIndex = settings.Sprache == "en" ? 1 : 0;
+            Lokalisierung.SpracheSetzen(settings.Sprache);
         }
         catch
         {
@@ -854,8 +864,27 @@ public partial class MainViewModel : ObservableObject, IDisposable
         }
         catch (Exception ex)
         {
-            StatusText = $"Theme-Fehler: {ex.Message}";
+            StatusText = $"{Lokalisierung.T("Status.ThemeFehler")}: {ex.Message}";
         }
+    }
+
+    /// <summary>
+    /// Wechselt die UI-Sprache. Speichert die Einstellung und löst das
+    /// SpracheGeaendert-Event aus — MainWindow baut die UI neu auf.
+    /// </summary>
+    [RelayCommand]
+    private void SpracheAendern(int index)
+    {
+        var sprache = index == 1 ? "en" : "de";
+        Lokalisierung.SpracheSetzen(sprache);
+        SpracheIndex = index;
+
+        var settings = Settings.Laden();
+        settings.Sprache = sprache;
+        settings.Speichern();
+
+        // UI-Texte aktualisieren — MainWindow lauscht auf dieses Event
+        SpracheGeaendert?.Invoke(this, EventArgs.Empty);
     }
 
     // ===== Video-Backend =====
