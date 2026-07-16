@@ -345,7 +345,9 @@ public partial class MainViewModel : ObservableObject, IDisposable
 
             // Sprache aus Settings laden und anwenden (Issue #9: leer = Systemsprache erkennen)
             var effektiveSprache = string.IsNullOrEmpty(settings.Sprache) ? Lokalisierung.Sprache : settings.Sprache;
-            SpracheIndex = effektiveSprache == "en" ? 1 : 0;
+            var sprachenListe = new[] { "de", "en", "es", "fr", "it", "nl", "pl", "pt", "tr", "ru", "zh", "ja", "ko" };
+            SpracheIndex = Array.IndexOf(sprachenListe, effektiveSprache);
+            if (SpracheIndex < 0) SpracheIndex = 0; // Fallback Deutsch
             Lokalisierung.SpracheSetzen(settings.Sprache);
         }
         catch
@@ -876,7 +878,9 @@ public partial class MainViewModel : ObservableObject, IDisposable
     [RelayCommand]
     private void SpracheAendern(int index)
     {
-        var sprache = index == 1 ? "en" : "de";
+        // Index → Sprachcode Mapping (13 Sprachen, Issue #9)
+        var sprachen = new[] { "de", "en", "es", "fr", "it", "nl", "pl", "pt", "tr", "ru", "zh", "ja", "ko" };
+        var sprache = index >= 0 && index < sprachen.Length ? sprachen[index] : "de";
         Lokalisierung.SpracheSetzen(sprache);
         SpracheIndex = index;
 

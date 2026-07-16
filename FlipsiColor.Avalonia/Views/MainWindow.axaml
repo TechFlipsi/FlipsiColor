@@ -201,8 +201,19 @@
                                 <TextBlock Text="{Binding ., Converter={StaticResource Loc}, ConverterParameter='Einstellungen.Sprache'}" FontWeight="SemiBold" Margin="0,0,0,8"/>
                                 <ComboBox SelectedIndex="{Binding SpracheIndex}"
                                           Margin="0,0,0,16">
-                                    <ComboBoxItem Content="{Binding ., Converter={StaticResource Loc}, ConverterParameter='Einstellungen.Sprache.Deutsch'}"/>
-                                    <ComboBoxItem Content="{Binding ., Converter={StaticResource Loc}, ConverterParameter='Einstellungen.Sprache.Englisch'}"/>
+                                    <ComboBoxItem Content="DE"/>
+                                    <ComboBoxItem Content="EN"/>
+                                    <ComboBoxItem Content="ES"/>
+                                    <ComboBoxItem Content="FR"/>
+                                    <ComboBoxItem Content="IT"/>
+                                    <ComboBoxItem Content="NL"/>
+                                    <ComboBoxItem Content="PL"/>
+                                    <ComboBoxItem Content="PT"/>
+                                    <ComboBoxItem Content="TR"/>
+                                    <ComboBoxItem Content="RU"/>
+                                    <ComboBoxItem Content="ZH"/>
+                                    <ComboBoxItem Content="JA"/>
+                                    <ComboBoxItem Content="KO"/>
                                 </ComboBox>
 
                                 <!-- Design -->
