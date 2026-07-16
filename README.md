@@ -114,6 +114,10 @@ Wir suchen Contributors! Siehe [CONTRIBUTING.md](CONTRIBUTING.md) für Build-Anl
 
 Wir folgen Semantic Versioning (`vMAJOR.MINOR.PATCH`). Details siehe [VERSIONING.md](VERSIONING.md).
 
+## Übersetzungen
+
+FlipsiColor unterstützt 13 Sprachen. Übersetzungsdateien und Anleitungen finden sich im Ordner [i18n-templates/](i18n-templates/).
+
 ## Credits
 
 - **Idee:** Fabian Kirchweger
