@@ -59,12 +59,13 @@ Filename: "{app}\{#AppExeName}"; Description: "{cm:LaunchProgram,{#StringChange(
 [Code]
 // BONUS Issue #9: Write the installer language to settings.json so the app
 // starts in the language the user chose during installation.
-// ActiveLanguage returns 'german' or 'english' → map to 'de' or 'en'.
+// ActiveLanguage returns 'german' or 'english' -> map to 'de' or 'en'.
 procedure CurStepChanged(CurStep: TSetupStep);
 var
   SettingsPath: String;
   SettingsContent: String;
   AppLang: String;
+  Dummy: Boolean;
 begin
   if CurStep = ssPostInstall then
   begin
@@ -80,21 +81,23 @@ begin
     // otherwise create a minimal settings file with the chosen language.
     if FileExists(SettingsPath) then
     begin
-      LoadStringFromFile(SettingsPath, SettingsContent);
-      if Pos('"Sprache": "' + AppLang + '"', SettingsContent) = 0 then
+      if LoadStringFromFile(SettingsPath, SettingsContent) then
       begin
-        // Replace existing Sprache value
-        StringChangeEx(SettingsContent, '"Sprache": "de"', '"Sprache": "' + AppLang + '"', True);
-        StringChangeEx(SettingsContent, '"Sprache": "en"', '"Sprache": "' + AppLang + '"', True);
-        SaveStringToFile(SettingsPath, SettingsContent, False);
+        if Pos('"Sprache": "' + AppLang + '"', SettingsContent) = 0 then
+        begin
+          // Replace existing Sprache value
+          StringChangeEx(SettingsContent, '"Sprache": "de"', '"Sprache": "' + AppLang + '"', True);
+          StringChangeEx(SettingsContent, '"Sprache": "en"', '"Sprache": "' + AppLang + '"', True);
+          Dummy := SaveStringToFile(SettingsPath, SettingsContent, False);
+        end;
       end;
     end
     else
     begin
       // Create minimal settings.json with the installer language
       SettingsContent := '{' + #13#10 + '  "Sprache": "' + AppLang + '",' + #13#10 + '  "Theme": "System",' + #13#10 + '  "AutoUpdatePruefen": true' + #13#10 + '}';
-      ForceDirectories(ExtractFilePath(SettingsPath));
-      SaveStringToFile(SettingsPath, SettingsContent, False);
+      Dummy := ForceDirectories(ExtractFilePath(SettingsPath));
+      Dummy := SaveStringToFile(SettingsPath, SettingsContent, False);
     end;
   end;
 end;
