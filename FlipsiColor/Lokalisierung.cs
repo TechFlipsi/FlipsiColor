@@ -1,7 +1,6 @@
 using System;
 using System.Collections.Generic;
 using System.IO;
-using System.Reflection;
 using System.Text.Json;
 
 namespace FlipsiColor;
@@ -136,13 +135,8 @@ public static class Lokalisierung
     /// </summary>
     private static string PfadErmitteln()
     {
-        // Bei SingleFile-Publish: AppDomain.CurrentDomain.BaseDirectory zeigt auf das extrahierte Verzeichnis
-        // Bei normalem Build: Pfad der Assembly
-        var assemblyPath = Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location);
-        if (!string.IsNullOrEmpty(assemblyPath) && Directory.Exists(Path.Combine(assemblyPath, "Assets", "i18n")))
-            return assemblyPath;
-
-        return AppDomain.CurrentDomain.BaseDirectory;
+        // Bei SingleFile-Publish: AppContext.BaseDirectory zeigt auf das extrahierte Verzeichnis
+        return System.AppContext.BaseDirectory;
     }
 
     /// <summary>

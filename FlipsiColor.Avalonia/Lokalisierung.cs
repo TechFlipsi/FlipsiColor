@@ -87,17 +87,9 @@ public static class Lokalisierung
 
     private static Dictionary<string, string>? JsonLaden(string sprache)
     {
-        // Avalonia: Assets sind als AvaloniaResource eingebettet — versuche zuerst Dateisystem, dann Embedded
-        string basisPfad = AppDomain.CurrentDomain.BaseDirectory;
+        // Bei SingleFile-Publish: AppContext.BaseDirectory zeigt auf das extrahierte Verzeichnis
+        string basisPfad = System.AppContext.BaseDirectory;
         string dateiPfad = Path.Combine(basisPfad, "Assets", "i18n", $"{sprache}.json");
-
-        if (!File.Exists(dateiPfad))
-        {
-            // Fallback: Assembly-Verzeichnis
-            var assemblyPath = Path.GetDirectoryName(System.Reflection.Assembly.GetExecutingAssembly().Location);
-            if (!string.IsNullOrEmpty(assemblyPath))
-                dateiPfad = Path.Combine(assemblyPath, "Assets", "i18n", $"{sprache}.json");
-        }
 
         if (!File.Exists(dateiPfad))
         {
@@ -120,7 +112,7 @@ public static class Lokalisierung
 
     private static void VerfuegbareSprachenErmitteln()
     {
-        var pfad = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Assets", "i18n");
+        var pfad = Path.Combine(System.AppContext.BaseDirectory, "Assets", "i18n");
         if (!Directory.Exists(pfad)) return;
 
         var sprachen = new List<string>();
