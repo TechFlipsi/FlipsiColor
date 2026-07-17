@@ -93,7 +93,7 @@ internal static class Program
         var param = ParseParameter(args);
 
         Console.WriteLine($"════════════════════════════════════════");
-        Console.WriteLine($"  FlipsiColor CLI v0.7.0 — Bildverarbeitung");
+        Console.WriteLine($"  FlipsiColor CLI v0.7.1 — Bildverarbeitung");
         Console.WriteLine($"════════════════════════════════════════");
         Console.WriteLine($"  Eingabe:  {input}");
         Console.WriteLine($"  Ausgabe:  {output}");
@@ -173,7 +173,7 @@ internal static class Program
         var param = ParseParameter(args);
 
         Console.WriteLine($"════════════════════════════════════════");
-        Console.WriteLine($"  FlipsiColor CLI v0.7.0 — Videobearbeitung");
+        Console.WriteLine($"  FlipsiColor CLI v0.7.1 — Videobearbeitung");
         Console.WriteLine($"════════════════════════════════════════");
         Console.WriteLine($"  Eingabe:  {input}");
         Console.WriteLine($"  Ausgabe:  {output}");
@@ -283,7 +283,7 @@ internal static class Program
     private static async Task<int> SelbstTest()
     {
         Console.WriteLine("════════════════════════════════════════");
-        Console.WriteLine("  FlipsiColor CLI v0.7.0 — Selbsttest");
+        Console.WriteLine("  FlipsiColor CLI v0.7.1 — Selbsttest");
         Console.WriteLine("════════════════════════════════════════");
         Console.WriteLine();
 
@@ -472,7 +472,7 @@ internal static class Program
     private static void PrintHilfe()
     {
         Console.WriteLine("═════════════════════════════════════════════════════");
-        Console.WriteLine("  FlipsiColor CLI v0.7.0");
+        Console.WriteLine("  FlipsiColor CLI v0.7.1");
         Console.WriteLine("  Terminal-basierte Bild- & Videofarbkorrektur");
         Console.WriteLine("═════════════════════════════════════════════════════");
         Console.WriteLine();
@@ -513,8 +513,8 @@ internal static class Program
 
     private static int Version()
     {
-        Console.WriteLine("FlipsiColor CLI v0.7.0");
-        Console.WriteLine("Core-Engine: FlipsiColor.Core v0.7.0");
+        Console.WriteLine("FlipsiColor CLI v0.7.1");
+        Console.WriteLine("Core-Engine: FlipsiColor.Core v0.7.1");
         Console.WriteLine(".NET 10.0");
         return 0;
     }
