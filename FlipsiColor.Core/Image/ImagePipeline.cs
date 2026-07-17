@@ -512,8 +512,26 @@ public sealed class ImagePipeline : IDisposable
             Cv2.Resize(bgr, resized, new OpenCvSharp.Size(256, 256), 0, 0, InterpolationFlags.Linear);
 
             resized.ConvertTo(resized, MatType.CV_32FC3);
-            var imgData = new float[256 * 256 * 3];
-            resized.GetArray(out imgData);
+
+            // Bug-Fix: GetArray bei Multichannel-Mat gibt Rows×Cols Elemente (65536),
+            // nicht Rows×Cols×Channels (196608). Split() + pro-Kanal GetArray ist korrekt.
+            float[] imgData;
+            var channels = Cv2.Split(resized);
+            try
+            {
+                imgData = new float[256 * 256 * 3];
+                for (int c = 0; c < 3; c++)
+                {
+                    var chanData = new float[256 * 256];
+                    channels[c].GetArray(out chanData);
+                    for (int i = 0; i < 256 * 256; i++)
+                        imgData[i * 3 + c] = chanData[i];
+                }
+            }
+            finally
+            {
+                foreach (var ch in channels) ch.Dispose();
+            }
 
             var szene = _inferenceEngine.SzeneKlassifizierenAsync(imgData, 256, 256).GetAwaiter().GetResult();
             param.ErkannteSzene = szene;
@@ -610,13 +628,8 @@ public sealed class ImagePipeline : IDisposable
                 if (output.Length == 0) return null;
 
                 // Postprocessing: NCHW float → HWC → BGR Mat (8-bit)
-                var resultMat = new Mat(h, w, MatType.CV_32FC3);
-                var hwcData = new float[h * w * 3];
-                for (int c = 0; c < 3; c++)
-                    for (int i = 0; i < h * w; i++)
-                        hwcData[i * 3 + c] = output[c * h * w + i];
-
-                resultMat.SetArray(hwcData);
+                // Bug-Fix: SetArray bei Multichannel-Mat schlägt fehl — pro-Kanal SetArray + Merge
+                var resultMat = ChwZuMat(output, h, w);
                 resultMat.ConvertTo(resultMat, MatType.CV_8UC3, 255.0);
 
                 // Auf Originalgröße zurückskalieren
@@ -690,35 +703,58 @@ public sealed class ImagePipeline : IDisposable
                         var output = _inferenceEngine.Inferenz(ModellId.RealESRGAN, chwData, [1, 3, th, tw]);
                         if (output.Length == 0) continue;
 
-                        // Postprocessing → Mat
+                        // Bug-Fix: RealESRGAN macht IMMER 4x Upscaling, unabhängig vom angeforderten Faktor.
+                        // Output-Schema: [1, 3, th*4, tw*4] → 3 * (th*4) * (tw*4) Elemente.
+                        // Bei 2x/3x: 4x Output erzeugen, dann auf Zielgröße herunterskalieren.
+                        const int modelFaktor = 4;
+                        int rawTileW = tw * modelFaktor;
+                        int rawTileH = th * modelFaktor;
                         int upTileW = tw * faktor;
                         int upTileH = th * faktor;
-                        var upTile = new Mat(upTileH, upTileW, MatType.CV_32FC3);
-                        var hwcData = new float[upTileH * upTileW * 3];
 
-                        if (output.Length == 3 * upTileH * upTileW)
+                        if (output.Length == 3 * rawTileH * rawTileW)
                         {
+                            // CHW → HWC Konvertierung
+                            // Bug-Fix: SetArray bei Multichannel-Mat (CV_32FC3) schlägt fehl.
+                            // Verwende pro-Kanal SetArray + Merge wie bei InferenceEngine.
+                            var chanMats = new Mat[3];
                             for (int c = 0; c < 3; c++)
-                                for (int i = 0; i < upTileH * upTileW; i++)
-                                    hwcData[i * 3 + c] = output[c * upTileH * upTileW + i];
+                            {
+                                var chanData = new float[rawTileH * rawTileW];
+                                for (int i = 0; i < rawTileH * rawTileW; i++)
+                                    chanData[i] = output[c * rawTileH * rawTileW + i];
+                                chanMats[c] = new Mat(rawTileH, rawTileW, MatType.CV_32FC1);
+                                chanMats[c].SetArray(chanData);
+                            }
+                            var rawMat = new Mat();
+                            Cv2.Merge(chanMats, rawMat);
+                            foreach (var cm in chanMats) cm.Dispose();
+                            rawMat.ConvertTo(rawMat, MatType.CV_8UC3, 255.0);
+
+                            // Auf Zielgröße herunterskalieren (außer bei 4x, da ist es 1:1)
+                            var upTile = new Mat();
+                            if (faktor == modelFaktor)
+                            {
+                                upTile = rawMat;
+                            }
+                            else
+                            {
+                                Cv2.Resize(rawMat, upTile, new OpenCvSharp.Size(upTileW, upTileH), 0, 0, InterpolationFlags.Lanczos4);
+                                rawMat.Dispose();
+                            }
+
+                            // Tile ins Ergebnis kopieren
+                            var destRoi = new Rect(x * faktor, y * faktor, upTileW, upTileH);
+                            using var destMat = new Mat(result, destRoi);
+                            upTile.CopyTo(destMat);
+                            upTile.Dispose();
                         }
                         else
                         {
-                            // Modell-Ausgabe stimmt nicht mit erwarteter Größe überein — Fallback
-                            Log.Warning("RealESRGAN: unerwartete Output-Größe {Len} für Tile {W}x{H}x{F}",
-                                output.Length, tw, th, faktor);
-                            upTile.Dispose();
+                            Log.Warning("RealESRGAN: unerwartete Output-Größe {Len} für Tile {W}x{H} (erwartet {Expected})",
+                                output.Length, tw, th, 3 * rawTileH * rawTileW);
                             continue;
                         }
-
-                        upTile.SetArray(hwcData);
-                        upTile.ConvertTo(upTile, MatType.CV_8UC3, 255.0);
-
-                        // Tile ins Ergebnis kopieren
-                        var destRoi = new Rect(x * faktor, y * faktor, upTileW, upTileH);
-                        using var destMat = new Mat(result, destRoi);
-                        upTile.CopyTo(destMat);
-                        upTile.Dispose();
                     }
                     finally
                     {
@@ -790,13 +826,8 @@ public sealed class ImagePipeline : IDisposable
                 if (output.Length == 0) return null;
 
                 // Postprocessing: NCHW → HWC → BGR
-                var resultMat = new Mat(inputSize, inputSize, MatType.CV_32FC3);
-                var hwcData = new float[inputSize * inputSize * 3];
-                for (int c = 0; c < 3; c++)
-                    for (int i = 0; i < inputSize * inputSize; i++)
-                        hwcData[i * 3 + c] = output[c * inputSize * inputSize + i];
-
-                resultMat.SetArray(hwcData);
+                // Bug-Fix: SetArray bei Multichannel-Mat schlägt fehl — pro-Kanal SetArray + Merge
+                var resultMat = ChwZuMat(output, inputSize, inputSize);
                 resultMat.ConvertTo(resultMat, MatType.CV_8UC3, 255.0);
 
                 // Auf Originalgröße zurückskalieren
@@ -862,13 +893,8 @@ public sealed class ImagePipeline : IDisposable
                 if (output.Length == 0) return null;
 
                 // Postprocessing
-                var resultMat = new Mat(inputSize, inputSize, MatType.CV_32FC3);
-                var hwcData = new float[inputSize * inputSize * 3];
-                for (int c = 0; c < 3; c++)
-                    for (int i = 0; i < inputSize * inputSize; i++)
-                        hwcData[i * 3 + c] = output[c * inputSize * inputSize + i];
-
-                resultMat.SetArray(hwcData);
+                // Bug-Fix: SetArray bei Multichannel-Mat schlägt fehl — pro-Kanal SetArray + Merge
+                var resultMat = ChwZuMat(output, inputSize, inputSize);
                 resultMat.ConvertTo(resultMat, MatType.CV_8UC3, 255.0);
 
                 // Intensitäts-gewichtete Mischung
@@ -1328,6 +1354,30 @@ public sealed class ImagePipeline : IDisposable
             return result;
 
         return fallback;
+    }
+
+
+
+    /// <summary>
+    /// Hilfsmethode: CHW float[] → OpenCvSharp Mat (CV_32FC3).
+    /// Bug-Fix: SetArray bei Multichannel-Mat (CV_32FC3) schlägt fehl in OpenCvSharp 4.13.
+    /// Verwendet stattdessen pro-Kanal SetArray + Cv2.Merge.
+    /// </summary>
+    private static Mat ChwZuMat(float[] chwData, int hoehe, int breite)
+    {
+        var chanMats = new Mat[3];
+        for (int c = 0; c < 3; c++)
+        {
+            var chanData = new float[hoehe * breite];
+            for (int i = 0; i < hoehe * breite; i++)
+                chanData[i] = chwData[c * hoehe * breite + i];
+            chanMats[c] = new Mat(hoehe, breite, MatType.CV_32FC1);
+            chanMats[c].SetArray(chanData);
+        }
+        var result = new Mat();
+        Cv2.Merge(chanMats, result);
+        foreach (var cm in chanMats) cm.Dispose();
+        return result;
     }
 
     public void Dispose()

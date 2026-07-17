@@ -71,6 +71,16 @@ fi
 
 echo "  ✓ Publish abgeschlossen: $PUBLISH_DIR"
 
+# ── Windows-DLLs entfernen (Bug-Fix: onnxruntime.dll ist PE32+ Windows, nicht Linux) ──
+# .NET publish für linux-x64 gibt BEIDE aus: libonnxruntime.so (korrekt) UND onnxruntime.dll (Windows, falsch).
+# Die Windows-DLLs verursachen "Protobuf parsing failed" Fehler auf Linux, weil .NET versucht die .dll zu laden.
+echo "  Entferne Windows-spezifische native DLLs..."
+find "$PUBLISH_DIR" -name 'onnxruntime.dll' -delete 2>/dev/null || true
+find "$PUBLISH_DIR" -name 'onnxruntime_providers_shared.dll' -delete 2>/dev/null || true
+find "$PUBLISH_DIR" -name 'onnxruntime_providers_cuda.dll' -delete 2>/dev/null || true
+find "$PUBLISH_DIR" -name 'DirectML.dll' -delete 2>/dev/null || true
+echo "  ✓ Windows-DLLs entfernt"
+
 # =============================================================================
 # Schritt 2: .deb Package bauen (Ubuntu/Debian)
 # =============================================================================
