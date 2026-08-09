@@ -128,4 +128,4 @@ FlipsiColor unterstützt 13 Sprachen. Übersetzungsdateien und Anleitungen finde
 | Modell | Rolle |
 |--------|-------|
 | GLM-5.2 | Hauptmodell |
-| GLM-5.2 | Sub-Agenten |
+| DeepSeek V4 Pro | Sub-Agenten |

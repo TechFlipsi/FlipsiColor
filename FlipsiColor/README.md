@@ -2,9 +2,9 @@
 
 **KI-gestützte Bild- & Videofarbkorrektur für Windows & Linux**
 
-> ⚠️ **Status: v0.4.3 — Bild- und Video-Verarbeitung noch nicht getestet!**
+> ⚠️ **Status: v0.7.0 — Feature-Sprint abgeschlossen!**
 > 
-> Die aktuellen Funktionen (Farbkorrektur, Objektivkorrektur, VapourSynth, KI-Modelle) sind implementiert und kompilieren fehlerfrei, aber die **tatsächliche Bild- und Video-Verarbeitung wurde noch nicht mit echten Dateien getestet**. Fehler bei der Verarbeitung sind wahrscheinlich. Bitte melden Sie Probleme via GitHub Issues.
+> Die Bild- und Video-Verarbeitung ist implementiert und kompilationsgetestet. Die App lädt 7 ONNX-Modelle automatisch von GitHub Releases herunter. Bitte melden Sie Probleme via GitHub Issues.
 
 ## Features
 
@@ -16,7 +16,7 @@
 - **Schärfe & Rauschunterdrückung** — Luminanz + Chrominanz
 - **Weißabgleich** — auto + manuelle Farbtemperatur
 
-### 🔲 Objektivkorrektur (v0.3.0 NEU)
+### 🔲 Objektivkorrektur
 - **Lensfun-Integration** — Verzeichnung, Vignetting, chromatische Aberration via Lensfun-Datenbank
 - **Distortion Grid** — Kalibrierung mit Schachbrett-Referenzmuster (OpenCV calibrateCamera + undistort)
 - **Color Calibration** — Macbeth ColorChecker 24-Feld-Kalibrierung + Graukarten-Weißabgleich
@@ -72,26 +72,24 @@ Die Bild-Pipeline verarbeitet in 10 Schritten:
 10. **Distortion Grid** — OpenCV calibrateCamera + undistort (optional)
 11. **Color Calibration** — Macbeth ColorChecker / Graukarte (optional)
 
-## v0.3.0 — Advanced Color & Lens Correction
+## v0.7.0 — Feature-Sprint abgeschlossen
 
-Neue Features inspiriert durch [Marco Ravich's Feature Request](https://github.com/Video-Capture-Guide/VCG-Deinterlacer/issues/13):
+Features hinzugefügt im Feature-Sprint (v0.5.0–v0.7.0):
 
-### Distortion Grid Korrektur
-- Schachbrett-Referenzmuster fotografieren → Kalibrierung
-- OpenCV `FindChessboardCorners` + `CalibrateCamera` + `Undistort`
-- Kalibrierung speicherbar als JSON
+### Pro-Funktion KI-Toggles
+- Jede KI-Funktion einzeln an/abschaltbar — KI-Denoising, KI-Schärfung, KI-Upscaling, KI-Gesichtswiederherstellung, KI-Farbstil und KI-Szenenklassifizierung können deaktiviert werden (klassische Filter als Fallback)
 
-### Color Calibration
-- **ColorChecker-Modus:** Erkennt 24-Feld Macbeth ColorChecker, berechnet 3×3 Farb-Transfer-Matrix via Least-Squares (SVD)
-- **Graukarten-Modus:** Erkennt neutrale Graufläche, berechnet Weißabgleich-Matrix
-- **Auto-Modus:** Versucht ColorChecker, fällt auf Graukarte zurück
-- Kalibrierung speicherbar als JSON
+### OpenColorIO (OCIO)
+- Industrie-Standard Farbmanagement als optionales Backend — LUT-Baking via `ociobakelut`, Default ACES-Config wird automatisch generiert, eigene `.ocio` Configs ladbar
 
-### Lensfun Objektivkorrektur (fertig implementiert)
-- P/Invoke der Lensfun C-API (`lf_modifier_create`, `apply_subpixel_geometry_distortion`, `apply_color_modification`)
-- Verzeichnungskorrektur via `Cv2.Remap` pro Kanal
-- Vignetting-Korrektur in-place
-- Chromatische Aberration (TCA)
+### Clips zusammenfügen
+- Automatische Video-Clip-Gruppierung und Zusammenführung (alle Kameras, inkl. DJI Auto-Merge)
+
+### Lokalisierung
+- 13 Sprachen (DE, EN, ES, FR, IT, NL, PL, PT, TR, RU, ZH, JA, KO) — JSON-basiert, Systemsprache wird automatisch erkannt, English-Fallback
+
+### Cross-Platform
+- Avalonia UI für Linux + Windows (zusätzlich zu WPF)
 
 ## Credits
 
@@ -103,7 +101,7 @@ Neue Features inspiriert durch [Marco Ravich's Feature Request](https://github.c
 | Modell              | Rolle        |
 |---------------------|--------------|
 | **GLM-5.2**         | Hauptmodell  |
-| **GLM-5.2**         | Sub-Agenten  |
+| **DeepSeek V4 Pro** | Sub-Agenten  |
 
 ## Lizenz
 
