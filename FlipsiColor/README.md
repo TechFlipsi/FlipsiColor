@@ -2,7 +2,7 @@
 
 **KI-gestützte Bild- & Videofarbkorrektur für Windows & Linux**
 
-> ⚠️ **Status: v0.8.0 — Low-Light-Enhancement (Issue #20)**
+> ⚠️ **Status: v0.8.1 — KI-Toggles UI-Parität hergestellt**
 > 
 > Die Bild- und Video-Verarbeitung ist implementiert und kompilationsgetestet. Die App lädt 7 ONNX-Modelle automatisch von GitHub Releases herunter. Bitte melden Sie Probleme via GitHub Issues.
 

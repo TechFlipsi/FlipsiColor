@@ -33,7 +33,7 @@ public partial class MainViewModel : ObservableObject, IDisposable
     private readonly AutoUpdater _autoUpdater;
     private readonly ClipMerger _clipMerger;
 
-    [ObservableProperty] private string _title = "FlipsiColor v0.8.0";
+    [ObservableProperty] private string _title = "FlipsiColor v0.8.1";
     [ObservableProperty] private bool _gpuVerfuegbar;
     [ObservableProperty] private string _gpuName = "";
     [ObservableProperty] private bool _updateVerfuegbar;
@@ -158,6 +158,38 @@ public partial class MainViewModel : ObservableObject, IDisposable
     [ObservableProperty] private bool _kIGesichtswiederherstellungAktiv = true;
     [ObservableProperty] private bool _kIFarbstilAktiv = true;
     [ObservableProperty] private bool _kISzenenklassifizierungAktiv = true;
+    private bool _initialisiert;
+
+    /// <summary>
+    /// v0.8.1: KI-Toggle-Änderungen sofort persistieren.
+    /// Lädt die Settings-Datei, überschreibt die 6 KI-Felder mit den aktuellen
+    /// VM-Werten und speichert. Während der Initialisierung inaktiv.
+    /// </summary>
+    partial void OnKIDenoisingAktivChanged(bool value) { if (_initialisiert) KITogglesSpeichern(); }
+    partial void OnKISchaerfungAktivChanged(bool value) { if (_initialisiert) KITogglesSpeichern(); }
+    partial void OnKIUpscalingAktivChanged(bool value) { if (_initialisiert) KITogglesSpeichern(); }
+    partial void OnKIGesichtswiederherstellungAktivChanged(bool value) { if (_initialisiert) KITogglesSpeichern(); }
+    partial void OnKIFarbstilAktivChanged(bool value) { if (_initialisiert) KITogglesSpeichern(); }
+    partial void OnKISzenenklassifizierungAktivChanged(bool value) { if (_initialisiert) KITogglesSpeichern(); }
+
+    private void KITogglesSpeichern()
+    {
+        try
+        {
+            var settings = Settings.Laden();
+            settings.KIDenoisingAktiv = KIDenoisingAktiv;
+            settings.KISchaerfungAktiv = KISchaerfungAktiv;
+            settings.KIUpscalingAktiv = KIUpscalingAktiv;
+            settings.KIGesichtswiederherstellungAktiv = KIGesichtswiederherstellungAktiv;
+            settings.KIFarbstilAktiv = KIFarbstilAktiv;
+            settings.KISzenenklassifizierungAktiv = KISzenenklassifizierungAktiv;
+            settings.Speichern();
+        }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"KI-Toggles konnten nicht gespeichert werden: {ex.Message}");
+        }
+    }
 
     // ── OpenColorIO (v0.5.0) ──
     [ObservableProperty] private int _colorManagementIndex; // 0=Standard, 1=OpenColorIO
@@ -298,6 +330,14 @@ public partial class MainViewModel : ObservableObject, IDisposable
             // Video-Backend aus Settings laden
             VideoBackend = settings.VideoBackend;
             VapourSynthInstalliert = _vapourSynthInstaller.IstInstalliert;
+
+            // v0.8.1: Pro-Funktions KI-Toggles aus Settings laden
+            KIDenoisingAktiv = settings.KIDenoisingAktiv;
+            KISchaerfungAktiv = settings.KISchaerfungAktiv;
+            KIUpscalingAktiv = settings.KIUpscalingAktiv;
+            KIGesichtswiederherstellungAktiv = settings.KIGesichtswiederherstellungAktiv;
+            KIFarbstilAktiv = settings.KIFarbstilAktiv;
+            KISzenenklassifizierungAktiv = settings.KISzenenklassifizierungAktiv;
         }
         catch
         {
@@ -323,6 +363,9 @@ public partial class MainViewModel : ObservableObject, IDisposable
         // ===== Issue #18: Plugins initialisieren =====
         _pluginManager.Initialisieren();
         PluginListeLaden();
+
+        // Initialisierung abgeschlossen — ab jetzt dürfen KI-Toggle-Change-Handler feuern
+        _initialisiert = true;
     }
 
     /// <summary>IntensitaetIndex (0/1/2) in den Intensitaet-Enum.</summary>
@@ -532,6 +575,13 @@ public partial class MainViewModel : ObservableObject, IDisposable
         LowLightAktiv = false;
         LowLightVerfahren = "auto";
         LowLightStatus = "";
+        // v0.8.1: KI-Toggles zurück auf Default (aktiv)
+        KIDenoisingAktiv = true;
+        KISchaerfungAktiv = true;
+        KIUpscalingAktiv = true;
+        KIGesichtswiederherstellungAktiv = true;
+        KIFarbstilAktiv = true;
+        KISzenenklassifizierungAktiv = true;
         StatusText = Lokalisierung.T("Status.ParameterZurueckgesetzt");
     }
 
@@ -944,7 +994,14 @@ public partial class MainViewModel : ObservableObject, IDisposable
                     Modus = ModusFromIndex(),
                     // v0.8.0: Low-Light-Aufhellung
                     LowLightAktiv = LowLightAktiv,
-                    LowLightVerfahren = LowLightVerfahren
+                    LowLightVerfahren = LowLightVerfahren,
+                    // v0.8.1: Pro-Funktions KI-Toggles
+                    KIDenoisingAktiv = KIDenoisingAktiv,
+                    KISchaerfungAktiv = KISchaerfungAktiv,
+                    KIUpscalingAktiv = KIUpscalingAktiv,
+                    KIGesichtswiederherstellungAktiv = KIGesichtswiederherstellungAktiv,
+                    KIFarbstilAktiv = KIFarbstilAktiv,
+                    KISzenenklassifizierungAktiv = KISzenenklassifizierungAktiv
                 };
 
                 var ergebnis = await _clipMerger.ClipsZusammenfuegenMitFarbkorrekturAsync(
@@ -1005,7 +1062,14 @@ public partial class MainViewModel : ObservableObject, IDisposable
                 Modus = ModusFromIndex(),
                 // v0.8.0: Low-Light-Aufhellung
                 LowLightAktiv = LowLightAktiv,
-                LowLightVerfahren = LowLightVerfahren
+                LowLightVerfahren = LowLightVerfahren,
+                // v0.8.1: Pro-Funktions KI-Toggles
+                KIDenoisingAktiv = KIDenoisingAktiv,
+                KISchaerfungAktiv = KISchaerfungAktiv,
+                KIUpscalingAktiv = KIUpscalingAktiv,
+                KIGesichtswiederherstellungAktiv = KIGesichtswiederherstellungAktiv,
+                KIFarbstilAktiv = KIFarbstilAktiv,
+                KISzenenklassifizierungAktiv = KISzenenklassifizierungAktiv
             };
 
             foreach (var gruppe in ClipGruppen)
@@ -1107,6 +1171,13 @@ public partial class MainViewModel : ObservableObject, IDisposable
         HochskalierenFaktor = preset.HochskalierenFaktor;
         LowLightAktiv = preset.LowLightAktiv;
         LowLightVerfahren = string.IsNullOrEmpty(preset.LowLightVerfahren) ? "auto" : preset.LowLightVerfahren;
+        // v0.8.1: Pro-Funktions KI-Toggles aus PipelineParams übernehmen
+        KIDenoisingAktiv = preset.Parameter.KIDenoisingAktiv;
+        KISchaerfungAktiv = preset.Parameter.KISchaerfungAktiv;
+        KIUpscalingAktiv = preset.Parameter.KIUpscalingAktiv;
+        KIGesichtswiederherstellungAktiv = preset.Parameter.KIGesichtswiederherstellungAktiv;
+        KIFarbstilAktiv = preset.Parameter.KIFarbstilAktiv;
+        KISzenenklassifizierungAktiv = preset.Parameter.KISzenenklassifizierungAktiv;
         StatusText = $"{Lokalisierung.T("Preset.Geladen")}: {preset.Name}";
     }
 
@@ -1125,7 +1196,14 @@ public partial class MainViewModel : ObservableObject, IDisposable
                 Saettigung = Saettigung,
                 Vibranz = Vibranz,
                 Lichter = Lichter,
-                Schatten = Schatten
+                Schatten = Schatten,
+                // v0.8.1: Pro-Funktions KI-Toggles
+                KIDenoisingAktiv = KIDenoisingAktiv,
+                KISchaerfungAktiv = KISchaerfungAktiv,
+                KIUpscalingAktiv = KIUpscalingAktiv,
+                KIGesichtswiederherstellungAktiv = KIGesichtswiederherstellungAktiv,
+                KIFarbstilAktiv = KIFarbstilAktiv,
+                KISzenenklassifizierungAktiv = KISzenenklassifizierungAktiv
             },
             GesichtswiederherstellungAktiv = GesichtswiederherstellungAktiv,
             ObjektivkorrekturAktiv = Objektivkorrektur,

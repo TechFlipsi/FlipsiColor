@@ -68,6 +68,52 @@ internal static class Program
             loaded.Speichern();
         });
 
+        Test("Settings KI-Toggles Save/Load Roundtrip (v0.8.1)", () =>
+        {
+            var s = Settings.Laden();
+            var origTheme = s.Theme;
+            var origSprache = s.Sprache;
+
+            // Alle 6 KI-Toggles auf false setzen (invertiert zum Default true) → speichern
+            s.KIDenoisingAktiv = false;
+            s.KISchaerfungAktiv = false;
+            s.KIUpscalingAktiv = false;
+            s.KIGesichtswiederherstellungAktiv = false;
+            s.KIFarbstilAktiv = false;
+            s.KISzenenklassifizierungAktiv = false;
+            s.Speichern();
+
+            var loaded = Settings.Laden();
+            Assert(loaded.KIDenoisingAktiv == false, "KIDenoisingAktiv nach Reload = false");
+            Assert(loaded.KISchaerfungAktiv == false, "KISchaerfungAktiv nach Reload = false");
+            Assert(loaded.KIUpscalingAktiv == false, "KIUpscalingAktiv nach Reload = false");
+            Assert(loaded.KIGesichtswiederherstellungAktiv == false, "KIGesichtswiederherstellungAktiv nach Reload = false");
+            Assert(loaded.KIFarbstilAktiv == false, "KIFarbstilAktiv nach Reload = false");
+            Assert(loaded.KISzenenklassifizierungAktiv == false, "KISzenenklassifizierungAktiv nach Reload = false");
+
+            // Wieder auf true setzen → speichern → prüfen
+            loaded.KIDenoisingAktiv = true;
+            loaded.KISchaerfungAktiv = true;
+            loaded.KIUpscalingAktiv = true;
+            loaded.KIGesichtswiederherstellungAktiv = true;
+            loaded.KIFarbstilAktiv = true;
+            loaded.KISzenenklassifizierungAktiv = true;
+            loaded.Speichern();
+
+            var loaded2 = Settings.Laden();
+            Assert(loaded2.KIDenoisingAktiv == true, "KIDenoisingAktiv nach Reload = true");
+            Assert(loaded2.KISchaerfungAktiv == true, "KISchaerfungAktiv nach Reload = true");
+            Assert(loaded2.KIUpscalingAktiv == true, "KIUpscalingAktiv nach Reload = true");
+            Assert(loaded2.KIGesichtswiederherstellungAktiv == true, "KIGesichtswiederherstellungAktiv nach Reload = true");
+            Assert(loaded2.KIFarbstilAktiv == true, "KIFarbstilAktiv nach Reload = true");
+            Assert(loaded2.KISzenenklassifizierungAktiv == true, "KISzenenklassifizierungAktiv nach Reload = true");
+
+            // Theme/Sprache restaurieren
+            loaded2.Theme = origTheme;
+            loaded2.Sprache = origSprache;
+            loaded2.Speichern();
+        });
+
         Test("Settings Clamping", () =>
         {
             var s = Settings.Laden();

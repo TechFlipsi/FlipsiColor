@@ -427,14 +427,46 @@
                                            FontSize="9" Foreground="{DynamicResource TextSecondaryBrush}"
                                            Margin="0,0,0,8" Opacity="0.6"/>
 
-                                <!-- Gesichtswiederherstellung -->
-                                <CheckBox Content="{Binding ., Converter={StaticResource Loc}, ConverterParameter='KI.Gesichtswiederherstellung'}"
+                                <!-- Gesichtswiederherstellung (Funktion an/aus) -->
+                                <CheckBox Content="{Binding ., Converter={StaticResource Loc}, ConverterParameter='Bild.Gesichtswiederherstellung'}"
                                           IsChecked="{Binding GesichtswiederherstellungAktiv}"
                                           Cursor="Hand" Margin="0,4,0,4"
                                           TextBlock.FontSize="11"/>
                                 <TextBlock Text="{Binding ., Converter={StaticResource Loc}, ConverterParameter='KI.GesichtBeschreibung'}"
                                            FontSize="9" Foreground="{DynamicResource TextSecondaryBrush}"
                                            Margin="0,0,0,8" Opacity="0.6"/>
+
+                                <!-- ── KI-Toggles (v0.8.1): Pro-Funktions KI-Einzel-Schalter ── -->
+                                <TextBlock Text="{Binding ., Converter={StaticResource Loc}, ConverterParameter='KI.TogglesTitel'}"
+                                           FontWeight="SemiBold" Margin="0,4,0,2"/>
+                                <TextBlock Text="{Binding ., Converter={StaticResource Loc}, ConverterParameter='KI.TogglesBeschreibung'}"
+                                           FontSize="9" TextWrapping="Wrap"
+                                           Foreground="{DynamicResource TextSecondaryBrush}"
+                                           Margin="0,0,0,6" Opacity="0.9"/>
+                                <CheckBox Content="{Binding ., Converter={StaticResource Loc}, ConverterParameter='KI.Gesichtswiederherstellung'}"
+                                          IsChecked="{Binding KIGesichtswiederherstellungAktiv}"
+                                          Cursor="Hand" Margin="0,2,0,2"
+                                          TextBlock.FontSize="11"/>
+                                <CheckBox Content="{Binding ., Converter={StaticResource Loc}, ConverterParameter='KI.Denoising'}"
+                                          IsChecked="{Binding KIDenoisingAktiv}"
+                                          Cursor="Hand" Margin="0,2,0,2"
+                                          TextBlock.FontSize="11"/>
+                                <CheckBox Content="{Binding ., Converter={StaticResource Loc}, ConverterParameter='KI.Schaerfung'}"
+                                          IsChecked="{Binding KISchaerfungAktiv}"
+                                          Cursor="Hand" Margin="0,2,0,2"
+                                          TextBlock.FontSize="11"/>
+                                <CheckBox Content="{Binding ., Converter={StaticResource Loc}, ConverterParameter='KI.Upscaling'}"
+                                          IsChecked="{Binding KIUpscalingAktiv}"
+                                          Cursor="Hand" Margin="0,2,0,2"
+                                          TextBlock.FontSize="11"/>
+                                <CheckBox Content="{Binding ., Converter={StaticResource Loc}, ConverterParameter='KI.Farbstil'}"
+                                          IsChecked="{Binding KIFarbstilAktiv}"
+                                          Cursor="Hand" Margin="0,2,0,2"
+                                          TextBlock.FontSize="11"/>
+                                <CheckBox Content="{Binding ., Converter={StaticResource Loc}, ConverterParameter='KI.Szenenklassifizierung'}"
+                                          IsChecked="{Binding KISzenenklassifizierungAktiv}"
+                                          Cursor="Hand" Margin="0,2,0,8"
+                                          TextBlock.FontSize="11"/>
 
                                 <!-- Low-Light-Aufhellung (v0.8.0) -->
                                 <CheckBox Content="{Binding ., Converter={StaticResource Loc}, ConverterParameter='Bild.LowLight'}"
@@ -461,7 +493,6 @@
                                 <TextBlock Text="{Binding LowLightStatus}" FontSize="10"
                                            Foreground="{DynamicResource TextSecondaryBrush}"
                                            TextWrapping="Wrap" Margin="0,0,0,8"/>
-
                                 <!-- Style-LUT -->
                                 <TextBlock Text="{Binding ., Converter={StaticResource Loc}, ConverterParameter='KI.StyleLUT'}" FontSize="11" Margin="0,4,0,4"/>
                                 <StackPanel Orientation="Horizontal" Margin="0,0,0,4">

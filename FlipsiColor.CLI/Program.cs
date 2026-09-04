@@ -102,7 +102,7 @@ internal static class Program
         var param = ParseParameter(args);
 
         Console.WriteLine($"════════════════════════════════════════");
-        Console.WriteLine($"  FlipsiColor CLI v0.8.0 — Bildverarbeitung");
+        Console.WriteLine($"  FlipsiColor CLI v0.8.1 — Bildverarbeitung");
         Console.WriteLine($"════════════════════════════════════════");
         Console.WriteLine($"  Eingabe:  {input}");
         Console.WriteLine($"  Ausgabe:  {output}");
@@ -186,7 +186,7 @@ internal static class Program
         var param = ParseParameter(args);
 
         Console.WriteLine($"════════════════════════════════════════");
-        Console.WriteLine($"  FlipsiColor CLI v0.8.0 — Videobearbeitung");
+        Console.WriteLine($"  FlipsiColor CLI v0.8.1 — Videobearbeitung");
         Console.WriteLine($"════════════════════════════════════════");
         Console.WriteLine($"  Eingabe:  {input}");
         Console.WriteLine($"  Ausgabe:  {output}");
@@ -227,7 +227,7 @@ internal static class Program
         Console.WriteLine("  ✓ Verarbeitung abgeschlossen");
 
         Console.WriteLine("[4/5] Speichere Video...");
-        // FIX (v0.8.0): VideoPipeline schreibt nach <input-stem>_korrigiert.mp4 (neben der
+        // FIX (v0.8.1): VideoPipeline schreibt nach <input-stem>_korrigiert.mp4 (neben der
         // Eingabedatei) — hier auf den vom User gewünschten Output-Pfad kopieren und die
         // Zwischendatei aufräumen. Vorher behauptete die CLI fälschlich "Gespeichert".
         var autoPfad = Path.Combine(
@@ -321,7 +321,7 @@ internal static class Program
     private static async Task<int> SelbstTest()
     {
         Console.WriteLine("════════════════════════════════════════");
-        Console.WriteLine("  FlipsiColor CLI v0.8.0 — Selbsttest");
+        Console.WriteLine("  FlipsiColor CLI v0.8.1 — Selbsttest");
         Console.WriteLine("════════════════════════════════════════");
         Console.WriteLine();
 
@@ -531,7 +531,7 @@ internal static class Program
     private static void PrintHilfe()
     {
         Console.WriteLine("═════════════════════════════════════════════════════");
-        Console.WriteLine("  FlipsiColor CLI v0.8.0");
+        Console.WriteLine("  FlipsiColor CLI v0.8.1");
         Console.WriteLine("  Terminal-basierte Bild- & Videofarbkorrektur");
         Console.WriteLine("═════════════════════════════════════════════════════");
         Console.WriteLine();
@@ -574,8 +574,8 @@ internal static class Program
 
     private static int Version()
     {
-        Console.WriteLine("FlipsiColor CLI v0.8.0");
-        Console.WriteLine("Core-Engine: FlipsiColor.Core v0.8.0");
+        Console.WriteLine("FlipsiColor CLI v0.8.1");
+        Console.WriteLine("Core-Engine: FlipsiColor.Core v0.8.1");
         Console.WriteLine(".NET 10.0");
         return 0;
     }

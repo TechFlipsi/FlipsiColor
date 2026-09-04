@@ -67,7 +67,7 @@ Both directories contain the same set of languages. If you translate a language,
 ### `en.json` (English — source):
 ```json
 {
-  "App.Titel": "FlipsiColor v0.8.0",
+  "App.Titel": "FlipsiColor v0.8.1",
   "Toolbar.Bild": "Image",
   "Status.Geladen": "Loaded"
 }
@@ -76,7 +76,7 @@ Both directories contain the same set of languages. If you translate a language,
 ### `it.json` (Italian — by MarcoRavich):
 ```json
 {
-  "App.Titel": "FlipsiColor v0.8.0",
+  "App.Titel": "FlipsiColor v0.8.1",
   "Toolbar.Bild": "Immagine",
   "Status.Geladen": "Caricato"
 }
@@ -85,7 +85,7 @@ Both directories contain the same set of languages. If you translate a language,
 ### `de.json` (German — original):
 ```json
 {
-  "App.Titel": "FlipsiColor v0.8.0",
+  "App.Titel": "FlipsiColor v0.8.1",
   "Toolbar.Bild": "Bild",
   "Status.Geladen": "Geladen"
 }

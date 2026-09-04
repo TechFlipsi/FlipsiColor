@@ -225,21 +225,19 @@ jobs:
         with:
           files: release-artifacts/*
           body: |
-            ## FlipsiColor v0.8.0 — Low-Light-Enhancement (NightLift-Port, Issue #20)
+            ## FlipsiColor v0.8.1 — KI-Toggles für alle sichtbar (UI-Parität)
             
-            **Neues Feature:** Automatische Aufhellung dunkler Bilder und Videos. Die Pipeline analysiert Helligkeit, Kontrast und Dunkelanteil, erkennt 4 Dunkelheits-Stufen (Extrem / Stark / Mittel / Leicht) und wählt automatisch die beste Kombination aus 11 klassischen Verfahren — reine OpenCV-Mathematik, kein KI-Modell-Download nötig. Portiert aus dem NightLift-Projekt (MIT, @LIUZHIYON) auf Wunsch von @MarcoRavich (Issue #20).
+            **Fix-Release:** Die 6 KI-Einzel-Schalter aus v0.5.0 (Denoising, Schärfung, Upscaling, Gesichtswiederherstellung, Farbstil, Szenenklassifizierung) waren bisher in keiner Oberfläche sichtbar — Avalonia hatte nur unsichtbare Hintergrund-Felder, die WPF-Version gar nichts. Jetzt sind sie in beiden Versionen vollständig bedienbar und persistiert.
             
-            ### ✨ Neu in v0.8.0
-            - **Low-Light-Enhancement** für Bilder UND Videos (Frame-weise, vor der Farbkorrektur)
-            - **11 Verfahren:** Auto (empfohlen), CLAHE, Gamma, Auto-Levels, MSRCP (Retinex), SSR (Retinex), Dehaze, Weißabgleich, Helligkeit & Kontrast, Kombiniert, Stark
-            - **Auto-Modus:** analysiert jedes Bild (Mean-Luminanz, Dark-Ratio, RMS-Kontrast, Dynamikbereich) und wählt Stufe + Parameter adaptiv
-            - **Statusanzeige** der erkannten Dunkelheits-Stufe in der UI (Bild + Video)
-            - **CLI-Support:** `--lowlight` + `--lowlight-method <verfahren>`
-            - **Presets & Batch-Verarbeitung** voll integriert
-            - **18 neue UI-Strings** in allen 13 Sprachen (DE, EN, ES, FR, IT, NL, PL, PT, TR, RU, ZH, JA, KO)
+            ### 🔧 Behoben in v0.8.1
+            - **KI-Toggles in beiden UIs** — 6 Schalter (KI-Rauschunterdrückung, KI-Schärfung, KI-Hochskalieren, KI-Gesichtswiederherstellung, KI-Farbstil, KI-Szenenklassifizierung) mit Beschreibung
+            - **Vollständige Verdrahtung:** Presets, Clip-Zusammenfügung und Settings speichern/laden die Toggles jetzt mit; „Zurücksetzen" setzt sie auf aktiv zurück
+            - **8 neue UI-Strings in 13 Sprachen** (echte Übersetzungen)
+            - Deaktivierte KI-Funktionen fallen wie dokumentiert auf klassische Filter zurück
             
-            ### 🐛 v0.7.1 — 10 Bugfixes für Linux + cross-platform KI-Pipeline + FlipsiColor.CLI
-            - 10 Bugfixes für die Linux-Version + cross-platform KI-Pipeline (PR #19)
-            - Neues `FlipsiColor.CLI`-Projekt (Terminal-Version für Linux-Server/Scripting)
+            ### ✨ v0.8.0 — Low-Light-Enhancement (NightLift-Port, Issue #20)
+            - Automatische Aufhellung dunkler Bilder & Videos, 11 Verfahren, Auto-Modus mit 4 Dunkelheits-Stufen
+            - CLI: `--lowlight` + `--lowlight-method`
+            - Klarer Abbruch statt stiller Fallback; CLI-Video-Output-Pfad gefixt
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

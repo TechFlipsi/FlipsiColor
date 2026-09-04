@@ -75,6 +75,38 @@
                                           FontSize="11"
                                           Margin="0,4,0,8"/>
 
+                                <!-- ── KI-Toggles (v0.8.1): Pro-Funktions KI-Einzel-Schalter ── -->
+                                <TextBlock Text="{Binding ., Converter={StaticResource Loc}, ConverterParameter='KI.TogglesTitel'}"
+                                           FontWeight="SemiBold" Margin="0,4,0,2"/>
+                                <TextBlock Text="{Binding ., Converter={StaticResource Loc}, ConverterParameter='KI.TogglesBeschreibung'}"
+                                           FontSize="9" TextWrapping="Wrap"
+                                           Foreground="{DynamicResource TextSecondaryBrush}"
+                                           Margin="0,0,0,6"/>
+                                <CheckBox Content="{Binding ., Converter={StaticResource Loc}, ConverterParameter='KI.Gesichtswiederherstellung'}"
+                                          IsChecked="{Binding KIGesichtswiederherstellungAktiv}"
+                                          FontSize="11"
+                                          Margin="0,2,0,2"/>
+                                <CheckBox Content="{Binding ., Converter={StaticResource Loc}, ConverterParameter='KI.Denoising'}"
+                                          IsChecked="{Binding KIDenoisingAktiv}"
+                                          FontSize="11"
+                                          Margin="0,2,0,2"/>
+                                <CheckBox Content="{Binding ., Converter={StaticResource Loc}, ConverterParameter='KI.Schaerfung'}"
+                                          IsChecked="{Binding KISchaerfungAktiv}"
+                                          FontSize="11"
+                                          Margin="0,2,0,2"/>
+                                <CheckBox Content="{Binding ., Converter={StaticResource Loc}, ConverterParameter='KI.Upscaling'}"
+                                          IsChecked="{Binding KIUpscalingAktiv}"
+                                          FontSize="11"
+                                          Margin="0,2,0,2"/>
+                                <CheckBox Content="{Binding ., Converter={StaticResource Loc}, ConverterParameter='KI.Farbstil'}"
+                                          IsChecked="{Binding KIFarbstilAktiv}"
+                                          FontSize="11"
+                                          Margin="0,2,0,2"/>
+                                <CheckBox Content="{Binding ., Converter={StaticResource Loc}, ConverterParameter='KI.Szenenklassifizierung'}"
+                                          IsChecked="{Binding KISzenenklassifizierungAktiv}"
+                                          FontSize="11"
+                                          Margin="0,2,0,8"/>
+
                                 <!-- Low-Light-Aufhellung (v0.8.0) -->
                                 <CheckBox Content="{Binding ., Converter={StaticResource Loc}, ConverterParameter='Bild.LowLight'}"
                                           IsChecked="{Binding LowLightAktiv}"
