@@ -436,6 +436,32 @@
                                            FontSize="9" Foreground="{DynamicResource TextSecondaryBrush}"
                                            Margin="0,0,0,8" Opacity="0.6"/>
 
+                                <!-- Low-Light-Aufhellung (v0.8.0) -->
+                                <CheckBox Content="{Binding ., Converter={StaticResource Loc}, ConverterParameter='Bild.LowLight'}"
+                                          IsChecked="{Binding LowLightAktiv}"
+                                          Cursor="Hand" Margin="0,4,0,4"
+                                          TextBlock.FontSize="11"/>
+                                <TextBlock Text="{Binding ., Converter={StaticResource Loc}, ConverterParameter='Bild.LowLight.Verfahren'}"
+                                           FontSize="11" Margin="0,0,0,4"/>
+                                <ComboBox SelectedValuePath="Tag"
+                                          SelectedValue="{Binding LowLightVerfahren}"
+                                          Margin="0,0,0,4" Cursor="Hand">
+                                    <ComboBoxItem Content="{Binding ., Converter={StaticResource Loc}, ConverterParameter='Bild.LowLight.Auto'}" Tag="auto"/>
+                                    <ComboBoxItem Content="{Binding ., Converter={StaticResource Loc}, ConverterParameter='Bild.LowLight.CLAHE'}" Tag="clahe"/>
+                                    <ComboBoxItem Content="{Binding ., Converter={StaticResource Loc}, ConverterParameter='Bild.LowLight.Gamma'}" Tag="gamma"/>
+                                    <ComboBoxItem Content="{Binding ., Converter={StaticResource Loc}, ConverterParameter='Bild.LowLight.AutoLevels'}" Tag="autolevels"/>
+                                    <ComboBoxItem Content="{Binding ., Converter={StaticResource Loc}, ConverterParameter='Bild.LowLight.MSRCP'}" Tag="msrcp"/>
+                                    <ComboBoxItem Content="{Binding ., Converter={StaticResource Loc}, ConverterParameter='Bild.LowLight.SSR'}" Tag="ssr"/>
+                                    <ComboBoxItem Content="{Binding ., Converter={StaticResource Loc}, ConverterParameter='Bild.LowLight.Dehaze'}" Tag="dehaze"/>
+                                    <ComboBoxItem Content="{Binding ., Converter={StaticResource Loc}, ConverterParameter='Bild.LowLight.Weissabgleich'}" Tag="weissabgleich"/>
+                                    <ComboBoxItem Content="{Binding ., Converter={StaticResource Loc}, ConverterParameter='Bild.LowLight.Helligkeit'}" Tag="helligkeit"/>
+                                    <ComboBoxItem Content="{Binding ., Converter={StaticResource Loc}, ConverterParameter='Bild.LowLight.Kombiniert'}" Tag="kombiniert"/>
+                                    <ComboBoxItem Content="{Binding ., Converter={StaticResource Loc}, ConverterParameter='Bild.LowLight.Stark'}" Tag="stark"/>
+                                </ComboBox>
+                                <TextBlock Text="{Binding LowLightStatus}" FontSize="10"
+                                           Foreground="{DynamicResource TextSecondaryBrush}"
+                                           TextWrapping="Wrap" Margin="0,0,0,8"/>
+
                                 <!-- Style-LUT -->
                                 <TextBlock Text="{Binding ., Converter={StaticResource Loc}, ConverterParameter='KI.StyleLUT'}" FontSize="11" Margin="0,4,0,4"/>
                                 <StackPanel Orientation="Horizontal" Margin="0,0,0,4">

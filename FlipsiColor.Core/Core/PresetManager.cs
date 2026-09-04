@@ -35,6 +35,15 @@ public sealed class KorrekturPreset
     /// <summary>Gesichtswiederherstellung aktiv.</summary>
     public bool GesichtswiederherstellungAktiv { get; set; }
 
+    /// <summary>Low-Light-Aufhellung aktiv (v0.8.0).</summary>
+    public bool LowLightAktiv { get; set; }
+
+    /// <summary>
+    /// Low-Light-Verfahren (v0.8.0, siehe LowLightEnhancer.VerfuegbareVerfahren):
+    /// auto, clahe, gamma, autolevels, msrcp, ssr, dehaze, weissabgleich, helligkeit, kombiniert, stark.
+    /// </summary>
+    public string LowLightVerfahren { get; set; } = "auto";
+
     /// <summary>Objektivkorrektur aktiv.</summary>
     public bool ObjektivkorrekturAktiv { get; set; } = true;
 
@@ -235,6 +244,8 @@ public sealed class PresetManager : IDisposable
             IntensitaetIndex = preset.IntensitaetIndex,
             HochskalierenFaktor = preset.HochskalierenFaktor,
             GesichtswiederherstellungAktiv = preset.GesichtswiederherstellungAktiv,
+            LowLightAktiv = preset.LowLightAktiv,
+            LowLightVerfahren = preset.LowLightVerfahren,
             ObjektivkorrekturAktiv = preset.ObjektivkorrekturAktiv,
             StyleLutPfad = preset.StyleLutPfad
         };

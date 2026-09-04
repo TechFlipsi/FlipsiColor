@@ -2,6 +2,8 @@
 using System.IO;
 using System.Threading.Tasks;
 
+using OpenCvSharp;
+
 using FlipsiColor.AI;
 using FlipsiColor.Core;
 using FlipsiColor.Image;
@@ -229,6 +231,148 @@ internal static class Program
             Assert(GPUInfo.GpuName != null, "GpuName nicht null");
         });
 
+        // ── Phase 6: LowLightEnhancer (Issue #20, NightLift-Port) ──
+        Console.WriteLine("\n── Phase 6: LowLightEnhancer ──");
+
+        Test("LowLightAnalyse erkennt Stufe Extrem/Stark auf Dunkelbild", () =>
+        {
+            try
+            {
+                using var dunkel = ErzeugeDunkelbild(256);
+                var analyse = LowLightEnhancer.Analysieren(dunkel);
+                Console.WriteLine($"    Analyse: {analyse}");
+                Assert(analyse.MeanLuminanz < 40, $"Dunkelbild Mean < 40 (ist {analyse.MeanLuminanz:F1})");
+                Assert(analyse.DarkRatio > 0.7, $"DarkRatio > 0.7 (ist {analyse.DarkRatio:F3})");
+                Assert(analyse.Stufe is LowLightStufe.Extrem or LowLightStufe.Stark,
+                    $"Stufe Extrem oder Stark (ist {analyse.Stufe})");
+                Assert(analyse.RmsKontrast >= 0 && analyse.Dynamikbereich >= 0, "Kontrast-Metriken nicht-negativ");
+                Assert(analyse.MedianLuminanz > 0, "Median > 0");
+            }
+            catch (System.TypeInitializationException)
+            {
+                Console.WriteLine("    ⚠ OpenCvSharp native nicht verfügbar — übersprungen (kein Code-Bug)");
+            }
+        });
+
+        Test("LowLightEnhancer: alle 11 Verfahren wirken messbar / crashen nicht", () =>
+        {
+            try
+            {
+                using var dunkel = ErzeugeDunkelbild(256);
+                double lumVorher = GrayLuminanzVon(dunkel);
+                Console.WriteLine($"    Luminanz vorher: {lumVorher:F1}");
+
+                foreach (var verfahren in LowLightEnhancer.VerfuegbareVerfahren)
+                {
+                    using var ergebnis = LowLightEnhancer.Aufhellen(dunkel, verfahren);
+                    Assert(!ergebnis.Empty(), $"{verfahren}: Ergebnis nicht leer");
+                    Assert(ergebnis.Channels() == 3, $"{verfahren}: 3 Kanäle (BGR)");
+
+                    // Aufhell-Verfahren: mittlere Helligkeit muss messbar steigen.
+                    // Ausnahme 'dehaze': Dark Channel Prior ist per Konstruktion KEIN Aufheller
+                    // für dunkle Bilder (Python-Original identisch: Δ≈0 auf neutral-dunklem
+                    // Material) — dehaze wird unten separat auf seinem Anwendungsfall geprüft.
+                    if (verfahren == "dehaze")
+                    {
+                        double lumNachher = GrayLuminanzVon(ergebnis);
+                        Console.WriteLine($"    dehaze (Dunkelbild)    Luminanz {lumVorher,5:F1} → {lumNachher,5:F1} (No-Op erwartbar)");
+                        continue;
+                    }
+
+                    double lumHell = GrayLuminanzVon(ergebnis);
+                    Assert(lumHell > lumVorher + 2.0,
+                        $"{verfahren}: Luminanz {lumVorher:F1} → {lumHell:F1} (Steigerung > 2 fehlt)");
+                    Console.WriteLine($"    {verfahren,-14} Luminanz {lumVorher,5:F1} → {lumHell,5:F1}");
+                }
+
+                // Dehaze-Wirksamkeits-Nachweis auf dem DCP-Anwendungsfall:
+                // dunstige Szene (dunkle Details hinter grauem Schleier) —
+                // Dehaze muss das Bild messbar verändern (Schleier entfernen, Kontrast heben).
+                using var dunst = ErzeugeDunstbild(256);
+                double dunstStdVorher = GrayStdVon(dunst);
+                using var dehazed = LowLightEnhancer.Aufhellen(dunst, "dehaze");
+                double dunstStdNachher = GrayStdVon(dehazed);
+                double dunstDelta = Math.Abs(GrayLuminanzVon(dehazed) - GrayLuminanzVon(dunst));
+                Console.WriteLine($"    dehaze (Dunstbild)     Std {dunstStdVorher:F1} → {dunstStdNachher:F1}, ΔLum {dunstDelta:F1}");
+                Assert(dunstStdNachher > dunstStdVorher + 1.0,
+                    $"dehaze: Kontrast auf Dunstbild gestiegen ({dunstStdVorher:F1} → {dunstStdNachher:F1})");
+                Assert(dunstDelta > 1.0, $"dehaze: Dunstbild messbar verändert (Δ={dunstDelta:F1})");
+            }
+            catch (System.TypeInitializationException)
+            {
+                Console.WriteLine("    ⚠ OpenCvSharp native nicht verfügbar — übersprungen (kein Code-Bug)");
+            }
+        });
+
+        Test("LowLightEnhancer 'auto' + Pipeline-Integration setzt LowLightErkannteStufe", () =>
+        {
+            try
+            {
+                using var dunkel = ErzeugeDunkelbild(256);
+                Cv2.ImWrite("/tmp/flipsicolor-lowlight-test.png", dunkel);
+                Assert(File.Exists("/tmp/flipsicolor-lowlight-test.png"), "LowLight-Testbild geschrieben");
+
+                // auto liefert analysierbares Ergebnis
+                using var autoErgebnis = LowLightEnhancer.Aufhellen(dunkel, "auto");
+                Assert(!autoErgebnis.Empty(), "auto: Ergebnis nicht leer");
+                var autoAnalyse = LowLightEnhancer.Analysieren(autoErgebnis);
+                Console.WriteLine($"    auto → Stufe nachher: {autoAnalyse.Stufe}, Mean {autoAnalyse.MeanLuminanz:F1}");
+                Assert(autoAnalyse.MeanLuminanz > LowLightEnhancer.Analysieren(dunkel).MeanLuminanz,
+                    "auto: Ergebnis heller als Input");
+
+                // Mini-Pipeline-Integration: LowLightAktiv=true → LowLightErkannteStufe gesetzt
+                using var mm = new ModelManager();
+                var cm = new ColorManager();
+                cm.Initialisieren();
+                using var pipe = new ImagePipeline(mm, cm);
+                var ok = pipe.BildLaden("/tmp/flipsicolor-lowlight-test.png");
+                if (!ok)
+                {
+                    Console.WriteLine("    ⚠ BildLaden=false (OpenCvSharp native nicht verfügbar) — kein Code-Bug");
+                    return;
+                }
+
+                var param = new PipelineParams
+                {
+                    LowLightAktiv = true,
+                    LowLightVerfahren = "auto",
+                    Intensitaet = Intensitaet.Mittel,
+                    Modus = BetriebsModus.Ask,
+                    HochskalierenFaktor = 1
+                };
+                pipe.PipelineAusfuehren(param);
+                Console.WriteLine($"    Pipeline: LowLightErkannteStufe='{param.LowLightErkannteStufe}'");
+                Assert(!string.IsNullOrEmpty(param.LowLightErkannteStufe),
+                    "LowLightErkannteStufe von Pipeline gesetzt");
+                Assert(param.LowLightErkannteStufe is "Extrem" or "Stark",
+                    $"Erkannte Stufe Extrem/Stark (ist '{param.LowLightErkannteStufe}')");
+                using var ergebnis = pipe.Ergebnis;
+                Assert(ergebnis != null && !ergebnis.Empty(), "Pipeline-Ergebnis nicht leer");
+            }
+            catch (System.TypeInitializationException)
+            {
+                Console.WriteLine("    ⚠ OpenCvSharp native nicht verfügbar — übersprungen (kein Code-Bug)");
+            }
+        });
+
+        Test("LowLightAnalyse: Mild-Bild (Mean ~180) → Stufe Leicht", () =>
+        {
+            try
+            {
+                using var mild = new OpenCvSharp.Mat(256, 256, OpenCvSharp.MatType.CV_8UC3,
+                    new OpenCvSharp.Scalar(180, 180, 180));
+                var analyse = LowLightEnhancer.Analysieren(mild);
+                Console.WriteLine($"    Analyse Mild-Bild: {analyse}");
+                Assert(Math.Abs(analyse.MeanLuminanz - 180.0) < 1.0, $"Mean ≈ 180 (ist {analyse.MeanLuminanz:F1})");
+                Assert(analyse.DarkRatio == 0.0, "DarkRatio = 0");
+                Assert(analyse.Stufe == LowLightStufe.Leicht, $"Stufe Leicht (ist {analyse.Stufe})");
+            }
+            catch (System.TypeInitializationException)
+            {
+                Console.WriteLine("    ⚠ OpenCvSharp native nicht verfügbar — übersprungen (kein Code-Bug)");
+            }
+        });
+
         // ── Ergebnis ──
         Console.WriteLine("\n════════════════════════════════════════");
         Console.WriteLine($"  Ergebnis: {_passed} bestanden, {_failed} fehlgeschlagen");
@@ -279,5 +423,82 @@ internal static class Program
     {
         if (!condition)
             throw new Exception($"Assertion failed: {message}");
+    }
+
+    // ── Phase-6-Helfer: LowLightEnhancer ──
+
+    /// <summary>
+    /// Erzeugt ein synthetisches Dunkelbild (256×256 BGR): OpenCV-Zufallsrauschen,
+    /// auf ~15% Helligkeit skaliert, mit Blaustich (typisches Nachtbild) —
+    /// dadurch hellt auch der Gray-World-Weißabgleich messbar auf.
+    /// </summary>
+    private static OpenCvSharp.Mat ErzeugeDunkelbild(int groesse)
+    {
+        var rauschen = new OpenCvSharp.Mat(groesse, groesse, OpenCvSharp.MatType.CV_8UC3);
+        Cv2.Randu(rauschen, new OpenCvSharp.Scalar(0, 0, 0), new OpenCvSharp.Scalar(255, 255, 255));
+
+        // Kanalgewichte: B=1.0, G=0.35, R=0.08 → starker Blaustich (Low-Light-typisch).
+        // Der Cast sorgt dafür, dass auch der Gray-World-Weißabgleich messbar aufhellt
+        // (Gain ≈ +2 Luminanz; Python-Referenz: +2.11..+2.13).
+        var kanaele = Cv2.Split(rauschen);
+        try
+        {
+            using var gSkaliert = new Mat();
+            kanaele[1].ConvertTo(gSkaliert, -1, 0.35, 0);
+            kanaele[1].Dispose();
+            kanaele[1] = gSkaliert.Clone();
+
+            using var rSkaliert = new Mat();
+            kanaele[2].ConvertTo(rSkaliert, -1, 0.08, 0);
+            kanaele[2].Dispose();
+            kanaele[2] = rSkaliert.Clone();
+
+            using var farbig = new Mat();
+            Cv2.Merge(kanaele, farbig);
+
+            // Auf ~15% Helligkeit skalieren
+            var dunkel = new Mat();
+            farbig.ConvertTo(dunkel, OpenCvSharp.MatType.CV_8UC3, 0.15, 0);
+            return dunkel;
+        }
+        finally
+        {
+            foreach (var k in kanaele) k.Dispose();
+        }
+    }
+
+    /// <summary>
+    /// Erzeugt ein dunstiges Testbild (DCP-Anwendungsfall): dunkle Szene hinter
+    /// grauem Schleier — Dehaze muss den Schleier entfernen (Kontrast steigt).
+    /// </summary>
+    private static OpenCvSharp.Mat ErzeugeDunstbild(int groesse)
+    {
+        var szene = new OpenCvSharp.Mat(groesse, groesse, OpenCvSharp.MatType.CV_8UC3);
+        Cv2.Randu(szene, new OpenCvSharp.Scalar(0, 0, 0), new OpenCvSharp.Scalar(100, 100, 100));
+
+        // Grauer Dunst-Schleier: +60 auf alle Kanäle (Atmosphärenlicht hoch)
+        var dunst = new Mat();
+        szene.ConvertTo(dunst, OpenCvSharp.MatType.CV_8UC3, 1.0, 60);
+        szene.Dispose();
+        return dunst;
+    }
+
+    /// <summary>Mittlere Grau-Luminanz eines BGR-Bilds (CV_8U Mean via Cv2.Mean).</summary>
+    private static double GrayLuminanzVon(OpenCvSharp.Mat bild)
+    {
+        using var grau = new Mat();
+        Cv2.CvtColor(bild, grau, OpenCvSharp.ColorConversionCodes.BGR2GRAY);
+        return Cv2.Mean(grau).Val0;
+    }
+
+    /// <summary>Standardabweichung der Grau-Luminanz (RMS-Kontrast).</summary>
+    private static double GrayStdVon(OpenCvSharp.Mat bild)
+    {
+        using var grau = new Mat();
+        Cv2.CvtColor(bild, grau, OpenCvSharp.ColorConversionCodes.BGR2GRAY);
+        using var meanMat = new Mat();
+        using var stdMat = new Mat();
+        Cv2.MeanStdDev(grau, meanMat, stdMat);
+        return stdMat.Get<double>(0, 0);
     }
 }

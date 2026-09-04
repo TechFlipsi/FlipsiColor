@@ -46,6 +46,13 @@ internal static class Program
                 _ => UnbekannterBefehl(befehl),
             };
         }
+        catch (ArgumentException ex)
+        {
+            // Ungültige CLI-Parameter (z.B. --lowlight-method) → Fehlermeldung + Hilfe-Hinweis
+            Console.WriteLine($"❌ Fehler: {ex.Message}");
+            Console.WriteLine("Benutze 'flipsicolor-cli hilfe' für eine Übersicht aller Optionen.");
+            return 1;
+        }
         catch (Exception ex)
         {
             Console.WriteLine($"❌ Fehler: {ex.Message}");
@@ -74,6 +81,8 @@ internal static class Program
             Console.WriteLine("  --upscale <2|3|4>     Hochskalieren (RealESRGAN, default: 1 = aus)");
             Console.WriteLine("  --turbo               Turbo-Modus (automatische KI-Korrektur)");
             Console.WriteLine("  --intensity <l|m|s>   KI-Intensität: leicht=0, mittel=1, stark=2");
+            Console.WriteLine("  --lowlight            Aufhellung dunkler Bilder (Low-Light)");
+            Console.WriteLine("  --lowlight-method <name>  Low-Light-Verfahren: auto, clahe, gamma, autolevels, msrcp, ssr, dehaze, weissabgleich, helligkeit, kombiniert, stark (default: auto)");
             return 1;
         }
 
@@ -93,12 +102,14 @@ internal static class Program
         var param = ParseParameter(args);
 
         Console.WriteLine($"════════════════════════════════════════");
-        Console.WriteLine($"  FlipsiColor CLI v0.7.1 — Bildverarbeitung");
+        Console.WriteLine($"  FlipsiColor CLI v0.8.0 — Bildverarbeitung");
         Console.WriteLine($"════════════════════════════════════════");
         Console.WriteLine($"  Eingabe:  {input}");
         Console.WriteLine($"  Ausgabe:  {output}");
         Console.WriteLine($"  Modus:    {param.Modus}");
         Console.WriteLine($"  Intensität: {param.Intensitaet}");
+        if (param.LowLightAktiv)
+            Console.WriteLine($"  Low-Light: {param.LowLightVerfahren}");
         Console.WriteLine();
 
         // Logger initialisieren
@@ -154,6 +165,8 @@ internal static class Program
             Console.WriteLine("  --turbo                Turbo-Modus (automatische KI-Korrektur)");
             Console.WriteLine("  --intensity <l|m|s>    KI-Intensität: leicht=0, mittel=1, stark=2");
             Console.WriteLine("  --backend <ffmpeg|vs>  Video-Backend (FFmpeg=Standard, VapourSynth=optional)");
+            Console.WriteLine("  --lowlight             Aufhellung dunkler Videos (Low-Light)");
+            Console.WriteLine("  --lowlight-method <name>  Low-Light-Verfahren: auto, clahe, gamma, autolevels, msrcp, ssr, dehaze, weissabgleich, helligkeit, kombiniert, stark (default: auto)");
             return 1;
         }
 
@@ -173,12 +186,14 @@ internal static class Program
         var param = ParseParameter(args);
 
         Console.WriteLine($"════════════════════════════════════════");
-        Console.WriteLine($"  FlipsiColor CLI v0.7.1 — Videobearbeitung");
+        Console.WriteLine($"  FlipsiColor CLI v0.8.0 — Videobearbeitung");
         Console.WriteLine($"════════════════════════════════════════");
         Console.WriteLine($"  Eingabe:  {input}");
         Console.WriteLine($"  Ausgabe:  {output}");
         Console.WriteLine($"  Modus:    {param.Modus}");
         Console.WriteLine($"  Backend:  FFmpeg (Standard)");
+        if (param.LowLightAktiv)
+            Console.WriteLine($"  Low-Light: {param.LowLightVerfahren}");
         Console.WriteLine();
 
         Utils.Logger.Init();
@@ -212,8 +227,31 @@ internal static class Program
         Console.WriteLine("  ✓ Verarbeitung abgeschlossen");
 
         Console.WriteLine("[4/5] Speichere Video...");
-        // VideoPipeline speichert automatisch in output Pfad
-        Console.WriteLine($"  ✓ Gespeichert: {output}");
+        // FIX (v0.8.0): VideoPipeline schreibt nach <input-stem>_korrigiert.mp4 (neben der
+        // Eingabedatei) — hier auf den vom User gewünschten Output-Pfad kopieren und die
+        // Zwischendatei aufräumen. Vorher behauptete die CLI fälschlich "Gespeichert".
+        var autoPfad = Path.Combine(
+            Path.GetDirectoryName(Path.GetFullPath(input)) ?? ".",
+            Path.GetFileNameWithoutExtension(input) + "_korrigiert.mp4");
+        if (File.Exists(autoPfad))
+        {
+            var ziel = Path.GetFullPath(output);
+            var quelle = Path.GetFullPath(autoPfad);
+            if (!string.Equals(ziel, quelle, StringComparison.OrdinalIgnoreCase))
+            {
+                File.Copy(quelle, ziel, overwrite: true);
+                File.Delete(quelle);
+                var ext = Path.GetExtension(ziel).ToLowerInvariant();
+                if (ext is not (".mp4" or ".mov" or ".mkv"))
+                    Console.WriteLine($"  ⚠ Hinweis: Container ist MP4, Dateiendung ist '{ext}' — Player lesen den Inhalt, nicht die Endung.");
+            }
+            Console.WriteLine($"  ✓ Gespeichert: {output}");
+        }
+        else
+        {
+            Console.WriteLine("❌ Pipeline hat keine Ausgabedatei erzeugt");
+            return 1;
+        }
 
         Console.WriteLine("[5/5] Fertig!");
         Console.WriteLine();
@@ -283,7 +321,7 @@ internal static class Program
     private static async Task<int> SelbstTest()
     {
         Console.WriteLine("════════════════════════════════════════");
-        Console.WriteLine("  FlipsiColor CLI v0.7.1 — Selbsttest");
+        Console.WriteLine("  FlipsiColor CLI v0.8.0 — Selbsttest");
         Console.WriteLine("════════════════════════════════════════");
         Console.WriteLine();
 
@@ -459,6 +497,27 @@ internal static class Program
                         };
                     }
                     break;
+                case "--lowlight":
+                    param.LowLightAktiv = true;
+                    break;
+                case "--lowlight-method":
+                case "--lowlight-verfahren":
+                    if (i + 1 < args.Length)
+                    {
+                        var methode = args[++i].ToLowerInvariant();
+                        if (!LowLightEnhancer.VerfuegbareVerfahren.Contains(methode))
+                        {
+                            throw new ArgumentException(
+                                $"Ungültiges --lowlight-method Verfahren: '{methode}'. " +
+                                $"Gültig: {string.Join(", ", LowLightEnhancer.VerfuegbareVerfahren)}");
+                        }
+                        param.LowLightVerfahren = methode;
+                    }
+                    else
+                    {
+                        throw new ArgumentException("--lowlight-method erwartet einen Wert (auto, clahe, gamma, autolevels, msrcp, ssr, dehaze, weissabgleich, helligkeit, kombiniert, stark)");
+                    }
+                    break;
             }
         }
 
@@ -472,7 +531,7 @@ internal static class Program
     private static void PrintHilfe()
     {
         Console.WriteLine("═════════════════════════════════════════════════════");
-        Console.WriteLine("  FlipsiColor CLI v0.7.1");
+        Console.WriteLine("  FlipsiColor CLI v0.8.0");
         Console.WriteLine("  Terminal-basierte Bild- & Videofarbkorrektur");
         Console.WriteLine("═════════════════════════════════════════════════════");
         Console.WriteLine();
@@ -496,6 +555,8 @@ internal static class Program
         Console.WriteLine("  --upscale <2|3|4>         Hochskalieren (RealESRGAN)");
         Console.WriteLine("  --turbo                    Automatische KI-Korrektur");
         Console.WriteLine("  --intensity <l|m|s>       KI-Intensität (leicht/mittel/stark)");
+        Console.WriteLine("  --lowlight                 Aufhellung dunkler Bilder/Videos (Low-Light)");
+        Console.WriteLine("  --lowlight-method <name>   Low-Light-Verfahren: auto, clahe, gamma, autolevels, msrcp, ssr, dehaze, weissabgleich, helligkeit, kombiniert, stark (default: auto)");
         Console.WriteLine();
         Console.WriteLine("Beispiele:");
         Console.WriteLine("  flipsicolor-cli image foto.jpg output.jpg --exposure 0.3 --turbo");
@@ -513,8 +574,8 @@ internal static class Program
 
     private static int Version()
     {
-        Console.WriteLine("FlipsiColor CLI v0.7.1");
-        Console.WriteLine("Core-Engine: FlipsiColor.Core v0.7.1");
+        Console.WriteLine("FlipsiColor CLI v0.8.0");
+        Console.WriteLine("Core-Engine: FlipsiColor.Core v0.8.0");
         Console.WriteLine(".NET 10.0");
         return 0;
     }

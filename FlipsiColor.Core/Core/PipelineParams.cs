@@ -213,4 +213,26 @@ public sealed class PipelineParams
     /// Nur relevant wenn ColorManagement == OpenColorIO.
     /// </summary>
     public OCIOEngine OCIOEngineMode { get; set; } = OCIOEngine.LUTBaking;
+
+    // ── Low-Light-Enhancement (Issue #20, NightLift-Port) ──
+
+    /// <summary>
+    /// Low-Light-Enhancement aktivieren. Wenn true, wird das Bild vor dem Weißabgleich
+    /// analysiert und mit dem gewählten Verfahren aufgehellt (klassisch, kein ONNX).
+    /// </summary>
+    public bool LowLightAktiv { get; set; } = false;
+
+    /// <summary>
+    /// Low-Light-Verfahren (siehe LowLightEnhancer.VerfuegbareVerfahren):
+    /// auto, clahe, gamma, autolevels, msrcp, ssr, dehaze, weissabgleich,
+    /// helligkeit, kombiniert, stark. 'auto' = Analyse + Stufen-Strategie.
+    /// Ungültige Strings fallen in der Pipeline auf 'auto' zurück.
+    /// </summary>
+    public string LowLightVerfahren { get; set; } = "auto";
+
+    /// <summary>
+    /// Von der Pipeline erkannte Low-Light-Stufe (analog ErkannteSzene).
+    /// Wird von ImagePipeline/FrameProcessor gesetzt wenn LowLightAktiv true ist.
+    /// </summary>
+    public string? LowLightErkannteStufe { get; set; }
 }

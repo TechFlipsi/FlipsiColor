@@ -33,7 +33,7 @@ public partial class MainViewModel : ObservableObject, IDisposable
     private readonly AutoUpdater _autoUpdater;
     private readonly ClipMerger _clipMerger;
 
-    [ObservableProperty] private string _title = "FlipsiColor v0.7.1";
+    [ObservableProperty] private string _title = "FlipsiColor v0.8.0";
     [ObservableProperty] private bool _gpuVerfuegbar;
     [ObservableProperty] private string _gpuName = "";
     [ObservableProperty] private bool _updateVerfuegbar;
@@ -79,6 +79,11 @@ public partial class MainViewModel : ObservableObject, IDisposable
     // Upscaling & Gesichtswiederherstellung
     [ObservableProperty] private int _hochskalierenFaktor = 1;
     [ObservableProperty] private bool _gesichtswiederherstellungAktiv;
+
+    // ── Low-Light-Aufhellung (v0.8.0) ──
+    [ObservableProperty] private bool _lowLightAktiv;
+    [ObservableProperty] private string _lowLightVerfahren = "auto";
+    [ObservableProperty] private string _lowLightStatus = "";
 
     // StyleLUT → Farbstil-LUT
     [ObservableProperty] private string? _styleLutPfad;
@@ -336,6 +341,19 @@ public partial class MainViewModel : ObservableObject, IDisposable
         _ => BetriebsModus.Ask
     };
 
+    /// <summary>
+    /// Aktualisiert den Low-Light-Status-Text nach einem Pipeline-Lauf (v0.8.0).
+    /// Wenn die Pipeline eine Stufe erkannt hat (param.LowLightErkannteStufe != null)
+    /// → "Erkannte Stufe: &lt;Stufe&gt;", sonst leerer Text.
+    /// </summary>
+    private void LowLightStatusAktualisieren(PipelineParams param)
+    {
+        LowLightStatus = param.LowLightErkannteStufe is { } stufe
+            ? string.Format(Lokalisierung.T("Bild.LowLight.Status"),
+                Lokalisierung.T("Bild.LowLight.Stufe." + stufe))
+            : "";
+    }
+
     // ===== Drag & Drop — mehrere Dateien (Bilder UND Videos) =====
 
     /// <summary>Fügt mehrere Dateien zur Datei-Liste hinzu (Drag &amp; Drop).</summary>
@@ -455,6 +473,9 @@ public partial class MainViewModel : ObservableObject, IDisposable
             HochskalierenFaktor = HochskalierenFaktor,
             GesichtswiederherstellungAktiv = GesichtswiederherstellungAktiv,
             StyleLutPfad = StyleLutPfad,
+            // v0.8.0: Low-Light-Aufhellung
+            LowLightAktiv = LowLightAktiv,
+            LowLightVerfahren = LowLightVerfahren,
             // v0.5.0: Pro-Funktions KI-Toggles
             KIDenoisingAktiv = KIDenoisingAktiv,
             KISchaerfungAktiv = KISchaerfungAktiv,
@@ -482,6 +503,7 @@ public partial class MainViewModel : ObservableObject, IDisposable
             {
                 PipelineBild = MatToBitmapConverter.ConvertMat(mat);
             }
+            LowLightStatusAktualisieren(param);
             StatusText = Lokalisierung.T("Status.PipelineAbgeschlossen");
         }
         catch (Exception ex)
@@ -507,6 +529,9 @@ public partial class MainViewModel : ObservableObject, IDisposable
         GesichtswiederherstellungAktiv = false;
         StyleLutPfad = null;
         StyleLutName = "";
+        LowLightAktiv = false;
+        LowLightVerfahren = "auto";
+        LowLightStatus = "";
         StatusText = Lokalisierung.T("Status.ParameterZurueckgesetzt");
     }
 
@@ -628,6 +653,9 @@ public partial class MainViewModel : ObservableObject, IDisposable
             HochskalierenFaktor = 1,
             GesichtswiederherstellungAktiv = GesichtswiederherstellungAktiv,
             StyleLutPfad = StyleLutPfad,
+            // v0.8.0: Low-Light-Aufhellung
+            LowLightAktiv = LowLightAktiv,
+            LowLightVerfahren = LowLightVerfahren,
             // v0.5.0: Pro-Funktions KI-Toggles
             KIDenoisingAktiv = KIDenoisingAktiv,
             KISchaerfungAktiv = KISchaerfungAktiv,
@@ -659,6 +687,7 @@ public partial class MainViewModel : ObservableObject, IDisposable
                 });
             });
 
+            LowLightStatusAktualisieren(param);
             StatusText = Lokalisierung.T("Status.VideoPipelineAbgeschlossen");
         }
         catch (Exception ex)
@@ -912,7 +941,10 @@ public partial class MainViewModel : ObservableObject, IDisposable
                     ChrominanzRauschen = RauschenChroma / 100f,
                     ObjektivkorrekturAktiv = Objektivkorrektur,
                     Intensitaet = IntensitaetFromIndex(),
-                    Modus = ModusFromIndex()
+                    Modus = ModusFromIndex(),
+                    // v0.8.0: Low-Light-Aufhellung
+                    LowLightAktiv = LowLightAktiv,
+                    LowLightVerfahren = LowLightVerfahren
                 };
 
                 var ergebnis = await _clipMerger.ClipsZusammenfuegenMitFarbkorrekturAsync(
@@ -970,7 +1002,10 @@ public partial class MainViewModel : ObservableObject, IDisposable
                 ChrominanzRauschen = RauschenChroma / 100f,
                 ObjektivkorrekturAktiv = Objektivkorrektur,
                 Intensitaet = IntensitaetFromIndex(),
-                Modus = ModusFromIndex()
+                Modus = ModusFromIndex(),
+                // v0.8.0: Low-Light-Aufhellung
+                LowLightAktiv = LowLightAktiv,
+                LowLightVerfahren = LowLightVerfahren
             };
 
             foreach (var gruppe in ClipGruppen)
@@ -1070,6 +1105,8 @@ public partial class MainViewModel : ObservableObject, IDisposable
         GesichtswiederherstellungAktiv = preset.GesichtswiederherstellungAktiv;
         Objektivkorrektur = preset.ObjektivkorrekturAktiv;
         HochskalierenFaktor = preset.HochskalierenFaktor;
+        LowLightAktiv = preset.LowLightAktiv;
+        LowLightVerfahren = string.IsNullOrEmpty(preset.LowLightVerfahren) ? "auto" : preset.LowLightVerfahren;
         StatusText = $"{Lokalisierung.T("Preset.Geladen")}: {preset.Name}";
     }
 
@@ -1092,7 +1129,9 @@ public partial class MainViewModel : ObservableObject, IDisposable
             },
             GesichtswiederherstellungAktiv = GesichtswiederherstellungAktiv,
             ObjektivkorrekturAktiv = Objektivkorrektur,
-            HochskalierenFaktor = HochskalierenFaktor
+            HochskalierenFaktor = HochskalierenFaktor,
+            LowLightAktiv = LowLightAktiv,
+            LowLightVerfahren = LowLightVerfahren
         };
         _presetManager.SpeicherePreset(preset);
         PresetNamenLaden();

@@ -316,6 +316,11 @@ public sealed class VideoPipeline : IDisposable
                 {
                     // FrameProcessor wendet Belichtung/Kontrast/Sättigung etc. an
                     using var ergebnisMat = frameProcessor.Verarbeiten(frameMat, frameParams);
+
+                    // v0.8.0: Erkannte Low-Light-Stufe vom Szenen-Klon zurückpropagieren,
+                    // damit der Aufrufer (UI-Status) den Wert auch bei Szenenwechseln sieht.
+                    if (!ReferenceEquals(frameParams, param) && frameParams.LowLightErkannteStufe != null)
+                        param.LowLightErkannteStufe = frameParams.LowLightErkannteStufe;
                     if (!ergebnisMat.Empty())
                     {
                         // Korrigiertes Mat → raw bytes → Encode-stdin
@@ -426,6 +431,9 @@ public sealed class VideoPipeline : IDisposable
         catch (Exception ex)
         {
             Log.Error("Video-Pipeline fehlgeschlagen: {Fehler}", SecurityValidator.BereinigeExceptionFuerLog(ex.Message));
+            // KLARER ABBRUCH statt stiller Fallback: Fehler an Aufrufer (VM/CLI) weiterwerfen —
+            // dort gibt es bereits Catch-Blöcke mit Fehlerdialog, die sonst nie etwas sehen.
+            throw;
         }
         finally
         {
@@ -554,7 +562,10 @@ public sealed class VideoPipeline : IDisposable
             ExifObjektiv = basis.ExifObjektiv,
             ExifBrennweite = basis.ExifBrennweite,
             ExifBlende = basis.ExifBlende,
-            ErkannteSzene = basis.ErkannteSzene
+            ErkannteSzene = basis.ErkannteSzene,
+            // v0.8.0: Low-Light-Aufhellung pro Szene durchreichen
+            LowLightAktiv = basis.LowLightAktiv,
+            LowLightVerfahren = basis.LowLightVerfahren
         };
 
         // Szenen-spezifische Anpassung: Belichtung leicht variieren

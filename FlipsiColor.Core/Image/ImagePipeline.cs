@@ -226,6 +226,43 @@ public sealed class ImagePipeline : IDisposable
             param.ExifBrennweite = _exifBrennweite > 0 ? _exifBrennweite : null;
             param.ExifBlende = _exifBlende > 0 ? _exifBlende : null;
 
+            // 0b. Low-Light-Enhancement (Issue #20, NightLift-Port) — vor dem Weißabgleich,
+            //     damit die nachfolgenden Schritte auf dem aufgehellten Bild arbeiten.
+            //     Rein klassisch (kein ONNX), Verfahren via param.LowLightVerfahren.
+            if (param.LowLightAktiv)
+            {
+                var lowLightVerfahren = param.LowLightVerfahren;
+                if (string.IsNullOrWhiteSpace(lowLightVerfahren) ||
+                    !LowLightEnhancer.VerfuegbareVerfahren.Contains(
+                        lowLightVerfahren.Trim().ToLowerInvariant()))
+                {
+                    Log.Warning("LowLight: Ungültiges Verfahren '{Verfahren}' — falle auf 'auto' zurück",
+                        lowLightVerfahren);
+                    lowLightVerfahren = "auto";
+                }
+
+                try
+                {
+                    var analyse = LowLightEnhancer.Analysieren(bild);
+                    param.LowLightErkannteStufe = analyse.Stufe.ToString();
+                    Log.Information("LowLight: Stufe={Stufe} Mean={Mean:F1} DarkRatio={Dark:F3} Verfahren={Verfahren}",
+                        analyse.Stufe, analyse.MeanLuminanz, analyse.DarkRatio, lowLightVerfahren);
+
+                    var neuesBild = LowLightEnhancer.Aufhellen(bild, lowLightVerfahren);
+                    bild.Dispose();
+                    bild = neuesBild;
+                }
+                catch (Exception ex)
+                {
+                    // Aufhellung fehlgeschlagen — KLARER ABBRUCH (kein stiller Fallback!):
+                    // Der User hat LowLight explizit aktiviert, die Pipeline darf nicht ohne
+                    // das Feature weiterlaufen. Die VM-Catches zeigen dem User den Fehler an.
+                    Log.Error("LowLight-Aufhellung fehlgeschlagen — Pipeline bricht ab: {Fehler}",
+                        SecurityValidator.BereinigeExceptionFuerLog(ex.Message));
+                    throw;
+                }
+            }
+
             // 1. Weißabgleich
             if (Math.Abs(param.WeissabgleichTemp - 5500.0f) > 1 || Math.Abs(param.WeissabgleichTint) > 1)
             {
@@ -487,6 +524,14 @@ public sealed class ImagePipeline : IDisposable
             Log.Information("Pipeline abgeschlossen");
             PipelineAbgeschlossen?.Invoke(this, EventArgs.Empty);
             HistogrammAktualisiert?.Invoke(this, EventArgs.Empty);
+        }
+        catch (Exception ex) when (param.LowLightAktiv)
+        {
+            // LowLight explizit gewählt → KEIN stiller Fallback: Fehler an Aufrufer (VM/CLI)
+            // weiterwerfen, dort existieren Catch-Blöcke mit Fehlerdialog.
+            Log.Error("Pipeline-Fehler (LowLight aktiv) — Abbruch: {Fehler}", SecurityValidator.BereinigeExceptionFuerLog(ex.Message));
+            bild.Dispose();
+            throw;
         }
         catch (Exception ex)
         {

@@ -2,6 +2,7 @@ using System;
 using OpenCvSharp;
 
 using FlipsiColor.Core;
+using FlipsiColor.Image;
 using FlipsiColor.Utils;
 
 namespace FlipsiColor.Video;
@@ -26,6 +27,43 @@ public sealed class FrameProcessor : IDisposable
 
         try
         {
+            // 0. Low-Light-Enhancement (Issue #20, NightLift-Port) — vor der Belichtung,
+            //     gleiche logische Position wie in der ImagePipeline (vor Schritt 1 Weißabgleich).
+            //     Rein klassisch (kein ONNX), Video-Parität zur Bild-Pipeline.
+            if (param.LowLightAktiv)
+            {
+                var lowLightVerfahren = param.LowLightVerfahren;
+                if (string.IsNullOrWhiteSpace(lowLightVerfahren) ||
+                    !LowLightEnhancer.VerfuegbareVerfahren.Contains(
+                        lowLightVerfahren.Trim().ToLowerInvariant()))
+                {
+                    Log.Warning("LowLight: Ungültiges Verfahren '{Verfahren}' — falle auf 'auto' zurück",
+                        lowLightVerfahren);
+                    lowLightVerfahren = "auto";
+                }
+
+                try
+                {
+                    var analyse = LowLightEnhancer.Analysieren(result);
+                    param.LowLightErkannteStufe = analyse.Stufe.ToString();
+                    Log.Debug("LowLight: Stufe={Stufe} Mean={Mean:F1} DarkRatio={Dark:F3} Verfahren={Verfahren}",
+                        analyse.Stufe, analyse.MeanLuminanz, analyse.DarkRatio, lowLightVerfahren);
+
+                    var neu = LowLightEnhancer.Aufhellen(result, lowLightVerfahren);
+                    result.Dispose();
+                    result = neu;
+                }
+                catch (Exception ex)
+                {
+                    // Frame-Aufhellung fehlgeschlagen — KLARER ABBRUCH (kein stiller Fallback!):
+                    // Der User hat LowLight explizit aktiviert. Der äußere Catch unten wirft
+                    // bei aktivem LowLight weiter, damit der User den Fehler angezeigt bekommt.
+                    Log.Error("LowLight-Frame-Aufhellung fehlgeschlagen: {Fehler}",
+                        SecurityValidator.BereinigeExceptionFuerLog(ex.Message));
+                    throw;
+                }
+            }
+
             // Belichtung
             if (Math.Abs(param.Belichtung) > 0.01f)
             {
@@ -78,6 +116,14 @@ public sealed class FrameProcessor : IDisposable
                     throw;
                 }
             }
+        }
+        catch (Exception ex) when (param.LowLightAktiv)
+        {
+            // LowLight explizit gewählt → kein stiller Fallback: Frame-Fehler nach außen
+            // werfen (VideoPipeline/VM zeigen dem User den Fehler, statt still zu speichern).
+            arbeit?.Dispose();
+            Log.Error(ex, "Frame-Verarbeitung fehlgeschlagen (LowLight aktiv) — Fehler wird weitergeworfen");
+            throw;
         }
         catch (Exception ex)
         {

@@ -2,7 +2,7 @@
 
 **KI-gestützte Bild- & Videofarbkorrektur für Windows & Linux**
 
-> ⚠️ **Status: v0.7.0 — Feature-Sprint abgeschlossen!**
+> ⚠️ **Status: v0.8.0 — Low-Light-Enhancement (Issue #20)**
 > 
 > Die Bild- und Video-Verarbeitung ist implementiert und kompilationsgetestet. Die App lädt 7 ONNX-Modelle automatisch von GitHub Releases herunter. Bitte melden Sie Probleme via GitHub Issues.
 
@@ -15,6 +15,7 @@
 - **Lichter & Schatten** — selektive Korrektur
 - **Schärfe & Rauschunterdrückung** — Luminanz + Chrominanz
 - **Weißabgleich** — auto + manuelle Farbtemperatur
+- **Low-Light-Enhancement (v0.8.0 NEU)** — 11 Verfahren (CLAHE, Gamma, Auto-Levels, MSRCP/SSR, Dehaze, Weißabgleich, Helligkeit, Kombiniert, Stark), Auto-Modus erkennt 4 Dunkelheits-Stufen und wählt adaptiv, auch für Video (Frame-weise)
 
 ### 🔲 Objektivkorrektur
 - **Lensfun-Integration** — Verzeichnung, Vignetting, chromatische Aberration via Lensfun-Datenbank

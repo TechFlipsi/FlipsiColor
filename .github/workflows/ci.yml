@@ -225,54 +225,21 @@ jobs:
         with:
           files: release-artifacts/*
           body: |
-            ## FlipsiColor ${{ steps.version.outputs.version }} — Installerverbesserungen + Portable Windows Version
-
-            **v0.6.0: 13 Sprachen + Systemsprache-Erkennung + JSON-Lokalisierung + Installer-Upgrade + Portable Version (Issues #9, #10).** Großes Feature-Update: 13 Sprachen (DE, EN, ES, FR, IT, NL, PL, PT, TR, RU, ZH, JA, KO), automatische Systemsprache-Erkennung mit English-Fallback, JSON-basierte Lokalisierung (Contributors können Sprachen ohne Code-Änderung hinzufügen), Installer mit Upgrade-Erkennung und Portable ZIP-Version.
-
-            ### 📦 v0.5.5 — Installer-Verbesserungen (Issue #10)
-            - **Admin-Rechte** — Installer benötigt nun Administratorrechte für korrekte Program Files Installation
-            - **Verzeichnis-Anpassung** — Installationsverzeichnis kann vom Benutzer geändert werden
-            - **Versions-Erkennung** — Installer erkennt bestehende Installationen und bietet Upgrade an
-            - **AppMutex** — Installation wird blockiert während die App läuft
-            - **Portable ZIP** — `FlipsiColor-${{ steps.version.outputs.version }}-portable-win-x64.zip` — einfach entpacken und starten, keine Installation nötig, keine Admin-Rechte
-
-            ### 🌐 v0.5.4 — JSON-basierte Lokalisierung
-            - **JSON-Sprachdateien** — alle UI-Strings in externen JSON-Dateien (Assets/i18n/de.json, en.json)
-            - **Neue Sprachen** — Contributors können neue Sprachen durch einfaches Hinzufügen einer JSON-Datei hinzufügen
-
-            ### 🌐 v0.5.3 — Sprachumschalter
-            - **Language ComboBox** in der Top-Toolbar — wechselt zwischen Deutsch und English
-            - **Vollständige Lokalisierung** — alle UI-Texte in der WPF-Version sind jetzt lokalisiert
-            - **Live-Sprachwechsel** — Fenster wird bei Sprachwechsel neu aufgebaut, kein Neustart nötig
-            - **Settings-Persistenz** — gewählte Sprache wird in settings.json gespeichert
-
-            ### 🔧 v0.5.2 — Bugfix
-            - Fixed `XamlParseException` startup crash caused by missing Icon resource in SingleFile publish mode (Issue #8)
-
-            ### ✨ Enthaltene Funktionen aus v0.5.1
-            - **Logs-Button** — Dezenter Button in der Sidebar öffnet den Logs-Ordner direkt im Dateimanager
-            - **Rechtschreibfix** — "KI-Modelle werden neu heruntergeladen" (Passivform korrigiert)
-            - **CI aktualisiert** — GitHub Actions v5 (Node.js 24)
-
-            ### 🎨 Enthaltene Funktionen aus v0.5.0
-            - **OpenColorIO (OCIO) Integration** — Industrie-Standard Farbmanagement als optionales Backend
-            - **Pro-Funktion KI-Toggles** — jede KI-Funktion einzeln an/abschaltbar
-            - **VapourSynth-Backend** — Optionaler Video-Backend mit Auto-Installation
-            - **Lensfun-Integration** — Automatische Objektivkorrektur mit EXIF-Erkennung
-            - **RAW-Unterstützung** — CR2, CR3, NEF, ARW, DNG (via LibRaw)
-
-            ### Downloads
-            - **Windows (Installer):** `FlipsiColor-${{ steps.version.outputs.version }}-setup.exe` (Inno Setup Installer)
-            - **Windows (Portable):** `FlipsiColor-${{ steps.version.outputs.version }}-portable-win-x64.zip` (keine Installation nötig)
-            - **Linux (Ubuntu/Debian):** `FlipsiColor-${{ steps.version.outputs.version }}-linux.deb`
-            - **Linux (universell):** `FlipsiColor-${{ steps.version.outputs.version }}.AppImage`
-
-            ### Systemanforderungen
-            - Windows 10 (19041+) oder neuer / Ubuntu 20.04+ / Debian 11+
-            - 8 GB RAM
-            - GPU empfohlen (DirectML auf Windows, CPU auf Linux)
-            - FFmpeg installiert (Linux: `apt install ffmpeg`)
-            - libraw (Linux: `apt install libraw-dev`)
-            - Optional: OpenColorIO Tools (`apt install opencolorio-tools` für LUT-Baking)
+            ## FlipsiColor v0.8.0 — Low-Light-Enhancement (NightLift-Port, Issue #20)
+            
+            **Neues Feature:** Automatische Aufhellung dunkler Bilder und Videos. Die Pipeline analysiert Helligkeit, Kontrast und Dunkelanteil, erkennt 4 Dunkelheits-Stufen (Extrem / Stark / Mittel / Leicht) und wählt automatisch die beste Kombination aus 11 klassischen Verfahren — reine OpenCV-Mathematik, kein KI-Modell-Download nötig. Portiert aus dem NightLift-Projekt (MIT, @LIUZHIYON) auf Wunsch von @MarcoRavich (Issue #20).
+            
+            ### ✨ Neu in v0.8.0
+            - **Low-Light-Enhancement** für Bilder UND Videos (Frame-weise, vor der Farbkorrektur)
+            - **11 Verfahren:** Auto (empfohlen), CLAHE, Gamma, Auto-Levels, MSRCP (Retinex), SSR (Retinex), Dehaze, Weißabgleich, Helligkeit & Kontrast, Kombiniert, Stark
+            - **Auto-Modus:** analysiert jedes Bild (Mean-Luminanz, Dark-Ratio, RMS-Kontrast, Dynamikbereich) und wählt Stufe + Parameter adaptiv
+            - **Statusanzeige** der erkannten Dunkelheits-Stufe in der UI (Bild + Video)
+            - **CLI-Support:** `--lowlight` + `--lowlight-method <verfahren>`
+            - **Presets & Batch-Verarbeitung** voll integriert
+            - **18 neue UI-Strings** in allen 13 Sprachen (DE, EN, ES, FR, IT, NL, PL, PT, TR, RU, ZH, JA, KO)
+            
+            ### 🐛 v0.7.1 — 10 Bugfixes für Linux + cross-platform KI-Pipeline + FlipsiColor.CLI
+            - 10 Bugfixes für die Linux-Version + cross-platform KI-Pipeline (PR #19)
+            - Neues `FlipsiColor.CLI`-Projekt (Terminal-Version für Linux-Server/Scripting)
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

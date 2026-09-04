@@ -14,6 +14,7 @@ KI-gestützte Bild- & Videofarbkorrektur. Cross-Platform (Linux + Windows) mit A
 - **RAW-Unterstützung:** CR2, CR3, NEF, ARW, DNG (via LibRaw)
 - **Objektivkorrektur:** Lensfun-Integration mit automatischer EXIF-Erkennung (Kamera + Objektiv), Verzeichnung-, Vignetting- und TCA-Korrektur
 - **Video-Pipeline:** Frame-weise Farbkorrektur mit Szenenwechsel-Erkennung und Audio-Erhaltung
+- **Low-Light-Enhancement:** Automatische Aufhellung dunkler Bilder & Videos — 11 klassische Verfahren (CLAHE, Gamma, Auto-Levels, MSRCP/SSR Retinex, Dehaze, Weißabgleich u. a.), Auto-Modus mit 4 Dunkelheits-Stufen, CLI-Support (`--lowlight`)
 - **VapourSynth-Backend:** Optionaler Video-Backend mit Auto-Installation (alternativ zu FFmpeg)
 - **Clips zusammenfügen:** Automatische Video-Clip-Gruppierung und Zusammenführung (alle Kameras, inkl. DJI Auto-Merge)
 - **Hochskalieren:** RealESRGAN (2x/3x/4x)
