@@ -50,7 +50,7 @@ public sealed class AutoUpdater : IDisposable
     public AutoUpdater()
     {
         // FIX v0.7.0: Assembly.GetEntryAssembly() gibt bei SingleFile-Publish null/0.0.0.0 zurück
-        var versionStr = "0.7.0";
+        var versionStr = "0.7.1";
         try
         {
             var asmVersion = Assembly.GetEntryAssembly()?.GetName().Version;

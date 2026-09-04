@@ -74,16 +74,21 @@ public class SceneDetector
 
     private static Mat HistogrammBerechnen(Mat grau)
     {
-        var hist = new Mat();
-        Cv2.CalcHist(
-            new[] { grau },
-            new[] { 0 },
-            null,
-            hist,
-            1,
-            new[] { 256 },
-            new[] { new Rangef(0, 256) },
-            false);
+        // Bug-Fix: OpenCvSharp 4.13 CalcHist schlägt fehl mit
+        // "ranges[i][k] < ranges[i][k+1]" bei Rangef und float[][].
+        // Alternative: Manuelles Histogramm via Cv2.CalcHist mit InputArray
+        // oder direkte Pixel-Zählung. Verwende LUT-basierten Ansatz für 8-bit Grayscale.
+        var hist = new Mat(256, 1, MatType.CV_32FC1, Scalar.All(0));
+
+        // Sichere Alternative: Pixel-Werte direkt zählen
+        var pixelData = new byte[grau.Rows * grau.Cols];
+        grau.GetArray(out pixelData);
+
+        var histData = new float[256];
+        foreach (var pixel in pixelData)
+            histData[pixel]++;
+
+        hist.SetArray(histData);
         Cv2.Normalize(hist, hist);
         return hist;
     }

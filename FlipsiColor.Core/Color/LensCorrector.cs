@@ -163,7 +163,7 @@ public sealed class LensCorrector : IDisposable
 
         try
         {
-            IntPtr camsArray = LensfunNative.lf_db_get_cams(_lensfunDb);
+            IntPtr camsArray = LensfunNative.lf_db_get_cameras(_lensfunDb);
             if (camsArray == IntPtr.Zero)
                 return new List<string>();
 
@@ -275,18 +275,37 @@ public sealed class LensCorrector : IDisposable
         try
         {
             // Kamera und Objektiv in Lensfun suchen
-            IntPtr camHandle = LensfunNative.lf_db_find_cam(_lensfunDb, kamera);
-            IntPtr lensHandle = LensfunNative.lf_db_find_lens(_lensfunDb, objektiv);
-
-            if (camHandle == IntPtr.Zero)
+            // Bug-Fix: lensfun 0.3.4 verwendet lf_db_find_cameras (Plural, 3 Parameter: db, maker, model)
+            // und lf_db_find_lenses_hd (5 Parameter: db, camera, maker, lens, sflags).
+            // Beide geben null-terminierte Arrays von Pointern zurück (lfCamera** / lfLens**).
+            // Wir lesen das erste Element aus dem Array.
+            // "kamera" ist der Hersteller, model ist leer (sucht alle Modelle des Herstellers)
+            IntPtr camArrayPtr = LensfunNative.lf_db_find_cameras(_lensfunDb, kamera, "");
+            if (camArrayPtr == IntPtr.Zero)
             {
                 Log.Warning("Lensfun: Kamera '{Kamera}' nicht gefunden", kamera);
                 return bild;
             }
+            // Erstes Element aus dem Pointer-Array lesen (lfCamera*)
+            IntPtr camHandle = Marshal.PtrToStructure<IntPtr>(camArrayPtr);
+            if (camHandle == IntPtr.Zero)
+            {
+                Log.Warning("Lensfun: Kamera '{Kamera}' nicht gefunden (leeres Array)", kamera);
+                return bild;
+            }
 
-            if (lensHandle == IntPtr.Zero)
+            // lf_db_find_lenses_hd(db, camera, maker, lensName, sflags) — camera für Crop-Faktor
+            IntPtr lensArrayPtr = LensfunNative.lf_db_find_lenses_hd(_lensfunDb, camHandle, "", objektiv, 0);
+            if (lensArrayPtr == IntPtr.Zero)
             {
                 Log.Warning("Lensfun: Objektiv '{Objektiv}' nicht gefunden", objektiv);
+                return bild;
+            }
+            // Erstes Element aus dem Pointer-Array lesen (lfLens*)
+            IntPtr lensHandle = Marshal.PtrToStructure<IntPtr>(lensArrayPtr);
+            if (lensHandle == IntPtr.Zero)
+            {
+                Log.Warning("Lensfun: Objektiv '{Objektiv}' nicht gefunden (leeres Array)", objektiv);
                 return bild;
             }
 
@@ -588,13 +607,25 @@ internal static class LensfunNative
     [System.Runtime.InteropServices.DefaultDllImportSearchPaths(SichereSuchpfade)]
     public static extern void lf_db_destroy(IntPtr db);
 
+    /// <summary>
+    /// Sucht Kameras nach Hersteller und Modell.
+    /// lensfun 0.3.4: lf_db_find_cameras(db, maker, model) — 3 Parameter.
+    /// Liefert null-terminiertes Array von lfCamera*.
+    /// Bug-Fix: Auf Linux (lensfun 0.3.4) heißt die Funktion lf_db_find_cameras (Plural)
+    /// und benötigt maker + model Parameter.
+    /// </summary>
     [DllImport(DllName, CallingConvention = CallingConvention.Cdecl)]
     [System.Runtime.InteropServices.DefaultDllImportSearchPaths(SichereSuchpfade)]
-    public static extern IntPtr lf_db_find_cam(IntPtr db, string manufacturer);
+    public static extern IntPtr lf_db_find_cameras(IntPtr db, string maker, string model);
 
+    /// <summary>
+    /// Sucht Objektive nach Name (mit Kamera-Kontext).
+    /// lensfun 0.3.4: lf_db_find_lenses_hd — 5 Parameter (db, camera, maker, lens, sflags).
+    /// Die Funktion lf_db_find_lenses (ohne _hd) hat nur 3 Parameter und keine Kamera-Suche.
+    /// </summary>
     [DllImport(DllName, CallingConvention = CallingConvention.Cdecl)]
     [System.Runtime.InteropServices.DefaultDllImportSearchPaths(SichereSuchpfade)]
-    public static extern IntPtr lf_db_find_lens(IntPtr db, string lensName);
+    public static extern IntPtr lf_db_find_lenses_hd(IntPtr db, IntPtr camera, string maker, string lensName, int sflags);
 
     /// <summary>
     /// Gibt alle Kameras in der Datenbank zurück.
@@ -602,7 +633,7 @@ internal static class LensfunNative
     /// </summary>
     [DllImport(DllName, CallingConvention = CallingConvention.Cdecl)]
     [System.Runtime.InteropServices.DefaultDllImportSearchPaths(SichereSuchpfade)]
-    public static extern IntPtr lf_db_get_cams(IntPtr db);
+    public static extern IntPtr lf_db_get_cameras(IntPtr db);
 
     /// <summary>
     /// Gibt alle Objektive in der Datenbank zurück.

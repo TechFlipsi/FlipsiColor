@@ -53,8 +53,10 @@ public sealed class InferenceEngine : IDisposable
         using var results = session.Run(inputs);
         var output = results.First().AsTensor<float>();
         var resultArray = new float[output.Length];
-        for (int i = 0; i < output.Length; i++)
-            resultArray[i] = output[i];
+        // Bug-Fix: Tensor-Indizierung mit einzelnen Index schlägt bei mehrdimensionalen
+        // Tensoren fehl (z.B. Shape [1,1000]). ToArray() liefert flaches Array.
+        var flatOutput = output.ToArray();
+        Array.Copy(flatOutput, resultArray, output.Length);
 
         Log.Debug("Inferenz {Modell}: Input=[{Form}], Output Length={Len}",
             modellId, string.Join(",", form), resultArray.Length);
@@ -82,8 +84,24 @@ public sealed class InferenceEngine : IDisposable
         const int targetSize = 224;
 
         // Eingabedaten (float HWC BGR [0,255]) → OpenCvSharp Mat
+        // Bug-Fix: SetArray bei Multichannel-Mat funktioniert nicht direkt.
+        // Stattdessen: pro-Kanal SetArray + Merge.
         using var srcMat = new Mat(hoehe, breite, MatType.CV_32FC3);
-        srcMat.SetArray(bildDaten);
+        {
+            // HWC → 3 separate Kanäle → Merge
+            var chanMats = new Mat[3];
+            for (int c = 0; c < 3; c++)
+            {
+                var chanData = new float[hoehe * breite];
+                for (int i = 0; i < hoehe * breite; i++)
+                    chanData[i] = bildDaten[i * 3 + c];
+                chanMats[c] = new Mat(hoehe, breite, MatType.CV_32FC1);
+                chanMats[c].SetArray(chanData);
+            }
+            using var merged = new Mat();
+            Cv2.Merge(chanMats, srcMat);
+            foreach (var cm in chanMats) cm.Dispose();
+        }
 
         // Resize auf 224×224 mit OpenCvSharp
         using var resized = new Mat();
