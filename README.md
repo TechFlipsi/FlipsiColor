@@ -1,5 +1,8 @@
 # FlipsiColor
 
+
+> **What is FlipsiColor?** A free, open-source photo and video editor (GPL-3.0) for Windows and Linux that corrects, restores and enhances images using AI models running entirely on your own computer: RAW support (CR2, CR3, NEF, ARW, DNG), Lensfun lens correction, frame-accurate video grading, RealESRGAN upscaling up to 4x, CodeFormer face restoration and automatic low-light enhancement. Fully offline — no upload, no account, no subscription.
+
 🌐 **[Project homepage & downloads](https://techflipsi.github.io/flipsicolor-site/)**
 
 [![Build](https://img.shields.io/github/actions/workflow/status/TechFlipsi/FlipsiColor/ci.yml?branch=main&label=Build)](https://github.com/TechFlipsi/FlipsiColor/actions)
