@@ -8,6 +8,30 @@
 
 KI-gestützte Bild- & Videofarbkorrektur. Cross-Platform (Linux + Windows) mit Avalonia UI und .NET 10.
 
+> 🌍 **English:** FlipsiColor is an AI-powered photo & video color correction app for Windows and Linux – RAW support, upscaling, face restoration, lens correction and low-light enhancement, all offline on your own machine.
+
+## ⬇️ Download
+
+| Plattform | Download |
+|-----------|----------|
+| 🪟 **Windows** | [**Setup-Installer (.exe)**](https://github.com/TechFlipsi/FlipsiColor/releases/download/v0.8.1/FlipsiColor-0.8.1-setup.exe) oder [Portable (.zip)](https://github.com/TechFlipsi/FlipsiColor/releases/download/v0.8.1/FlipsiColor-0.8.1-portable-win-x64.zip) |
+| 🐧 **Linux** | [.deb-Paket](https://github.com/TechFlipsi/FlipsiColor/releases/download/v0.8.1/FlipsiColor-0.8.1-linux.deb) |
+
+**[Alle Releases →](https://github.com/TechFlipsi/FlipsiColor/releases)** · 💬 [Discord-Community](https://discord.gg/zHPhQ7EaqH) · English UI included · 13 languages
+
+### ✨ Highlights
+- 🤖 KI-Farbkorrektur & -Restauration (NAFNet, Restormer, RealESRGAN, CodeFormer) – komplett offline
+- 📷 RAW-Unterstützung (Canon CR2/CR3, Nikon NEF, Sony ARW, DNG) + Lensfun-Objektivkorrektur
+- 🎬 Videofarbkorrektur mit Szenenerkennung & Audio-Erhaltung
+- 🌙 Low-Light-Enhancement für dunkle Bilder & Videos (11 Algorithmen, Auto-Modus)
+- 🔒 100% lokal – keine Cloud, keine Uploads, deine Bilder bleiben bei dir
+
+### <a name="english"></a>📖 English summary
+**FlipsiColor** is a free, open-source AI photo & video color correction app. It runs **fully offline** on your own hardware (Windows & Linux). Features: AI color correction & restoration, RAW support (CR2/CR3/NEF/ARW/DNG) with Lensfun lens correction, video color grading with scene detection, low-light enhancement, AI upscaling (RealESRGAN 2x/3x/4x) and face restoration (CodeFormer). Built with .NET 10 (WPF + Avalonia UI).
+
+*Die App-Oberfläche ist auf Deutsch (+13 Sprachen), die Community im Discord spricht Deutsch & Englisch.*
+
+
 ## Features
 
 - **Bild-Pipeline:** KI-Farbkorrektur mit NAFNet/Restormer, Farbkalibrierung, Verzerrungs-Raster
